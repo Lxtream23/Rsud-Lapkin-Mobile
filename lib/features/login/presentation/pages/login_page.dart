@@ -3,6 +3,7 @@ import 'package:rsud_lapkin_mobile/features/register/presentation/pages/register
 import '../../../../config/app_colors.dart';
 import '../../../../core/widgets/custom_text_field.dart';
 import '../../../register/presentation/pages/register_page.dart';
+import '../../../auth/presentation/pages/forgot_password_page.dart';
 
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
@@ -113,7 +114,7 @@ class LoginPage extends StatelessWidget {
                           );
                         },
                         child: const Text(
-                          "Daftar Akun Pegawai",
+                          "Daftar Akun",
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: AppColors.primary,
@@ -124,7 +125,14 @@ class LoginPage extends StatelessWidget {
                     ),
                     Flexible(
                       child: TextButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const ForgotPasswordPage(),
+                            ),
+                          );
+                        },
                         child: const Text(
                           "Lupa Password?",
                           overflow: TextOverflow.ellipsis,
