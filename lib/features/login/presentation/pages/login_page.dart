@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:rsud_lapkin_mobile/features/register/presentation/pages/register_page.dart';
 import '../../../../config/app_colors.dart';
 import '../../../../core/widgets/custom_text_field.dart';
+import '../../../register/presentation/pages/register_page.dart';
 
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
@@ -102,7 +104,14 @@ class LoginPage extends StatelessWidget {
                   children: [
                     Flexible(
                       child: TextButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const RegisterPage(),
+                            ),
+                          );
+                        },
                         child: const Text(
                           "Daftar Akun Pegawai",
                           overflow: TextOverflow.ellipsis,
