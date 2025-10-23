@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rsud_lapkin_mobile/features/home/presentation/pages/home_page.dart';
 import 'package:rsud_lapkin_mobile/features/register/presentation/pages/register_page.dart';
 import '../../../../config/app_colors.dart';
 import '../../../../core/widgets/custom_text_field.dart';
@@ -82,7 +83,14 @@ class LoginPage extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const HomePage(),
+                        ),
+                      );
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       padding: const EdgeInsets.symmetric(vertical: 14),
