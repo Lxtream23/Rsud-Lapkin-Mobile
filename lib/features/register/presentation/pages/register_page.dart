@@ -2,8 +2,15 @@ import 'package:flutter/material.dart';
 import '../../../../config/app_colors.dart';
 import '../../../../core/widgets/custom_text_field.dart';
 
-class RegisterPage extends StatelessWidget {
+class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
+
+  @override
+  State<RegisterPage> createState() => _RegisterPageState();
+}
+
+class _RegisterPageState extends State<RegisterPage> {
+  String? selectedJabatan;
 
   @override
   Widget build(BuildContext context) {
@@ -69,7 +76,81 @@ class RegisterPage extends StatelessWidget {
                   const SizedBox(height: 12),
                   const CustomTextField(hintText: "NIP"),
                   const SizedBox(height: 12),
-                  const CustomTextField(hintText: "Jabatan"),
+                  // Dropdown untuk Jabatan
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6.0),
+                    child: DropdownButtonFormField<String>(
+                      isExpanded:
+                          true, // 🔹 Supaya teks dan ikon tidak terpotong
+                      decoration: InputDecoration(
+                        hintText: 'Pilih Jabatan',
+                        hintStyle: const TextStyle(color: AppColors.textDark),
+                        filled: true,
+                        fillColor: AppColors.inputBackground,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                      value: selectedJabatan,
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'Direktur',
+                          child: Text('Direktur'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Wadir Umum dan Keuangan',
+                          child: Text('Wadir Umum dan Keuangan'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Wadir Pelayanan',
+                          child: Text('Wadir Pelayanan'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Kabid Pelayanan',
+                          child: Text('Kabid Pelayanan'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Kabid Pelayanan Keperawatan',
+                          child: Text('Kabid Pelayanan Keperawatan'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Kabid Pelayanan Penunjang',
+                          child: Text('Kabid Pelayanan Penunjang'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Kabag SDM dan Pengambangan',
+                          child: Text('Kabag SDM dan Pengambangan'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Kabag Umum',
+                          child: Text('Kabag Umum'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Kabag Keuangan',
+                          child: Text('Kabag Keuangan'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Ketua Tim Kerja',
+                          child: Text('Ketua Tim Kerja'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Admin/Staf',
+                          child: Text('Admin/Staf'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          selectedJabatan = value!;
+                        });
+                      },
+                    ),
+                  ),
+
                   const SizedBox(height: 12),
                   const CustomTextField(hintText: "Pangkat"),
                   const SizedBox(height: 12),
