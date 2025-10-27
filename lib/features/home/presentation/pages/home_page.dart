@@ -105,7 +105,7 @@ class _HomePageState extends State<HomePage> {
                 color: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 child: const Text(
-                  '© 2025 RSUD Bangil | Dikelola oleh Tim IT RSUD Bangil',
+                  '© 2025 RSUD Bangil – Sistem Laporan Kinerja',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 12,
