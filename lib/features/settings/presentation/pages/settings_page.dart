@@ -13,22 +13,109 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   final controller = SettingsController();
 
-  // 🔹 Text controllers
+  // 🔹 Controllers
   final _oldPasswordController = TextEditingController();
   final _confirmOldPasswordController = TextEditingController();
   final _newPasswordController = TextEditingController();
   final _confirmNewPasswordController = TextEditingController();
-
   final _oldEmailController = TextEditingController();
   final _newEmailController = TextEditingController();
 
   bool _isLoading = false;
-  String userId = "123"; // 🔹 sementara statis, nanti ambil dari auth session
+  String userId = "123";
+
+  // 🔹 Error message variables
+  String? _oldPasswordError;
+  String? _confirmOldPasswordError;
+  String? _newPasswordError;
+  String? _confirmNewPasswordError;
+  String? _oldEmailError;
+  String? _newEmailError;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // 🔹 Realtime validation listeners
+    _oldPasswordController.addListener(_validatePasswordFields);
+    _confirmOldPasswordController.addListener(_validatePasswordFields);
+    _newPasswordController.addListener(_validatePasswordFields);
+    _confirmNewPasswordController.addListener(_validatePasswordFields);
+    _oldEmailController.addListener(_validateEmailFields);
+    _newEmailController.addListener(_validateEmailFields);
+  }
+
+  @override
+  void dispose() {
+    _oldPasswordController.dispose();
+    _confirmOldPasswordController.dispose();
+    _newPasswordController.dispose();
+    _confirmNewPasswordController.dispose();
+    _oldEmailController.dispose();
+    _newEmailController.dispose();
+    super.dispose();
+  }
 
   // ==========================
-  // 🔹 Fungsi Ganti Password
+  // 🔹 VALIDASI REALTIME
+  // ==========================
+  void _validatePasswordFields() {
+    setState(() {
+      final oldPass = _oldPasswordController.text.trim();
+      final confirmOld = _confirmOldPasswordController.text.trim();
+      final newPass = _newPasswordController.text.trim();
+      final confirmNew = _confirmNewPasswordController.text.trim();
+
+      _oldPasswordError = oldPass.isEmpty ? "Password lama wajib diisi." : null;
+
+      _confirmOldPasswordError = confirmOld.isEmpty
+          ? "Konfirmasi password lama wajib diisi."
+          : (confirmOld != oldPass ? "Password lama tidak cocok." : null);
+
+      if (newPass.isEmpty) {
+        _newPasswordError = "Password baru wajib diisi.";
+      } else if (newPass.length < 8) {
+        _newPasswordError = "Minimal 8 karakter.";
+      } else {
+        _newPasswordError = null;
+      }
+
+      _confirmNewPasswordError = confirmNew.isEmpty
+          ? "Konfirmasi password baru wajib diisi."
+          : (confirmNew != newPass ? "Password baru tidak cocok." : null);
+    });
+  }
+
+  void _validateEmailFields() {
+    setState(() {
+      final oldEmail = _oldEmailController.text.trim();
+      final newEmail = _newEmailController.text.trim();
+
+      _oldEmailError = oldEmail.isEmpty ? "Email lama wajib diisi." : null;
+
+      if (newEmail.isEmpty) {
+        _newEmailError = "Email baru wajib diisi.";
+      } else if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(newEmail)) {
+        _newEmailError = "Format email tidak valid.";
+      } else {
+        _newEmailError = null;
+      }
+    });
+  }
+
+  // ==========================
+  // 🔹 SUBMIT PASSWORD
   // ==========================
   Future<void> _handleChangePassword() async {
+    _validatePasswordFields();
+
+    // 🔹 Jika masih ada error, stop
+    if (_oldPasswordError != null ||
+        _confirmOldPasswordError != null ||
+        _newPasswordError != null ||
+        _confirmNewPasswordError != null)
+      return;
+
     setState(() => _isLoading = true);
 
     final success = await controller.changePassword(
@@ -42,16 +129,24 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() => _isLoading = false);
 
     if (success) {
-      _showSnackBar("Password berhasil diubah", Colors.green);
+      _showSnackBar("Password berhasil diubah.", Colors.green);
+      _oldPasswordController.clear();
+      _confirmOldPasswordController.clear();
+      _newPasswordController.clear();
+      _confirmNewPasswordController.clear();
     } else {
-      _showSnackBar("Gagal mengubah password", Colors.red);
+      _showSnackBar("Gagal mengubah password.", Colors.red);
     }
   }
 
   // ==========================
-  // 🔹 Fungsi Ganti Email
+  // 🔹 SUBMIT EMAIL
   // ==========================
   Future<void> _handleChangeEmail() async {
+    _validateEmailFields();
+
+    if (_oldEmailError != null || _newEmailError != null) return;
+
     setState(() => _isLoading = true);
 
     final success = await controller.changeEmail(
@@ -63,13 +158,14 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() => _isLoading = false);
 
     if (success) {
-      _showSnackBar("Email berhasil diubah", Colors.green);
+      _showSnackBar("Email berhasil diubah.", Colors.green);
+      _oldEmailController.clear();
+      _newEmailController.clear();
     } else {
-      _showSnackBar("Gagal mengubah email", Colors.red);
+      _showSnackBar("Gagal mengubah email.", Colors.red);
     }
   }
 
-  // 🔹 Snackbar helper
   void _showSnackBar(String message, Color color) {
     ScaffoldMessenger.of(
       context,
@@ -102,7 +198,7 @@ class _SettingsPageState extends State<SettingsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 🔹 Ganti Password
+              // GANTI PASSWORD
               Row(
                 children: [
                   const Icon(Icons.lock_outline, color: AppColors.textDark),
@@ -112,26 +208,36 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
               const SizedBox(height: 10),
 
-              _buildTextField('Password Lama', _oldPasswordController, true),
+              _buildTextField(
+                'Password Lama',
+                _oldPasswordController,
+                true,
+                _oldPasswordError,
+              ),
               _buildTextField(
                 'Konfirmasi Password Lama',
                 _confirmOldPasswordController,
                 true,
+                _confirmOldPasswordError,
               ),
-              _buildTextField('Password Baru', _newPasswordController, true),
+              _buildTextField(
+                'Password Baru',
+                _newPasswordController,
+                true,
+                _newPasswordError,
+              ),
               _buildTextField(
                 'Konfirmasi Password Baru',
                 _confirmNewPasswordController,
                 true,
+                _confirmNewPasswordError,
               ),
 
               const SizedBox(height: 6),
-
               _buildSaveButton(_isLoading ? null : _handleChangePassword),
-
               const SizedBox(height: 25),
 
-              // 🔹 Ganti Email
+              // GANTI EMAIL
               Row(
                 children: [
                   const Icon(Icons.email_outlined, color: AppColors.textDark),
@@ -141,13 +247,21 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
               const SizedBox(height: 10),
 
-              _buildTextField('Email Lama', _oldEmailController, false),
-              _buildTextField('Email Baru', _newEmailController, false),
+              _buildTextField(
+                'Email Lama',
+                _oldEmailController,
+                false,
+                _oldEmailError,
+              ),
+              _buildTextField(
+                'Email Baru',
+                _newEmailController,
+                false,
+                _newEmailError,
+              ),
 
               const SizedBox(height: 6),
-
               _buildSaveButton(_isLoading ? null : _handleChangeEmail),
-
               const SizedBox(height: 40),
             ],
           ),
@@ -172,25 +286,44 @@ class _SettingsPageState extends State<SettingsPage> {
     String hint,
     TextEditingController controller,
     bool obscureText,
+    String? errorText,
   ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: TextField(
-        controller: controller,
-        obscureText: obscureText,
-        decoration: InputDecoration(
-          hintText: hint,
-          filled: true,
-          fillColor: AppColors.inputBackground,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 10,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            controller: controller,
+            obscureText: obscureText,
+            decoration: InputDecoration(
+              hintText: hint,
+              filled: true,
+              fillColor: AppColors.inputBackground,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide.none,
+              ),
+              errorText: null, // kita handle manual
+            ),
           ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide.none,
-          ),
-        ),
+          if (errorText != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 4, left: 4),
+              child: Text(
+                errorText,
+                style: const TextStyle(
+                  color: Colors.red,
+                  fontSize: 12,
+                  height: 1.2,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
