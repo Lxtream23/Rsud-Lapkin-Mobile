@@ -7,7 +7,7 @@ import '../../features/auth/presentation/pages/new_password_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/home/presentation/pages/perjanjian_page.dart';
 import '../../features/home/presentation/pages/laporan_kinerja_page.dart';
-import '../../features/home/presentation/pages/profil_page.dart';
+import '../features/profile/pages/profil_page.dart';
 import '../../features/home/presentation/pages/kontak_page.dart';
 import '../../features/home/presentation/pages/panduan_page.dart';
 import '../../features/home/presentation/pages/tentang_aplikasi_page.dart';
