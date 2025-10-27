@@ -103,14 +103,14 @@ class _HomePageState extends State<HomePage> {
               Container(
                 width: double.infinity,
                 color: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 8),
+                padding: const EdgeInsets.symmetric(vertical: 10),
                 child: const Text(
                   '© 2025 RSUD Bangil – Sistem Laporan Kinerja',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.black87,
-                    height: 1.2, // jarak antar baris lebih rapat
+                    height: 1.2,
                   ),
                 ),
               ),
@@ -125,76 +125,121 @@ class _HomePageState extends State<HomePage> {
   Widget _buildCustomDrawer(BuildContext context) {
     return Drawer(
       width: MediaQuery.of(context).size.width * 0.7,
-      backgroundColor: const Color(0xFFF1FFF9),
+      backgroundColor: const Color(
+        0xFFE6F7F1,
+      ), // Warna body drawer (hijau muda)
       child: SafeArea(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 20),
-            const CircleAvatar(
-              radius: 30,
-              backgroundColor: Colors.grey,
-              child: Icon(Icons.person, size: 40, color: Colors.white),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Nama Sesuai User yang login',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
+            // 🔹 HEADER (Putih)
+            Container(
+              width: double.infinity,
+              color: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: Column(
+                children: const [
+                  CircleAvatar(
+                    radius: 35,
+                    backgroundColor: Colors.grey,
+                    child: Icon(Icons.person, size: 45, color: Colors.white),
+                  ),
+                  SizedBox(height: 10),
+                  Text(
+                    'Nama Sesuai User yang login',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
               ),
             ),
-            const Divider(height: 30, color: Colors.black26),
-            _drawerItem(
-              icon: Icons.person_outline,
-              text: 'Profil Saya',
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, '/profil');
-              },
+
+            const Divider(height: 1, color: Colors.black12),
+
+            // 🔹 MENU BODY
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  const SizedBox(height: 10),
+                  _drawerItem(
+                    icon: Icons.person_outline,
+                    text: 'Profil Saya',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, '/profil');
+                    },
+                  ),
+                  _drawerItem(
+                    icon: Icons.phone_outlined,
+                    text: 'Kontak',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, '/kontak');
+                    },
+                  ),
+                  _drawerItem(
+                    icon: Icons.help_outline,
+                    text: 'Panduan',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, '/panduan');
+                    },
+                  ),
+                  _drawerItem(
+                    icon: Icons.settings_outlined,
+                    text: 'Pengaturan',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, '/settings');
+                    },
+                  ),
+                  _drawerItem(
+                    icon: Icons.info_outline,
+                    text: 'Tentang Aplikasi',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, '/tentang');
+                    },
+                  ),
+                ],
+              ),
             ),
-            _drawerItem(
-              icon: Icons.phone_outlined,
-              text: 'Kontak',
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, '/kontak');
-              },
+
+            // 🔹 FOOTER (Putih)
+            Container(
+              width: double.infinity,
+              color: Colors.white,
+              child: Column(
+                children: [
+                  const Divider(height: 1, color: Colors.black26),
+                  ListTile(
+                    leading: const Icon(Icons.logout, color: Colors.red),
+                    title: const Text(
+                      'Log Out',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    onTap: () {
+                      Navigator.pushReplacementNamed(context, '/login');
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                ],
+              ),
             ),
-            _drawerItem(
-              icon: Icons.help_outline,
-              text: 'Panduan',
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, '/panduan');
-              },
-            ),
-            _drawerItem(
-              icon: Icons.info_outline,
-              text: 'Tentang Aplikasi',
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, '/tentang');
-              },
-            ),
-            const Spacer(),
-            const Divider(height: 1),
-            _drawerItem(
-              icon: Icons.logout,
-              text: 'Log Out',
-              iconColor: Colors.red,
-              textColor: Colors.red,
-              onTap: () {
-                Navigator.pushReplacementNamed(context, '/login');
-              },
-            ),
-            const SizedBox(height: 20),
           ],
         ),
       ),
     );
   }
 
-  // ✅ Widget Drawer Item
+  // ✅ Reusable Drawer Item
   Widget _drawerItem({
     required IconData icon,
     required String text,
@@ -204,7 +249,14 @@ class _HomePageState extends State<HomePage> {
   }) {
     return ListTile(
       leading: Icon(icon, color: iconColor),
-      title: Text(text, style: TextStyle(color: textColor)),
+      title: Text(
+        text,
+        style: TextStyle(
+          color: textColor,
+          fontSize: 15,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
       onTap: onTap,
     );
   }

@@ -11,6 +11,7 @@ import '../features/profile/pages/profil_page.dart';
 import '../../features/home/presentation/pages/kontak_page.dart';
 import '../../features/home/presentation/pages/panduan_page.dart';
 import '../../features/home/presentation/pages/tentang_aplikasi_page.dart';
+import '../../features/settings/presentation/pages/settings_page.dart';
 
 class AppRoutes {
   static const login = '/login';
@@ -27,6 +28,7 @@ class AppRoutes {
     '/profil': (context) => const ProfilPage(),
     '/kontak': (context) => const KontakPage(),
     '/panduan': (context) => const PanduanPage(),
+    '/settings': (context) => const SettingsPage(),
     '/tentang': (context) => const TentangAplikasiPage(),
   };
 }
