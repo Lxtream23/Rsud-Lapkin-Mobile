@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../config/app_colors.dart';
 import '../../../config/app_text_style.dart';
+import 'package:signature/signature.dart';
+import 'dart:typed_data';
 
 class ProfilPage extends StatefulWidget {
   const ProfilPage({super.key});
@@ -14,6 +16,13 @@ class ProfilPage extends StatefulWidget {
 class _ProfilPageState extends State<ProfilPage> {
   File? _selectedImage;
   final ImagePicker _picker = ImagePicker();
+  File? _signatureImage; // 🔹 Menyimpan file foto tanda tangan yang diupload
+  Uint8List? _drawnSignature; // 🔹 Menyimpan tanda tangan yang digambar
+
+  final SignatureController _signatureController = SignatureController(
+    penStrokeWidth: 3,
+    penColor: Colors.black,
+  );
 
   bool _isEditing = false;
 
@@ -62,6 +71,7 @@ class _ProfilPageState extends State<ProfilPage> {
     super.dispose();
   }
 
+  // Fungsi untuk memilih gambar dari galeri atau kamera
   Future<void> _pickImage() async {
     showModalBottomSheet(
       context: context,
@@ -110,6 +120,71 @@ class _ProfilPageState extends State<ProfilPage> {
               ),
             ],
           ),
+        );
+      },
+    );
+  }
+
+  // 📸 Ambil foto dari galeri
+  Future<void> _pickSignaturePhoto() async {
+    final pickedFile = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 70,
+    );
+    if (pickedFile != null) {
+      setState(() {
+        _signatureImage = File(pickedFile.path);
+        _drawnSignature =
+            null; // kalau upload gambar, hapus hasil gambar manual
+      });
+    }
+  }
+
+  // 🖋️ Tampilkan popup untuk tanda tangan
+  Future<void> _showSignaturePopup() async {
+    _signatureController.clear();
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          title: const Text('Buat Tanda Tangan'),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 250,
+            child: Signature(
+              controller: _signatureController,
+              backgroundColor: Colors.grey[200]!,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                _signatureController.clear();
+              },
+              child: const Text('Hapus'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (_signatureController.isNotEmpty) {
+                  final signature = await _signatureController.toPngBytes();
+                  if (signature != null) {
+                    setState(() {
+                      _drawnSignature = signature;
+                      _signatureImage = null; // hapus upload sebelumnya
+                    });
+                  }
+                }
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+              ),
+              child: const Text('Simpan'),
+            ),
+          ],
         );
       },
     );
@@ -212,46 +287,60 @@ class _ProfilPageState extends State<ProfilPage> {
               const SizedBox(height: 20),
 
               // TANDA TANGAN AREA
-              Container(
-                height: 100,
-                width: 180,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.6),
-                  borderRadius: BorderRadius.circular(8),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 5,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: const Center(
-                  child: Text(
-                    'Klik untuk tanda tangan',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.black54),
+              // 🔹 Kotak TTD
+              GestureDetector(
+                onTap: _showSignaturePopup,
+                child: Container(
+                  height: 120,
+                  width: 200,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: _drawnSignature != null
+                        ? Image.memory(_drawnSignature!)
+                        : _signatureImage != null
+                        ? Image.file(_signatureImage!)
+                        : const Text(
+                            'Klik untuk tanda tangan',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.black54),
+                          ),
                   ),
                 ),
               ),
 
               const SizedBox(height: 12),
 
+              // 🔹 Tombol Upload Foto TTD
               SizedBox(
-                width: 220,
-                child: ElevatedButton(
-                  onPressed: () {},
+                width: 200,
+                child: ElevatedButton.icon(
+                  onPressed: _pickSignaturePhoto,
+                  icon: const Icon(Icons.upload, size: 18, color: Colors.white),
+                  label: const Text(
+                    'Upload Foto TTD',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
-                  ),
-                  child: const Text(
-                    'Upload Foto TTD (jpg/png)',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 10,
+                      horizontal: 12,
                     ),
                   ),
                 ),
