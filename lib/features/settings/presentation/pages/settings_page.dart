@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../config/app_colors.dart';
 import '../../../../config/app_text_style.dart';
+import '../controllers/settings_controller.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -10,6 +11,9 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
+  final controller = SettingsController();
+
+  // 🔹 Text controllers
   final _oldPasswordController = TextEditingController();
   final _confirmOldPasswordController = TextEditingController();
   final _newPasswordController = TextEditingController();
@@ -18,6 +22,63 @@ class _SettingsPageState extends State<SettingsPage> {
   final _oldEmailController = TextEditingController();
   final _newEmailController = TextEditingController();
 
+  bool _isLoading = false;
+  String userId = "123"; // 🔹 sementara statis, nanti ambil dari auth session
+
+  // ==========================
+  // 🔹 Fungsi Ganti Password
+  // ==========================
+  Future<void> _handleChangePassword() async {
+    setState(() => _isLoading = true);
+
+    final success = await controller.changePassword(
+      userId: userId,
+      oldPassword: _oldPasswordController.text,
+      confirmOldPassword: _confirmOldPasswordController.text,
+      newPassword: _newPasswordController.text,
+      confirmNewPassword: _confirmNewPasswordController.text,
+    );
+
+    setState(() => _isLoading = false);
+
+    if (success) {
+      _showSnackBar("Password berhasil diubah", Colors.green);
+    } else {
+      _showSnackBar("Gagal mengubah password", Colors.red);
+    }
+  }
+
+  // ==========================
+  // 🔹 Fungsi Ganti Email
+  // ==========================
+  Future<void> _handleChangeEmail() async {
+    setState(() => _isLoading = true);
+
+    final success = await controller.changeEmail(
+      userId: userId,
+      oldEmail: _oldEmailController.text,
+      newEmail: _newEmailController.text,
+    );
+
+    setState(() => _isLoading = false);
+
+    if (success) {
+      _showSnackBar("Email berhasil diubah", Colors.green);
+    } else {
+      _showSnackBar("Gagal mengubah email", Colors.red);
+    }
+  }
+
+  // 🔹 Snackbar helper
+  void _showSnackBar(String message, Color color) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message), backgroundColor: color));
+  }
+
+  // ==========================
+  // 🔹 UI
+  // ==========================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -66,9 +127,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
               const SizedBox(height: 6),
 
-              _buildSaveButton(() {
-                // TODO: tambahkan logika ganti password di sini
-              }),
+              _buildSaveButton(_isLoading ? null : _handleChangePassword),
 
               const SizedBox(height: 25),
 
@@ -87,9 +146,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
               const SizedBox(height: 6),
 
-              _buildSaveButton(() {
-                // TODO: tambahkan logika ganti email di sini
-              }),
+              _buildSaveButton(_isLoading ? null : _handleChangeEmail),
 
               const SizedBox(height: 40),
             ],
@@ -111,7 +168,6 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  // 🔹 Widget Reusable untuk TextField
   Widget _buildTextField(
     String hint,
     TextEditingController controller,
@@ -139,8 +195,7 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  // 🔹 Widget Tombol Simpan
-  Widget _buildSaveButton(VoidCallback onPressed) {
+  Widget _buildSaveButton(VoidCallback? onPressed) {
     return Center(
       child: SizedBox(
         width: 180,
@@ -152,14 +207,23 @@ class _SettingsPageState extends State<SettingsPage> {
               borderRadius: BorderRadius.circular(8),
             ),
           ),
-          child: const Text(
-            'SIMPAN',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.5,
-            ),
-          ),
+          child: _isLoading
+              ? const SizedBox(
+                  height: 18,
+                  width: 18,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                )
+              : const Text(
+                  'SIMPAN',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
         ),
       ),
     );
