@@ -143,14 +143,124 @@ class _LoginPageState extends State<LoginPage> {
                                 );
 
                                 if (success && context.mounted) {
-                                  Navigator.pushReplacement(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => const HomePage(),
+                                  // 🌟 Tampilkan pop-up sukses login (gaya Shadcn)
+                                  showDialog(
+                                    context: context,
+                                    barrierDismissible: false,
+                                    builder: (context) => Dialog(
+                                      backgroundColor: Colors.transparent,
+                                      insetPadding: const EdgeInsets.symmetric(
+                                        horizontal: 40,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(20),
+                                        child: BackdropFilter(
+                                          filter: ImageFilter.blur(
+                                            sigmaX: 10,
+                                            sigmaY: 10,
+                                          ),
+                                          child: Container(
+                                            padding: const EdgeInsets.all(24),
+                                            decoration: BoxDecoration(
+                                              color: Colors.black.withOpacity(
+                                                0.6,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
+                                              border: Border.all(
+                                                color: Colors.white24,
+                                                width: 1,
+                                              ),
+                                            ),
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Icon(
+                                                  Icons.check_circle_outline,
+                                                  color: Colors.greenAccent,
+                                                  size: 60,
+                                                ),
+                                                const SizedBox(height: 16),
+                                                const Text(
+                                                  "Login Berhasil",
+                                                  style: TextStyle(
+                                                    fontSize: 20,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 10),
+                                                const Text(
+                                                  "Selamat datang kembali!\nAnda akan diarahkan ke halaman utama.",
+                                                  textAlign: TextAlign.center,
+                                                  style: TextStyle(
+                                                    color: Colors.white70,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 20),
+                                                ElevatedButton(
+                                                  style: ElevatedButton.styleFrom(
+                                                    backgroundColor:
+                                                        Colors.greenAccent,
+                                                    shape: RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            10,
+                                                          ),
+                                                    ),
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 24,
+                                                          vertical: 12,
+                                                        ),
+                                                  ),
+                                                  onPressed: () {
+                                                    Navigator.pop(context);
+                                                    Navigator.pushReplacement(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (_) =>
+                                                            const HomePage(),
+                                                      ),
+                                                    );
+                                                  },
+                                                  child: const Text(
+                                                    "Lanjutkan",
+                                                    style: TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color: Colors.black,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
                                     ),
                                   );
+
+                                  // ⏱️ Auto-redirect ke HomePage setelah 2 detik
+                                  Future.delayed(
+                                    const Duration(seconds: 2),
+                                    () {
+                                      if (context.mounted) {
+                                        Navigator.pop(context); // Tutup dialog
+                                        Navigator.pushReplacement(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => const HomePage(),
+                                          ),
+                                        );
+                                      }
+                                    },
+                                  );
                                 } else {
-                                  // Ambil pesan error dari AuthService (kalau kamu modifikasi loginController untuk return String?)
+                                  // 🔻 Error handling
                                   final errorMessage =
                                       loginController.errorMessage ??
                                       "Login gagal, periksa kembali email dan password.";
@@ -158,7 +268,7 @@ class _LoginPageState extends State<LoginPage> {
                                   if (errorMessage.contains(
                                     "Email not confirmed",
                                   )) {
-                                    // ⚠️ Pop-up verifikasi email
+                                    // ⚠️ Email belum diverifikasi
                                     showDialog(
                                       context: context,
                                       barrierDismissible: false,
@@ -216,7 +326,7 @@ class _LoginPageState extends State<LoginPage> {
                                                   ),
                                                   const SizedBox(height: 10),
                                                   const Text(
-                                                    "Akun Anda belum dikonfirmasi.\nSilakan cek email Anda untuk memverifikasi sebelum login.",
+                                                    "Akun Anda belum dikonfirmasi.\nSilakan cek email Anda untuk memverifikasi.",
                                                     textAlign: TextAlign.center,
                                                     style: TextStyle(
                                                       color: Colors.white70,
@@ -258,7 +368,7 @@ class _LoginPageState extends State<LoginPage> {
                                       ),
                                     );
                                   } else {
-                                    // ❌ Pop-up error login umum
+                                    // ❌ Pop-up error login
                                     showDialog(
                                       context: context,
                                       builder: (context) => Dialog(
