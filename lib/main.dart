@@ -1,14 +1,24 @@
 import 'package:flutter/material.dart';
-import 'config/app_routes.dart';
-import 'features/login/presentation/pages/login_page.dart';
 import 'package:provider/provider.dart';
+import 'config/app_routes.dart';
+import 'core/services/supabase_service.dart';
 import 'features/profile/presentation/controllers/profile_controller.dart';
-import 'features/profile/presentation/pages/profil_page.dart';
+import 'features/register/presentation/controllers/register_controller.dart';
+import 'features/login/presentation/controllers/login_controller.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // 🔹 Inisialisasi Supabase
+  await SupabaseService.initialize();
+
   runApp(
     MultiProvider(
-      providers: [ChangeNotifierProvider(create: (_) => ProfileController())],
+      providers: [
+        ChangeNotifierProvider(create: (_) => ProfileController()),
+        ChangeNotifierProvider(create: (_) => RegisterController()),
+        ChangeNotifierProvider(create: (_) => LoginController()),
+      ],
       child: const MyApp(),
     ),
   );
@@ -21,10 +31,14 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Login App',
-      theme: ThemeData(fontFamily: 'Poppins'),
+      title: 'RSUD Lapkin Mobile',
+      theme: ThemeData(
+        fontFamily: 'Poppins',
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+      ),
+      initialRoute: AppRoutes.splash,
       routes: AppRoutes.routes,
-      home: const LoginPage(),
     );
   }
 }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../config/app_colors.dart';
 import '../../../../core/widgets/custom_text_field.dart';
+import '../controllers/register_controller.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -10,7 +12,29 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterPageState extends State<RegisterPage> {
+  // Controllers
+  final TextEditingController _idPegawaiController = TextEditingController();
+  final TextEditingController _namaLengkapController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _nipController = TextEditingController();
+  final TextEditingController _pangkatController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
+
   String? selectedJabatan;
+
+  @override
+  void dispose() {
+    _idPegawaiController.dispose();
+    _namaLengkapController.dispose();
+    _emailController.dispose();
+    _nipController.dispose();
+    _pangkatController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -68,14 +92,24 @@ class _RegisterPageState extends State<RegisterPage> {
                   const SizedBox(height: 24),
 
                   // Input fields
-                  const CustomTextField(hintText: "ID Pegawai"),
+                  CustomTextField(
+                    controller: _idPegawaiController,
+                    hintText: "ID Pegawai",
+                  ),
                   const SizedBox(height: 12),
-                  const CustomTextField(hintText: "Nama lengkap"),
+                  CustomTextField(
+                    controller: _namaLengkapController,
+                    hintText: "Nama Lengkap",
+                  ),
                   const SizedBox(height: 12),
-                  const CustomTextField(hintText: "Email"),
+                  CustomTextField(
+                    controller: _emailController,
+                    hintText: "Email",
+                  ),
                   const SizedBox(height: 12),
-                  const CustomTextField(hintText: "NIP"),
+                  CustomTextField(controller: _nipController, hintText: "NIP"),
                   const SizedBox(height: 12),
+
                   // Dropdown untuk Jabatan
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 6.0),
@@ -152,26 +186,104 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
 
                   const SizedBox(height: 12),
-                  const CustomTextField(hintText: "Pangkat"),
+                  CustomTextField(
+                    controller: _pangkatController,
+                    hintText: "Pangkat",
+                  ),
                   const SizedBox(height: 12),
-                  const CustomTextField(hintText: "Divisi"),
-                  const SizedBox(height: 12),
-                  const CustomTextField(
+                  CustomTextField(
+                    controller: _passwordController,
                     hintText: "Password",
                     obscureText: true,
                   ),
                   const SizedBox(height: 12),
-                  const CustomTextField(
+                  CustomTextField(
+                    controller: _confirmPasswordController,
                     hintText: "Konfirmasi Password",
                     obscureText: true,
                   ),
+
                   const SizedBox(height: 24),
 
                   // Tombol Daftar
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () {},
+                      onPressed: () async {
+                        final controller = context.read<RegisterController>();
+
+                        if (_passwordController.text !=
+                            _confirmPasswordController.text) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Konfirmasi password tidak cocok"),
+                            ),
+                          );
+                          return;
+                        }
+
+                        final result = await controller.register(
+                          idPegawai: _idPegawaiController.text,
+                          namaLengkap: _namaLengkapController.text,
+                          email: _emailController.text,
+                          nip: _nipController.text,
+                          jabatan: selectedJabatan!,
+                          pangkat: _pangkatController.text,
+                          password: _passwordController.text,
+                        );
+
+                        if (result == null ||
+                            result.contains('Silakan cek email') ||
+                            result.contains('berhasil')) {
+                          // ✅ Tampilkan pop-up sukses
+                          if (context.mounted) {
+                            showDialog(
+                              context: context,
+                              builder: (context) {
+                                return AlertDialog(
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  title: const Text(
+                                    'Pendaftaran Berhasil 🎉',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  content: const Text(
+                                    'Akun Anda berhasil dibuat. Silakan login untuk melanjutkan.',
+                                    style: TextStyle(fontSize: 16),
+                                  ),
+                                  actions: [
+                                    FilledButton(
+                                      onPressed: () {
+                                        Navigator.pop(context); // tutup dialog
+                                        Navigator.pop(
+                                          context,
+                                        ); // kembali ke halaman login
+                                      },
+                                      style: FilledButton.styleFrom(
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
+                                      ),
+                                      child: const Text('OK'),
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+                          }
+                        } else {
+                          // Jika ada error (contohnya email sudah terdaftar)
+                          ScaffoldMessenger.of(
+                            context,
+                          ).showSnackBar(SnackBar(content: Text(result)));
+                        }
+                      },
+
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         padding: const EdgeInsets.symmetric(vertical: 14),
