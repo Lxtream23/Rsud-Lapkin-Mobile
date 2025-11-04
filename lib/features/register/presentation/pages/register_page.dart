@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'package:provider/provider.dart';
 import '../../../../config/app_colors.dart';
 import '../../../../core/widgets/custom_text_field.dart';
 import '../controllers/register_controller.dart';
+import '../../../../core/widgets/ui_helpers/dialogs.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -34,6 +36,50 @@ class _RegisterPageState extends State<RegisterPage> {
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
+  }
+
+  void showLoadingDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 100),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+            child: Container(
+              padding: const EdgeInsets.all(30),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.6),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white24, width: 1),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 3,
+                  ),
+                  SizedBox(height: 20),
+                  Text(
+                    'Memproses...',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -212,15 +258,20 @@ class _RegisterPageState extends State<RegisterPage> {
                       onPressed: () async {
                         final controller = context.read<RegisterController>();
 
+                        // 🔐 Validasi password
                         if (_passwordController.text !=
                             _confirmPasswordController.text) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Konfirmasi password tidak cocok"),
-                            ),
+                          await showShadcnDialogError(
+                            context,
+                            title: 'Password Tidak Cocok',
+                            message:
+                                'Konfirmasi password tidak sesuai. Silakan periksa kembali.',
                           );
                           return;
                         }
+
+                        // 🔄 Tampilkan loading
+                        showLoadingDialog(context);
 
                         final result = await controller.register(
                           idPegawai: _idPegawaiController.text,
@@ -232,55 +283,33 @@ class _RegisterPageState extends State<RegisterPage> {
                           password: _passwordController.text,
                         );
 
+                        if (context.mounted)
+                          Navigator.pop(context); // Tutup loading
+
+                        // ✅ Jika berhasil
                         if (result == null ||
                             result.contains('Silakan cek email') ||
                             result.contains('berhasil')) {
-                          // ✅ Tampilkan pop-up sukses
-                          if (context.mounted) {
-                            showDialog(
-                              context: context,
-                              builder: (context) {
-                                return AlertDialog(
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  title: const Text(
-                                    'Pendaftaran Berhasil 🎉',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  content: const Text(
-                                    'Akun Anda berhasil dibuat. Silakan login untuk melanjutkan.',
-                                    style: TextStyle(fontSize: 16),
-                                  ),
-                                  actions: [
-                                    FilledButton(
-                                      onPressed: () {
-                                        Navigator.pop(context); // tutup dialog
-                                        Navigator.pop(
-                                          context,
-                                        ); // kembali ke halaman login
-                                      },
-                                      style: FilledButton.styleFrom(
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                        ),
-                                      ),
-                                      child: const Text('OK'),
-                                    ),
-                                  ],
-                                );
-                              },
-                            );
-                          }
-                        } else {
-                          // Jika ada error (contohnya email sudah terdaftar)
-                          ScaffoldMessenger.of(
+                          await showShadcnDialogSuccess(
                             context,
-                          ).showSnackBar(SnackBar(content: Text(result)));
+                            title: 'Akun Berhasil Dibuat',
+                            message:
+                                'Silakan konfirmasi email Anda, lalu login untuk melanjutkan.',
+                            onOk: () {
+                              // Tutup dialog dulu
+                              Navigator.of(context, rootNavigator: true).pop();
+
+                              // 🔁 Lalu arahkan ke halaman login
+                              Navigator.pushReplacementNamed(context, '/login');
+                            },
+                          );
+                        } else {
+                          // ❌ Jika gagal
+                          await showShadcnDialogError(
+                            context,
+                            title: 'Pendaftaran Gagal',
+                            message: result,
+                          );
                         }
                       },
 

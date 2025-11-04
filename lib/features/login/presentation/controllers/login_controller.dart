@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/services/auth_service.dart';
 
 class LoginController extends ChangeNotifier {
-  final _authService = AuthService();
+  final AuthService _authService = AuthService();
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -10,7 +10,7 @@ class LoginController extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
-  /// Fungsi login user ke Supabase
+  /// 🔹 LOGIN USER ke Supabase
   Future<bool> login(
     BuildContext context,
     String email,
@@ -18,7 +18,6 @@ class LoginController extends ChangeNotifier {
   ) async {
     _setLoading(true);
     _errorMessage = null;
-    notifyListeners();
 
     try {
       final result = await _authService.login(email, password);
@@ -26,26 +25,37 @@ class LoginController extends ChangeNotifier {
       if (result == null) {
         // ✅ Login berhasil
         _setLoading(false);
-        notifyListeners();
         return true;
       } else {
-        // ⚠️ Login gagal
+        // ⚠️ Login gagal, tampilkan pesan error
         _errorMessage = result;
         _setLoading(false);
-        notifyListeners();
         return false;
       }
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = 'Terjadi kesalahan: ${e.toString()}';
       _setLoading(false);
-      notifyListeners();
       return false;
     }
   }
 
-  /// Logout Supabase
+  /// 🔹 LOGOUT USER dari Supabase
   Future<void> logout() async {
-    await _authService.logout();
+    try {
+      await _authService.logout();
+      // 🔸 Hapus state setelah logout
+      _errorMessage = null;
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('❌ Gagal logout: $e');
+    }
+  }
+
+  /// 🔹 Reset error (berguna saat pindah halaman)
+  void resetError() {
+    _errorMessage = null;
+    notifyListeners();
   }
 
   void _setLoading(bool value) {

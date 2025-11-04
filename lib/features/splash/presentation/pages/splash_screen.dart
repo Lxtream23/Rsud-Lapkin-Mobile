@@ -9,23 +9,33 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  final supabase = Supabase.instance.client;
+
   @override
   void initState() {
     super.initState();
-    _checkSession();
+    _checkAuthState();
   }
 
-  Future<void> _checkSession() async {
-    await Future.delayed(const Duration(seconds: 2)); // animasi/loading dulu
+  Future<void> _checkAuthState() async {
+    // Sedikit delay untuk efek loading
+    await Future.delayed(const Duration(seconds: 2));
 
-    final user = Supabase.instance.client.auth.currentUser;
+    try {
+      final session = supabase.auth.currentSession;
 
-    if (mounted) {
-      if (user != null) {
-        // ✅ Sudah login → ke halaman utama
+      if (!mounted) return;
+
+      if (session != null && session.user != null) {
+        // ✅ Sudah login → arahkan ke home
         Navigator.pushReplacementNamed(context, '/home');
       } else {
-        // 🔹 Belum login → ke halaman login
+        // 🔹 Belum login → arahkan ke login
+        Navigator.pushReplacementNamed(context, '/login');
+      }
+    } catch (e) {
+      if (mounted) {
+        // Jika error parsing session (misal session corrupt)
         Navigator.pushReplacementNamed(context, '/login');
       }
     }
@@ -40,7 +50,7 @@ class _SplashScreenState extends State<SplashScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             FlutterLogo(size: 80),
-            SizedBox(height: 20),
+            SizedBox(height: 24),
             CircularProgressIndicator(),
             SizedBox(height: 12),
             Text(

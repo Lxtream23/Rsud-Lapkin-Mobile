@@ -9,19 +9,14 @@ import 'features/login/presentation/controllers/login_controller.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 🔹 Inisialisasi Supabase
-  await SupabaseService.initialize();
+  try {
+    // 🔹 Inisialisasi Supabase
+    await SupabaseService.initialize();
+  } catch (e) {
+    debugPrint('❌ Gagal inisialisasi Supabase: $e');
+  }
 
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => ProfileController()),
-        ChangeNotifierProvider(create: (_) => RegisterController()),
-        ChangeNotifierProvider(create: (_) => LoginController()),
-      ],
-      child: const MyApp(),
-    ),
-  );
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -29,16 +24,38 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'RSUD Lapkin Mobile',
-      theme: ThemeData(
-        fontFamily: 'Poppins',
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ProfileController()),
+        ChangeNotifierProvider(create: (_) => RegisterController()),
+        ChangeNotifierProvider(create: (_) => LoginController()),
+      ],
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'RSUD Lapkin Mobile',
+        theme: ThemeData(
+          fontFamily: 'Poppins',
+          useMaterial3: true,
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+          scaffoldBackgroundColor: Colors.white,
+        ),
+
+        /// 🔹 Splash dulu → lalu login / home otomatis
+        initialRoute: AppRoutes.splash,
+        routes: AppRoutes.routes,
+
+        /// 🔸 Tambahan keamanan untuk route yang tidak ditemukan
+        onUnknownRoute: (settings) => MaterialPageRoute(
+          builder: (_) => const Scaffold(
+            body: Center(
+              child: Text(
+                'Halaman tidak ditemukan 😅',
+                style: TextStyle(fontSize: 16),
+              ),
+            ),
+          ),
+        ),
       ),
-      initialRoute: AppRoutes.splash,
-      routes: AppRoutes.routes,
     );
   }
 }
