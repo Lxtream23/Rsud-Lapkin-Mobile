@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rsud_lapkin_mobile/core/services/auth_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -225,8 +226,8 @@ class _HomePageState extends State<HomePage> {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    onTap: () {
-                      Navigator.pushReplacementNamed(context, '/login');
+                    onTap: () async {
+                      await AuthService().logout(context);
                     },
                   ),
                   const SizedBox(height: 10),

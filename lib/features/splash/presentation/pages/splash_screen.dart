@@ -18,24 +18,20 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _checkAuthState() async {
-    // Sedikit delay untuk efek loading
+    // 🔹 Sedikit delay agar muncul animasi loading
     await Future.delayed(const Duration(seconds: 2));
 
     try {
+      // ✅ Lebih akurat daripada currentSession
       final session = supabase.auth.currentSession;
-
-      if (!mounted) return;
-
       if (session != null && session.user != null) {
-        // ✅ Sudah login → arahkan ke home
         Navigator.pushReplacementNamed(context, '/home');
       } else {
-        // 🔹 Belum login → arahkan ke login
         Navigator.pushReplacementNamed(context, '/login');
       }
     } catch (e) {
+      // 🧠 Jika gagal parsing session, tetap arahkan ke login
       if (mounted) {
-        // Jika error parsing session (misal session corrupt)
         Navigator.pushReplacementNamed(context, '/login');
       }
     }

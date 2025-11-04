@@ -40,9 +40,9 @@ class LoginController extends ChangeNotifier {
   }
 
   /// 🔹 LOGOUT USER dari Supabase
-  Future<void> logout() async {
+  Future<void> logout(dynamic argument) async {
     try {
-      await _authService.logout();
+      await _authService.logout(argument);
       // 🔸 Hapus state setelah logout
       _errorMessage = null;
       _isLoading = false;

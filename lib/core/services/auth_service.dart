@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthService {
@@ -91,14 +92,30 @@ class AuthService {
   }
 
   /// 🔹 LOGOUT
-  Future<void> logout() async {
+  Future<void> logout(BuildContext context) async {
     try {
+      // 🚪 Sign out user dari Supabase
       await supabase.auth.signOut();
 
-      // 🧹 Pastikan session benar-benar bersih (kadang perlu di web)
+      // 🧹 Bersihkan semua channel/realtime subscription
       await supabase.removeAllChannels();
+
+      // 🧠 Opsional: hapus data local cache (misal session/token)
+      await supabase.auth.signOut(scope: SignOutScope.local);
+
+      if (context.mounted) {
+        // 🔒 Pastikan user tidak bisa kembali ke halaman sebelumnya
+        Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+      }
     } catch (e) {
-      if (kDebugMode) print('⚠️ [AuthService.logout] $e');
+      if (kDebugMode) {
+        print('⚠️ [AuthService.logout] Gagal logout: $e');
+      }
+
+      // 🧩 Fallback ke login meskipun ada error
+      if (context.mounted) {
+        Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+      }
     }
   }
 
