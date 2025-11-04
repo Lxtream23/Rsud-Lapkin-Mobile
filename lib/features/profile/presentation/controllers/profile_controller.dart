@@ -1,31 +1,84 @@
-import 'package:flutter/material.dart';
-import '../models/user_model.dart';
+import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ProfileController extends ChangeNotifier {
-  // Data user sementara (contoh hardcoded)
-  UserModel _user = UserModel(
-    nama: "Andi Saputra",
-    idPegawai: "PG00123",
-    nip: "1987654321",
-    email: "andi@rsudbangil.go.id",
-    jabatan: "Staff IT",
-    pangkat: "III/a",
-    divisi: "Teknologi Informasi",
-  );
+  final supabase = Supabase.instance.client;
 
-  bool _isEditing = false;
+  bool _isLoading = false;
+  Map<String, dynamic>? _profileData;
+  String? _error;
 
-  UserModel get user => _user;
-  bool get isEditing => _isEditing;
+  bool get isLoading => _isLoading;
+  Map<String, dynamic>? get profileData => _profileData;
+  String? get error => _error;
 
-  void toggleEdit() {
-    _isEditing = !_isEditing;
+  /// Ambil data profil user yang sedang login
+  Future<void> fetchProfile() async {
+    _setLoading(true);
+    _error = null;
+
+    try {
+      final user = supabase.auth.currentUser;
+
+      if (user == null) {
+        _error = "Belum login.";
+        _setLoading(false);
+        return;
+      }
+
+      // 🔹 Ambil data dari tabel 'pegawai' berdasarkan email user login
+      final response = await supabase
+          .from('profiles')
+          .select()
+          .eq('email', user.email ?? '')
+          .maybeSingle();
+
+      if (response != null) {
+        _profileData = response;
+      } else {
+        _error = "Data profil tidak ditemukan di database.";
+      }
+    } catch (e) {
+      _error = "Terjadi kesalahan: $e";
+    }
+
+    _setLoading(false);
+  }
+
+  /// Simpan perubahan data profil (jika kamu ingin user bisa edit profil)
+  Future<void> updateProfile(Map<String, dynamic> updatedData) async {
+    _setLoading(true);
+    _error = null;
+
+    try {
+      final user = supabase.auth.currentUser;
+      if (user == null) {
+        _error = "Belum login.";
+        _setLoading(false);
+        return;
+      }
+
+      await supabase
+          .from('profiles')
+          .update(updatedData)
+          .eq('email', user.email ?? '');
+
+      _profileData = {...?_profileData, ...updatedData};
+    } catch (e) {
+      _error = "Gagal memperbarui profil: $e";
+    }
+
+    _setLoading(false);
+  }
+
+  void _setLoading(bool value) {
+    _isLoading = value;
     notifyListeners();
   }
 
-  void updateUser(UserModel updatedUser) {
-    _user = updatedUser;
-    _isEditing = false;
+  void clearProfile() {
+    _profileData = null;
+    _error = null;
     notifyListeners();
   }
 }

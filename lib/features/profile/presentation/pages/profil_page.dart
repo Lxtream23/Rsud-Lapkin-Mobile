@@ -1,10 +1,11 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:signature/signature.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../config/app_colors.dart';
 import '../../../../config/app_text_style.dart';
-import 'package:signature/signature.dart';
-import 'dart:typed_data';
 
 class ProfilPage extends StatefulWidget {
   const ProfilPage({super.key});
@@ -14,30 +15,30 @@ class ProfilPage extends StatefulWidget {
 }
 
 class _ProfilPageState extends State<ProfilPage> {
-  File? _selectedImage;
+  final supabase = Supabase.instance.client;
   final ImagePicker _picker = ImagePicker();
-  File? _signatureImage; // 🔹 Menyimpan file foto tanda tangan yang diupload
-  Uint8List? _drawnSignature; // 🔹 Menyimpan tanda tangan yang digambar
-
   final SignatureController _signatureController = SignatureController(
     penStrokeWidth: 3,
     penColor: Colors.black,
   );
 
+  File? _selectedImage;
+  File? _signatureImage;
+  Uint8List? _drawnSignature;
+  String? _fotoProfilUrl;
+  String? _ttdUrl;
   bool _isEditing = false;
+  bool _isLoading = true;
 
-  // Data user contoh (nanti bisa diambil dari backend)
   Map<String, String> userData = {
-    'Nama Pegawai': 'Ahmad Fauzi',
-    'ID Pegawai': 'PG00123',
-    'NIP': '198706172019031002',
-    'Email': 'ahmad.fauzi@rsudbangil.id',
-    'Jabatan': 'Kabid Pelayanan',
-    'Pangkat': 'III/b',
-    'Divisi': 'Pelayanan Medis',
+    'Nama Pegawai': '',
+    'ID Pegawai': '',
+    'NIP': '',
+    'Email': '',
+    'Jabatan': '',
+    'Pangkat': '',
   };
 
-  // Daftar pilihan jabatan (bisa kamu ubah sesuai kebutuhan)
   final List<String> jabatanList = [
     'Direktur',
     'Wadir Umum dan Keuangan',
@@ -52,7 +53,6 @@ class _ProfilPageState extends State<ProfilPage> {
     'Admin/Staf',
   ];
 
-  // Controller untuk field selain dropdown
   final Map<String, TextEditingController> _controllers = {};
 
   @override
@@ -61,137 +61,210 @@ class _ProfilPageState extends State<ProfilPage> {
     userData.forEach((key, value) {
       _controllers[key] = TextEditingController(text: value);
     });
+    _loadUserProfile();
   }
 
   @override
   void dispose() {
+    _signatureController.dispose();
     for (var controller in _controllers.values) {
       controller.dispose();
     }
     super.dispose();
   }
 
-  // Fungsi untuk memilih gambar dari galeri atau kamera
-  Future<void> _pickImage() async {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) {
-        return SafeArea(
-          child: Wrap(
-            children: [
-              ListTile(
-                leading: const Icon(
-                  Icons.photo_library,
-                  color: AppColors.primary,
-                ),
-                title: const Text('Pilih dari Galeri'),
-                onTap: () async {
-                  final pickedFile = await _picker.pickImage(
-                    source: ImageSource.gallery,
-                    imageQuality: 70,
-                  );
-                  if (pickedFile != null) {
-                    setState(() {
-                      _selectedImage = File(pickedFile.path);
-                    });
-                  }
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.camera_alt, color: AppColors.primary),
-                title: const Text('Ambil dari Kamera'),
-                onTap: () async {
-                  final pickedFile = await _picker.pickImage(
-                    source: ImageSource.camera,
-                    imageQuality: 70,
-                  );
-                  if (pickedFile != null) {
-                    setState(() {
-                      _selectedImage = File(pickedFile.path);
-                    });
-                  }
-                  Navigator.pop(context);
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
+  /// 🔹 Ambil data user login dari tabel `pegawai`
+  Future<void> _loadUserProfile() async {
+    try {
+      final user = supabase.auth.currentUser;
+      if (user == null) return;
+
+      final response = await supabase
+          .from('profiles')
+          .select()
+          .eq('email', user.email ?? '')
+          .maybeSingle();
+
+      if (response != null) {
+        setState(() {
+          userData = {
+            'Nama Pegawai': response['nama_lengkap'] ?? '',
+            'ID Pegawai': response['id_pegawai'] ?? '',
+            'NIP': response['nip'] ?? '',
+            'Email': response['email'] ?? user.email ?? '',
+            'Jabatan': response['jabatan'] ?? '',
+            'Pangkat': response['pangkat'] ?? '',
+          };
+          _fotoProfilUrl = response['foto_profil'];
+          _ttdUrl = response['ttd'];
+          _isLoading = false;
+
+          userData.forEach((key, value) {
+            _controllers[key]?.text = value;
+          });
+        });
+      } else {
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      debugPrint('⚠️ Gagal memuat profil: $e');
+      setState(() => _isLoading = false);
+    }
   }
 
-  // 📸 Ambil foto dari galeri
+  /// 🔹 Upload file ke Supabase Storage
+  Future<String?> _uploadToStorage(File file, String bucket) async {
+    try {
+      final user = supabase.auth.currentUser;
+      if (user == null) return null;
+
+      final path = '$bucket/${user.id}.png';
+      await supabase.storage
+          .from(bucket)
+          .upload(path, file, fileOptions: const FileOptions(upsert: true));
+
+      return supabase.storage.from(bucket).getPublicUrl(path);
+    } catch (e) {
+      debugPrint('⚠️ Upload ke storage gagal: $e');
+      return null;
+    }
+  }
+
+  /// 🔹 Ganti foto profil
+  Future<void> _pickImage() async {
+    final pickedFile = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 70,
+    );
+    if (pickedFile == null) return;
+
+    final file = File(pickedFile.path);
+    setState(() => _selectedImage = file);
+
+    final uploadedUrl = await _uploadToStorage(file, 'foto_profil');
+    if (uploadedUrl != null) {
+      final user = supabase.auth.currentUser;
+      await supabase
+          .from('profiles')
+          .update({'foto_profil': uploadedUrl})
+          .eq('email', user?.email ?? '');
+      setState(() => _fotoProfilUrl = uploadedUrl);
+    }
+  }
+
+  /// 🔹 Upload tanda tangan dari galeri
   Future<void> _pickSignaturePhoto() async {
     final pickedFile = await _picker.pickImage(
       source: ImageSource.gallery,
       imageQuality: 70,
     );
-    if (pickedFile != null) {
-      setState(() {
-        _signatureImage = File(pickedFile.path);
-        _drawnSignature =
-            null; // kalau upload gambar, hapus hasil gambar manual
-      });
+    if (pickedFile == null) return;
+
+    final file = File(pickedFile.path);
+    setState(() => _signatureImage = file);
+
+    final uploadedUrl = await _uploadToStorage(file, 'ttd');
+    if (uploadedUrl != null) {
+      final user = supabase.auth.currentUser;
+      await supabase
+          .from('profiles')
+          .update({'ttd': uploadedUrl})
+          .eq('email', user?.email ?? '');
+      setState(() => _ttdUrl = uploadedUrl);
     }
   }
 
-  // 🖋️ Tampilkan popup untuk tanda tangan
+  /// 🔹 Popup tanda tangan manual
   Future<void> _showSignaturePopup() async {
     _signatureController.clear();
     await showDialog(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: const Text('Buat Tanda Tangan'),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: 250,
+          child: Signature(
+            controller: _signatureController,
+            backgroundColor: Colors.grey[200]!,
           ),
-          title: const Text('Buat Tanda Tangan'),
-          content: SizedBox(
-            width: double.maxFinite,
-            height: 250,
-            child: Signature(
-              controller: _signatureController,
-              backgroundColor: Colors.grey[200]!,
-            ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: _signatureController.clear,
+            child: const Text('Hapus'),
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                _signatureController.clear();
-              },
-              child: const Text('Hapus'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (_signatureController.isNotEmpty) {
-                  final signature = await _signatureController.toPngBytes();
-                  if (signature != null) {
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            onPressed: () async {
+              if (_signatureController.isNotEmpty) {
+                final data = await _signatureController.toPngBytes();
+                if (data != null) {
+                  final tempFile = File('${Directory.systemTemp.path}/ttd.png');
+                  await tempFile.writeAsBytes(data);
+
+                  final uploadedUrl = await _uploadToStorage(tempFile, 'ttd');
+                  if (uploadedUrl != null) {
+                    final user = supabase.auth.currentUser;
+                    await supabase
+                        .from('profiles')
+                        .update({'ttd': uploadedUrl})
+                        .eq('email', user?.email ?? '');
+
                     setState(() {
-                      _drawnSignature = signature;
-                      _signatureImage = null; // hapus upload sebelumnya
+                      _drawnSignature = data;
+                      _ttdUrl = uploadedUrl;
+                      _signatureImage = null;
                     });
                   }
                 }
-                Navigator.pop(context);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-              ),
-              child: const Text('Simpan'),
-            ),
-          ],
-        );
-      },
+              }
+              Navigator.pop(context);
+            },
+            child: const Text('Simpan', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
     );
+  }
+
+  /// 🔹 Simpan perubahan data ke database
+  Future<void> _saveProfileChanges() async {
+    try {
+      final user = supabase.auth.currentUser;
+      if (user == null) return;
+
+      final updates = {
+        'nama_lengkap': _controllers['Nama Pegawai']!.text,
+        'id_pegawai': _controllers['ID Pegawai']!.text,
+        'nip': _controllers['NIP']!.text,
+        'jabatan': userData['Jabatan'],
+        'pangkat': _controllers['Pangkat']!.text,
+      };
+
+      await supabase
+          .from('profiles')
+          .update(updates)
+          .eq('email', user.email ?? '');
+    } catch (e) {
+      debugPrint('⚠️ Gagal menyimpan profil: $e');
+    }
+  }
+
+  void _toggleEdit() {
+    setState(() {
+      if (_isEditing) _saveProfileChanges();
+      _isEditing = !_isEditing;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -215,59 +288,42 @@ class _ProfilPageState extends State<ProfilPage> {
             children: [
               // FOTO PROFIL
               GestureDetector(
-                onTap: _pickImage,
+                onTap: _isEditing ? _pickImage : null,
                 child: CircleAvatar(
                   radius: 45,
                   backgroundColor: Colors.white,
                   backgroundImage: _selectedImage != null
                       ? FileImage(_selectedImage!)
-                      : null,
-                  child: _selectedImage == null
+                      : (_fotoProfilUrl != null
+                                ? NetworkImage(_fotoProfilUrl!)
+                                : null)
+                            as ImageProvider?,
+                  child: _selectedImage == null && _fotoProfilUrl == null
                       ? const Text(
                           "FOTO\nPROFIL",
                           textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.black54,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                          ),
+                          style: TextStyle(color: Colors.black54),
                         )
                       : null,
                 ),
               ),
               const SizedBox(height: 20),
 
-              // FORM FIELDS
+              // FORM
               _buildTextField('Nama Pegawai'),
               _buildTextField('ID Pegawai'),
               _buildTextField('NIP'),
-              _buildTextField('Email'),
-
-              // 🔹 Dropdown Jabatan
+              _buildTextField('Email', editable: false),
               _buildDropdownField('Jabatan'),
-
               _buildTextField('Pangkat'),
-              _buildTextField('Divisi'),
 
-              const SizedBox(height: 10),
+              const SizedBox(height: 16),
 
-              // TOMBOL EDIT / SIMPAN
+              // BUTTON
               SizedBox(
                 width: 200,
                 child: ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      if (_isEditing) {
-                        // Simpan data yang diedit
-                        userData.forEach((key, _) {
-                          if (key != 'Jabatan') {
-                            userData[key] = _controllers[key]!.text;
-                          }
-                        });
-                      }
-                      _isEditing = !_isEditing;
-                    });
-                  },
+                  onPressed: _toggleEdit,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     shape: RoundedRectangleBorder(
@@ -284,12 +340,11 @@ class _ProfilPageState extends State<ProfilPage> {
                 ),
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
 
-              // TANDA TANGAN AREA
-              // 🔹 Kotak TTD
+              // TANDA TANGAN
               GestureDetector(
-                onTap: _showSignaturePopup,
+                onTap: _isEditing ? _showSignaturePopup : null,
                 child: Container(
                   height: 120,
                   width: 200,
@@ -300,7 +355,7 @@ class _ProfilPageState extends State<ProfilPage> {
                       BoxShadow(
                         color: Colors.black12,
                         blurRadius: 4,
-                        offset: const Offset(0, 2),
+                        offset: Offset(0, 2),
                       ),
                     ],
                   ),
@@ -309,146 +364,109 @@ class _ProfilPageState extends State<ProfilPage> {
                         ? Image.memory(_drawnSignature!)
                         : _signatureImage != null
                         ? Image.file(_signatureImage!)
-                        : const Text(
-                            'Klik untuk tanda tangan',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: Colors.black54),
-                          ),
+                        : (_ttdUrl != null
+                              ? Image.network(_ttdUrl!)
+                              : const Text(
+                                  'Klik untuk tanda tangan',
+                                  style: TextStyle(color: Colors.black54),
+                                )),
                   ),
                 ),
               ),
-
               const SizedBox(height: 12),
 
-              // 🔹 Tombol Upload Foto TTD
-              SizedBox(
-                width: 200,
-                child: ElevatedButton.icon(
-                  onPressed: _pickSignaturePhoto,
-                  icon: const Icon(Icons.upload, size: 18, color: Colors.white),
-                  label: const Text(
-                    'Upload Foto TTD',
-                    style: TextStyle(
+              if (_isEditing)
+                SizedBox(
+                  width: 200,
+                  child: ElevatedButton.icon(
+                    onPressed: _pickSignaturePhoto,
+                    icon: const Icon(
+                      Icons.upload,
+                      size: 18,
                       color: Colors.white,
-                      fontWeight: FontWeight.bold,
                     ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                    label: const Text(
+                      'Upload Foto TTD',
+                      style: TextStyle(color: Colors.white),
                     ),
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 10,
-                      horizontal: 12,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                   ),
                 ),
-              ),
-
-              const SizedBox(height: 30),
             ],
           ),
         ),
       ),
-
-      // FOOTER
-      bottomNavigationBar: Container(
-        width: double.infinity,
-        color: Colors.white,
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: const Text(
-          '© 2025 RSUD Bangil – Sistem Laporan Kinerja',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 12, color: Colors.black87),
-        ),
-      ),
     );
   }
 
-  // 🔹 TextField builder
-  Widget _buildTextField(String label) {
-    final bool isEmail = label == 'Email';
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 110,
-            child: Text(
-              label,
-              style: AppTextStyle.regular14.copyWith(color: AppColors.textDark),
-            ),
-          ),
-          Expanded(
-            child: TextField(
-              controller: _controllers[label],
-              enabled: isEmail ? false : _isEditing,
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: AppColors.inputBackground,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 8,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide.none,
-                ),
+  Widget _buildTextField(String label, {bool editable = true}) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Row(
+      children: [
+        SizedBox(width: 110, child: Text(label, style: AppTextStyle.regular14)),
+        Expanded(
+          child: TextField(
+            controller: _controllers[label],
+            enabled: editable && _isEditing,
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: AppColors.inputBackground,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 8,
               ),
-              style: AppTextStyle.regular14,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 🔹 Dropdown field untuk Jabatan
-  Widget _buildDropdownField(String label) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 110,
-            child: Text(
-              label,
-              style: AppTextStyle.regular14.copyWith(color: AppColors.textDark),
-            ),
-          ),
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              decoration: BoxDecoration(
-                color: AppColors.inputBackground,
+              border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide.none,
               ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: userData[label],
-                  isExpanded: true,
-                  items: jabatanList
-                      .map(
-                        (jab) => DropdownMenuItem<String>(
-                          value: jab,
-                          child: Text(jab, style: AppTextStyle.regular14),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: _isEditing
-                      ? (value) {
-                          setState(() {
-                            userData[label] = value!;
-                          });
-                        }
-                      : null, // nonaktif kalau bukan mode edit
-                ),
+            ),
+            style: AppTextStyle.regular14,
+          ),
+        ),
+      ],
+    ),
+  );
+
+  Widget _buildDropdownField(String label) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Row(
+      children: [
+        SizedBox(width: 110, child: Text(label, style: AppTextStyle.regular14)),
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: AppColors.inputBackground,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: userData[label]!.isNotEmpty ? userData[label] : null,
+                hint: const Text('Pilih Jabatan'),
+                isExpanded: true,
+                items: jabatanList
+                    .map(
+                      (jab) => DropdownMenuItem<String>(
+                        value: jab,
+                        child: Text(jab, style: AppTextStyle.regular14),
+                      ),
+                    )
+                    .toList(),
+                onChanged: _isEditing
+                    ? (value) => setState(() {
+                        userData[label] = value!;
+                      })
+                    : null,
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
 }
