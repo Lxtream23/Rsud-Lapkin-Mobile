@@ -355,6 +355,7 @@ class _ProfilPageState extends State<ProfilPage> {
   /// 🔹 Popup tanda tangan manual
   Future<void> _showSignaturePopup() async {
     _signatureController.clear();
+
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -373,36 +374,64 @@ class _ProfilPageState extends State<ProfilPage> {
             onPressed: _signatureController.clear,
             child: const Text('Hapus'),
           ),
+
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
             onPressed: () async {
-              if (_signatureController.isNotEmpty) {
-                final data = await _signatureController.toPngBytes();
-                if (data != null) {
-                  final tempFile = File('${Directory.systemTemp.path}/ttd.png');
-                  await tempFile.writeAsBytes(data);
+              if (_signatureController.isEmpty) return;
 
-                  final uploadedUrl = await _uploadToStorage(
-                    XFile(tempFile.path),
-                    'ttd',
-                  );
+              try {
+                setState(
+                  () => _isUploading = true,
+                ); // ✅ Tampilkan overlay loading
 
-                  if (uploadedUrl != null) {
-                    final user = supabase.auth.currentUser;
-                    await supabase
-                        .from('profiles')
-                        .update({'ttd': uploadedUrl})
-                        .eq('email', user?.email ?? '');
+                final user = supabase.auth.currentUser;
+                if (user == null) return;
 
-                    setState(() {
-                      _drawnSignature = data;
-                      _ttdUrl = uploadedUrl;
-                      _signatureImage = null;
-                    });
-                  }
-                }
+                // Ambil signature dalam format PNG (Uint8List)
+                final Uint8List? pngBytes = await _signatureController
+                    .toPngBytes();
+                if (pngBytes == null) return;
+
+                // 🔥 Hapus file lama dulu
+                await _deleteOldFiles('ttd');
+
+                // Tentukan path penyimpanan di storage (rapi per-user)
+                final filePath =
+                    "${user.id}/${DateTime.now().millisecondsSinceEpoch}.png";
+
+                // ✅ Upload langsung (tanpa File)
+                await supabase.storage
+                    .from('ttd')
+                    .uploadBinary(
+                      filePath,
+                      pngBytes,
+                      fileOptions: const FileOptions(upsert: true),
+                    );
+
+                // Ambil URL untuk disimpan di database
+                final uploadedUrl = supabase.storage
+                    .from('ttd')
+                    .getPublicUrl(filePath);
+
+                // Simpan url ke tabel profiles
+                await supabase
+                    .from('profiles')
+                    .update({'ttd': uploadedUrl})
+                    .eq('email', user.email ?? '');
+
+                // Update UI
+                setState(() {
+                  _drawnSignature = pngBytes;
+                  _ttdUrl = uploadedUrl;
+                  _signatureImage = null;
+                });
+              } catch (e) {
+                debugPrint("⚠️ Gagal simpan TTD: $e");
+              } finally {
+                setState(() => _isUploading = false); // ✅ Tutup overlay loading
+                Navigator.pop(context);
               }
-              Navigator.pop(context);
             },
             child: const Text('Simpan', style: TextStyle(color: Colors.white)),
           ),
@@ -471,35 +500,30 @@ class _ProfilPageState extends State<ProfilPage> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   // FOTO PROFIL
-                  _isUploading
-                      ? const CircularProgressIndicator()
-                      : GestureDetector(
-                          onTap: _isEditing ? _showImageSourceMenu : null,
-                          child: CircleAvatar(
-                            radius: 45,
-                            backgroundColor: Colors.white,
-                            backgroundImage: _selectedImageBytes != null
-                                ? MemoryImage(
-                                    _selectedImageBytes!,
-                                  ) // ✅ Web preview
-                                : _selectedImage != null
-                                ? FileImage(_selectedImage!)
-                                      as ImageProvider // ✅ Mobile preview
-                                : (_fotoProfilUrl != null
-                                      ? NetworkImage(_fotoProfilUrl!)
-                                      : null),
-                            child:
-                                _selectedImageBytes == null &&
-                                    _selectedImage == null &&
-                                    _fotoProfilUrl == null
-                                ? const Text(
-                                    "FOTO\nPROFIL",
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(color: Colors.black54),
-                                  )
-                                : null,
-                          ),
-                        ),
+                  GestureDetector(
+                    onTap: _isEditing ? _showImageSourceMenu : null,
+                    child: CircleAvatar(
+                      radius: 45,
+                      backgroundColor: Colors.white,
+                      backgroundImage: _selectedImageBytes != null
+                          ? MemoryImage(_selectedImageBytes!)
+                          : _selectedImage != null
+                          ? FileImage(_selectedImage!) as ImageProvider
+                          : (_fotoProfilUrl != null
+                                ? NetworkImage(_fotoProfilUrl!)
+                                : null),
+                      child:
+                          _selectedImageBytes == null &&
+                              _selectedImage == null &&
+                              _fotoProfilUrl == null
+                          ? const Text(
+                              "FOTO\nPROFIL",
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: Colors.black54),
+                            )
+                          : null,
+                    ),
+                  ),
 
                   const SizedBox(height: 20),
 
@@ -572,26 +596,24 @@ class _ProfilPageState extends State<ProfilPage> {
                   if (_isEditing)
                     SizedBox(
                       width: 200,
-                      child: _isUploading
-                          ? const CircularProgressIndicator()
-                          : ElevatedButton.icon(
-                              onPressed: _pickSignaturePhoto,
-                              icon: const Icon(
-                                Icons.upload,
-                                size: 18,
-                                color: Colors.white,
-                              ),
-                              label: const Text(
-                                'Upload Foto TTD',
-                                style: TextStyle(color: Colors.white),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primary,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
-                            ),
+                      child: ElevatedButton.icon(
+                        onPressed: _pickSignaturePhoto,
+                        icon: const Icon(
+                          Icons.upload,
+                          size: 18,
+                          color: Colors.white,
+                        ),
+                        label: const Text(
+                          'Upload Foto TTD',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
                     ),
                 ],
               ),
@@ -600,28 +622,75 @@ class _ProfilPageState extends State<ProfilPage> {
         ),
 
         // ✅ Overlay Loading Full Screen
-        if (_isUploading)
-          Positioned.fill(
+        AnimatedOpacity(
+          opacity: _isUploading ? 1 : 0,
+          duration: const Duration(milliseconds: 250),
+          child: IgnorePointer(
+            ignoring: !_isUploading,
             child: Container(
-              color: Colors.black.withOpacity(0.5),
+              width: double.infinity,
+              height: double.infinity,
+              color: Colors.black54,
               child: const Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    CircularProgressIndicator(),
+                    SizedBox(
+                      width: 60,
+                      height: 60,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 5,
+                        color: Colors.white,
+                      ),
+                    ),
                     SizedBox(height: 16),
                     Text(
                       "Mengunggah...",
-                      style: TextStyle(color: Colors.white, fontSize: 16),
+                      style: TextStyle(color: Colors.white, fontSize: 18),
                     ),
                   ],
                 ),
               ),
             ),
           ),
+        ),
       ],
     );
   }
+
+  // Widget _buildLoadingOverlay() {
+  //   return AnimatedOpacity(
+  //     opacity: _isUploading ? 1.0 : 0.0,
+  //     duration: const Duration(milliseconds: 300),
+  //     child: Container(
+  //       color: Colors.black54,
+  //       child: const Center(
+  //         child: Column(
+  //           mainAxisSize: MainAxisSize.min,
+  //           children: [
+  //             SizedBox(
+  //               width: 70,
+  //               height: 70,
+  //               child: CircularProgressIndicator(
+  //                 strokeWidth: 6,
+  //                 color: Colors.white,
+  //               ),
+  //             ),
+  //             SizedBox(height: 16),
+  //             Text(
+  //               "Mengunggah...",
+  //               style: TextStyle(
+  //                 color: Colors.white,
+  //                 fontSize: 18,
+  //                 fontWeight: FontWeight.w600,
+  //               ),
+  //             ),
+  //           ],
+  //         ),
+  //       ),
+  //     ),
+  //   );
+  // }
 
   Widget _buildTextField(String label, {bool editable = true}) => Padding(
     padding: const EdgeInsets.only(bottom: 12),
