@@ -723,7 +723,7 @@ class _ProfilPageState extends State<ProfilPage> {
                     ),
                     SizedBox(height: 16),
                     Text(
-                      "Mengunggah...",
+                      "Loading...",
                       style: TextStyle(color: Colors.white, fontSize: 18),
                     ),
                   ],
