@@ -31,6 +31,8 @@ class _ProfilPageState extends State<ProfilPage> {
   String? _ttdUrl;
   bool _isEditing = false;
   bool _isLoading = true;
+  bool _isUploading = false;
+  Uint8List? _selectedImageBytes;
 
   Map<String, String> userData = {
     'Nama Pegawai': '',
@@ -114,15 +116,42 @@ class _ProfilPageState extends State<ProfilPage> {
     }
   }
 
+  /// 🔹 Hapus file lama di Supabase Storage sesuai user yg login
+  Future<void> _deleteOldFiles(String bucket) async {
+    try {
+      final user = supabase.auth.currentUser;
+      if (user == null) return;
+
+      final folderPath = user.id; // folder sesuai policy
+      final files = await supabase.storage.from(bucket).list(path: folderPath);
+
+      for (final file in files) {
+        await supabase.storage.from(bucket).remove([
+          "$folderPath/${file.name}",
+        ]);
+      }
+
+      debugPrint("🗑️ File lama di bucket '$bucket' sudah dihapus.");
+    } catch (e) {
+      debugPrint("⚠️ Gagal menghapus file lama: $e");
+    }
+  }
+
   /// 🔹 Upload file ke Supabase Storage
   Future<String?> _uploadToStorage(XFile file, String bucket) async {
+    setState(() => _isUploading = true); // Start loading
     try {
       final user = supabase.auth.currentUser;
       if (user == null) return null;
 
-      final fileName = "${DateTime.now().millisecondsSinceEpoch}.png";
-      final filePath = "${user.id}/$fileName"; // ✅ simpan dalam folder user
+      // 🗑️ Hapus file lama dulu (pastikan function _deleteOldFiles sudah benar)
+      await _deleteOldFiles(bucket);
 
+      // 🎯 Nama & path file
+      final fileName = "${DateTime.now().millisecondsSinceEpoch}.png";
+      final filePath = "${user.id}/$fileName";
+
+      // 🌐 WEB Upload
       if (kIsWeb) {
         final bytes = await file.readAsBytes();
         await supabase.storage
@@ -130,23 +159,36 @@ class _ProfilPageState extends State<ProfilPage> {
             .uploadBinary(
               filePath,
               bytes,
-              fileOptions: const FileOptions(upsert: true),
+              fileOptions: const FileOptions(
+                upsert: true,
+                contentType: 'image/png', // ✅ penting untuk web
+              ),
             );
-      } else {
+      }
+      // 📱 ANDROID / iOS Upload
+      else {
         final localFile = File(file.path);
         await supabase.storage
             .from(bucket)
             .upload(
               filePath,
               localFile,
-              fileOptions: const FileOptions(upsert: true),
+              fileOptions: const FileOptions(
+                upsert: true,
+                contentType: 'image/png', // ✅ jaga konsisten
+              ),
             );
       }
 
-      return supabase.storage.from(bucket).getPublicUrl(filePath);
+      // 🔗 Ambil link public
+      final publicUrl = supabase.storage.from(bucket).getPublicUrl(filePath);
+
+      return publicUrl;
     } catch (e) {
       debugPrint("⚠️ Upload gagal: $e");
       return null;
+    } finally {
+      setState(() => _isUploading = false); // End loading
     }
   }
 
@@ -158,64 +200,77 @@ class _ProfilPageState extends State<ProfilPage> {
     );
     if (pickedFile == null) return;
 
-    // Baca gambar sebagai bytes (web/iOS/Android compatible)
-    final bytes = await pickedFile.readAsBytes();
+    setState(() => _isUploading = true);
 
-    // Decode ke objek Image
-    img.Image? original = img.decodeImage(bytes);
-    if (original == null) return;
+    try {
+      // Baca gambar sebagai bytes
+      final bytes = await pickedFile.readAsBytes();
 
-    // Crop menjadi persegi (ambil tengah)
-    final cropSize = original.width < original.height
-        ? original.width
-        : original.height;
-    final x = (original.width - cropSize) ~/ 2;
-    final y = (original.height - cropSize) ~/ 2;
-    img.Image cropped = img.copyCrop(
-      original,
-      x: x,
-      y: y,
-      width: cropSize,
-      height: cropSize,
-    );
+      // Decode ke objek Image
+      img.Image? original = img.decodeImage(bytes);
+      if (original == null) return;
 
-    // Resize ke ukuran avatar (contoh 300x300)
-    img.Image resized = img.copyResize(cropped, width: 300, height: 300);
+      // Crop menjadi persegi
+      final cropSize = original.width < original.height
+          ? original.width
+          : original.height;
+      final x = (original.width - cropSize) ~/ 2;
+      final y = (original.height - cropSize) ~/ 2;
+      img.Image cropped = img.copyCrop(
+        original,
+        x: x,
+        y: y,
+        width: cropSize,
+        height: cropSize,
+      );
 
-    // Encode ke PNG (lebih aman & cocok utk display)
-    final Uint8List pngBytes = Uint8List.fromList(img.encodePng(resized));
+      // Resize 300x300
+      img.Image resized = img.copyResize(cropped, width: 300, height: 300);
 
-    // ---- UPLOAD KE STORAGE TANPA File() (Compatible WEB) ----
-    final user = supabase.auth.currentUser;
-    if (user == null) return;
+      // Encode PNG
+      final Uint8List pngBytes = Uint8List.fromList(img.encodePng(resized));
 
-    final storagePath =
-        'foto_profil/${user.id}/${DateTime.now().millisecondsSinceEpoch}.png';
+      final user = supabase.auth.currentUser;
+      if (user == null) return;
 
-    await supabase.storage
-        .from('foto_profil')
-        .uploadBinary(
-          storagePath,
-          pngBytes,
-          fileOptions: const FileOptions(upsert: true),
-        );
+      // 🗑️ Hapus foto lama
+      await _deleteOldFiles('foto_profil');
 
-    // Ambil public URL untuk disimpan
-    final uploadedUrl = supabase.storage
-        .from('foto_profil')
-        .getPublicUrl(storagePath);
+      // Lokasi file baru
+      final storagePath =
+          'foto_profil/${user.id}/${DateTime.now().millisecondsSinceEpoch}.png';
 
-    // ---- UPDATE DATABASE ----
-    await supabase
-        .from('profiles')
-        .update({'foto_profil': uploadedUrl})
-        .eq('email', user.email ?? '');
+      // Upload
+      await supabase.storage
+          .from('foto_profil')
+          .uploadBinary(
+            storagePath,
+            pngBytes,
+            fileOptions: const FileOptions(upsert: true),
+          );
 
-    // ---- UPDATE UI ----
-    setState(() {
-      _fotoProfilUrl = uploadedUrl;
-      _selectedImage = null; // karena sekarang kita pakai bytes, bukan File
-    });
+      // Ambil URL
+      final uploadedUrl = supabase.storage
+          .from('foto_profil')
+          .getPublicUrl(storagePath);
+
+      // Update database
+      await supabase
+          .from('profiles')
+          .update({'foto_profil': uploadedUrl})
+          .eq('email', user.email ?? '');
+
+      // Update UI
+      setState(() {
+        _fotoProfilUrl = uploadedUrl;
+        _selectedImageBytes = pngBytes;
+        _selectedImage = null;
+      });
+    } catch (e) {
+      debugPrint("⚠️ Gagal upload foto profil: $e");
+    } finally {
+      setState(() => _isUploading = false);
+    }
   }
 
   /// 🔹 Ambil foto dari kamera
@@ -392,143 +447,179 @@ class _ProfilPageState extends State<ProfilPage> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 1,
-        centerTitle: true,
-        title: Text(
-          'Profil Saya',
-          style: AppTextStyle.bold16.copyWith(color: AppColors.textDark),
-        ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.textDark),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // FOTO PROFIL
-              GestureDetector(
-                onTap: _isEditing ? _showImageSourceMenu : null,
-                child: CircleAvatar(
-                  radius: 45,
-                  backgroundColor: Colors.white,
-                  backgroundImage: _selectedImage != null
-                      ? FileImage(_selectedImage!)
-                      : (_fotoProfilUrl != null
-                                ? NetworkImage(_fotoProfilUrl!)
-                                : null)
-                            as ImageProvider?,
-                  child: _selectedImage == null && _fotoProfilUrl == null
-                      ? const Text(
-                          "FOTO\nPROFIL",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.black54),
-                        )
-                      : null,
-                ),
-              ),
+    return Stack(
+      children: [
+        Scaffold(
+          backgroundColor: AppColors.background,
+          appBar: AppBar(
+            backgroundColor: Colors.white,
+            elevation: 1,
+            centerTitle: true,
+            title: Text(
+              'Profil Saya',
+              style: AppTextStyle.bold16.copyWith(color: AppColors.textDark),
+            ),
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: AppColors.textDark),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+          body: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // FOTO PROFIL
+                  _isUploading
+                      ? const CircularProgressIndicator()
+                      : GestureDetector(
+                          onTap: _isEditing ? _showImageSourceMenu : null,
+                          child: CircleAvatar(
+                            radius: 45,
+                            backgroundColor: Colors.white,
+                            backgroundImage: _selectedImageBytes != null
+                                ? MemoryImage(
+                                    _selectedImageBytes!,
+                                  ) // ✅ Web preview
+                                : _selectedImage != null
+                                ? FileImage(_selectedImage!)
+                                      as ImageProvider // ✅ Mobile preview
+                                : (_fotoProfilUrl != null
+                                      ? NetworkImage(_fotoProfilUrl!)
+                                      : null),
+                            child:
+                                _selectedImageBytes == null &&
+                                    _selectedImage == null &&
+                                    _fotoProfilUrl == null
+                                ? const Text(
+                                    "FOTO\nPROFIL",
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(color: Colors.black54),
+                                  )
+                                : null,
+                          ),
+                        ),
 
-              const SizedBox(height: 20),
+                  const SizedBox(height: 20),
 
-              // FORM
-              _buildTextField('Nama Pegawai'),
-              _buildTextField('ID Pegawai'),
-              _buildTextField('NIP'),
-              _buildTextField('Email', editable: false),
-              _buildDropdownField('Jabatan'),
-              _buildTextField('Pangkat'),
+                  // FORM
+                  _buildTextField('Nama Pegawai'),
+                  _buildTextField('ID Pegawai'),
+                  _buildTextField('NIP'),
+                  _buildTextField('Email', editable: false),
+                  _buildDropdownField('Jabatan'),
+                  _buildTextField('Pangkat'),
 
-              const SizedBox(height: 16),
+                  const SizedBox(height: 16),
 
-              // BUTTON
-              SizedBox(
-                width: 200,
-                child: ElevatedButton(
-                  onPressed: _toggleEdit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: Text(
-                    _isEditing ? 'Simpan Profil' : 'Edit Profil',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // TANDA TANGAN
-              GestureDetector(
-                onTap: _isEditing ? _showSignaturePopup : null,
-                child: Container(
-                  height: 120,
-                  width: 200,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 4,
-                        offset: Offset(0, 2),
+                  // BUTTON
+                  SizedBox(
+                    width: 200,
+                    child: ElevatedButton(
+                      onPressed: _toggleEdit,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
-                    ],
+                      child: Text(
+                        _isEditing ? 'Simpan Profil' : 'Edit Profil',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
                   ),
-                  child: Center(
-                    child: _drawnSignature != null
-                        ? Image.memory(_drawnSignature!)
-                        : _signatureImage != null
-                        ? Image.file(_signatureImage!)
-                        : (_ttdUrl != null
-                              ? Image.network(_ttdUrl!)
-                              : const Text(
-                                  'Klik untuk tanda tangan',
-                                  style: TextStyle(color: Colors.black54),
-                                )),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
 
-              if (_isEditing)
-                SizedBox(
-                  width: 200,
-                  child: ElevatedButton.icon(
-                    onPressed: _pickSignaturePhoto,
-                    icon: const Icon(
-                      Icons.upload,
-                      size: 18,
-                      color: Colors.white,
-                    ),
-                    label: const Text(
-                      'Upload Foto TTD',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      shape: RoundedRectangleBorder(
+                  const SizedBox(height: 24),
+
+                  // TANDA TANGAN
+                  GestureDetector(
+                    onTap: _isEditing ? _showSignaturePopup : null,
+                    child: Container(
+                      height: 120,
+                      width: 200,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
                         borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 4,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: _drawnSignature != null
+                            ? Image.memory(_drawnSignature!)
+                            : _signatureImage != null
+                            ? Image.file(_signatureImage!)
+                            : (_ttdUrl != null
+                                  ? Image.network(_ttdUrl!)
+                                  : const Text(
+                                      'Klik untuk tanda tangan',
+                                      style: TextStyle(color: Colors.black54),
+                                    )),
                       ),
                     ),
                   ),
-                ),
-            ],
+                  const SizedBox(height: 12),
+
+                  if (_isEditing)
+                    SizedBox(
+                      width: 200,
+                      child: _isUploading
+                          ? const CircularProgressIndicator()
+                          : ElevatedButton.icon(
+                              onPressed: _pickSignaturePhoto,
+                              icon: const Icon(
+                                Icons.upload,
+                                size: 18,
+                                color: Colors.white,
+                              ),
+                              label: const Text(
+                                'Upload Foto TTD',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            ),
+                    ),
+                ],
+              ),
+            ),
           ),
         ),
-      ),
+
+        // ✅ Overlay Loading Full Screen
+        if (_isUploading)
+          Positioned.fill(
+            child: Container(
+              color: Colors.black.withOpacity(0.5),
+              child: const Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text(
+                      "Mengunggah...",
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 
