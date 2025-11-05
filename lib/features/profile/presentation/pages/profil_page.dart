@@ -440,6 +440,62 @@ class _ProfilPageState extends State<ProfilPage> {
     );
   }
 
+  Future<void> _deleteSignature() async {
+    try {
+      setState(() => _isUploading = true);
+
+      final user = supabase.auth.currentUser;
+      if (user == null) return;
+
+      // 🗑️ Hapus semua file ttd user di storage
+      await _deleteOldFiles('ttd');
+
+      // 🔄 Kosongkan kolom ttd di database
+      await supabase
+          .from('profiles')
+          .update({'ttd': null})
+          .eq('email', user.email ?? '');
+
+      // 🧼 Reset UI
+      setState(() {
+        _drawnSignature = null;
+        _signatureImage = null;
+        _ttdUrl = null;
+      });
+    } catch (e) {
+      debugPrint("⚠️ Gagal hapus TTD: $e");
+    } finally {
+      setState(() => _isUploading = false);
+    }
+  }
+
+  Future<void> _confirmDeleteSignature() async {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Hapus TTD"),
+        content: const Text(
+          "Apakah Anda yakin ingin menghapus tanda tangan ini? Tindakan ini tidak dapat dibatalkan.",
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Batal"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              Navigator.pop(context); // Tutup dialog
+              await _deleteSignature(); // Panggil fungsi hapus asli
+            },
+            child: const Text("Hapus", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// 🔹 Simpan perubahan data ke database
   Future<void> _saveProfileChanges() async {
     try {
@@ -609,6 +665,28 @@ class _ProfilPageState extends State<ProfilPage> {
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ),
+                  if (_ttdUrl != null && _isEditing)
+                    SizedBox(
+                      width: 200,
+                      child: ElevatedButton.icon(
+                        onPressed: _confirmDeleteSignature,
+                        icon: const Icon(
+                          Icons.delete,
+                          size: 18,
+                          color: Colors.white,
+                        ),
+                        label: const Text(
+                          'Hapus TTD',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
