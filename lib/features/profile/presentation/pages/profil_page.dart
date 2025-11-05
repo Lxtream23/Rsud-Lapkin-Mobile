@@ -34,6 +34,34 @@ class _ProfilPageState extends State<ProfilPage> {
   bool _isUploading = false;
   Uint8List? _selectedImageBytes;
 
+  Uint8List removeWhiteBackground(Uint8List pngBytes) {
+    img.Image? image = img.decodeImage(pngBytes);
+    if (image == null) return pngBytes;
+
+    const tolerance = 25;
+
+    for (int y = 0; y < image.height; y++) {
+      for (int x = 0; x < image.width; x++) {
+        final pixel = image.getPixel(x, y); // Pixel object
+
+        final r = pixel.r;
+        final g = pixel.g;
+        final b = pixel.b;
+
+        // Jika mendekati warna putih → buat transparan
+        if ((r - 255).abs() < tolerance &&
+            (g - 255).abs() < tolerance &&
+            (b - 255).abs() < tolerance) {
+          image.setPixelRgba(x, y, r, g, b, 0); // alpha = 0
+        }
+      }
+    }
+
+    return Uint8List.fromList(
+      img.encodePng(image),
+    ); // simpan kembali sebagai PNG
+  }
+
   Map<String, String> userData = {
     'Nama Pegawai': '',
     'ID Pegawai': '',
@@ -334,21 +362,39 @@ class _ProfilPageState extends State<ProfilPage> {
   Future<void> _pickSignaturePhoto() async {
     final pickedFile = await _picker.pickImage(
       source: ImageSource.gallery,
-      imageQuality: 70,
+      imageQuality: 90,
     );
     if (pickedFile == null) return;
 
-    if (!kIsWeb) setState(() => _signatureImage = File(pickedFile.path));
+    setState(() => _isUploading = true);
 
-    final uploadedUrl = await _uploadToStorage(pickedFile, 'ttd');
+    try {
+      // 📌 Baca file sebagai bytes
+      final bytes = await pickedFile.readAsBytes();
 
-    if (uploadedUrl != null) {
-      await supabase
-          .from('profiles')
-          .update({'ttd': uploadedUrl})
-          .eq('email', supabase.auth.currentUser?.email ?? '');
+      // 🎯 Hapus background putih → jadi transparan
+      final transparentBytes = removeWhiteBackground(bytes);
 
-      setState(() => _ttdUrl = uploadedUrl);
+      // ☁️ Upload ke Supabase
+      final uploadedUrl = await _uploadBytesToStorage(transparentBytes, 'ttd');
+
+      // 📝 Simpan URL ke database
+      if (uploadedUrl != null) {
+        await supabase
+            .from('profiles')
+            .update({'ttd': uploadedUrl})
+            .eq('email', supabase.auth.currentUser?.email ?? '');
+
+        setState(() {
+          _ttdUrl = uploadedUrl;
+          _drawnSignature = transparentBytes; // agar preview langsung muncul
+          _signatureImage = null; // hilangkan preview lama
+        });
+      }
+    } catch (e) {
+      debugPrint("⚠️ Upload Foto TTD gagal: $e");
+    } finally {
+      setState(() => _isUploading = false);
     }
   }
 
@@ -358,6 +404,7 @@ class _ProfilPageState extends State<ProfilPage> {
 
     await showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: const Text('Buat Tanda Tangan'),
@@ -380,56 +427,43 @@ class _ProfilPageState extends State<ProfilPage> {
             onPressed: () async {
               if (_signatureController.isEmpty) return;
 
+              setState(() => _isUploading = true);
+
               try {
-                setState(
-                  () => _isUploading = true,
-                ); // ✅ Tampilkan overlay loading
+                final Uint8List? rawBytes = await _signatureController
+                    .toPngBytes();
+                if (rawBytes == null) return;
+
+                // 🎯 Jadikan background putih → Transparan
+                final Uint8List transparentBytes = removeWhiteBackground(
+                  rawBytes,
+                );
 
                 final user = supabase.auth.currentUser;
                 if (user == null) return;
 
-                // Ambil signature dalam format PNG (Uint8List)
-                final Uint8List? pngBytes = await _signatureController
-                    .toPngBytes();
-                if (pngBytes == null) return;
+                // ☁️ Upload ke Storage
+                final uploadedUrl = await _uploadBytesToStorage(
+                  transparentBytes,
+                  'ttd',
+                );
 
-                // 🔥 Hapus file lama dulu
-                await _deleteOldFiles('ttd');
+                if (uploadedUrl != null) {
+                  await supabase
+                      .from('profiles')
+                      .update({'ttd': uploadedUrl})
+                      .eq('email', user.email ?? '');
 
-                // Tentukan path penyimpanan di storage (rapi per-user)
-                final filePath =
-                    "${user.id}/${DateTime.now().millisecondsSinceEpoch}.png";
-
-                // ✅ Upload langsung (tanpa File)
-                await supabase.storage
-                    .from('ttd')
-                    .uploadBinary(
-                      filePath,
-                      pngBytes,
-                      fileOptions: const FileOptions(upsert: true),
-                    );
-
-                // Ambil URL untuk disimpan di database
-                final uploadedUrl = supabase.storage
-                    .from('ttd')
-                    .getPublicUrl(filePath);
-
-                // Simpan url ke tabel profiles
-                await supabase
-                    .from('profiles')
-                    .update({'ttd': uploadedUrl})
-                    .eq('email', user.email ?? '');
-
-                // Update UI
-                setState(() {
-                  _drawnSignature = pngBytes;
-                  _ttdUrl = uploadedUrl;
-                  _signatureImage = null;
-                });
+                  setState(() {
+                    _drawnSignature = transparentBytes;
+                    _ttdUrl = uploadedUrl;
+                    _signatureImage = null;
+                  });
+                }
               } catch (e) {
-                debugPrint("⚠️ Gagal simpan TTD: $e");
+                debugPrint("⚠️ Gagal simpan TTD manual: $e");
               } finally {
-                setState(() => _isUploading = false); // ✅ Tutup overlay loading
+                setState(() => _isUploading = false);
                 Navigator.pop(context);
               }
             },
@@ -494,6 +528,34 @@ class _ProfilPageState extends State<ProfilPage> {
         ],
       ),
     );
+  }
+
+  Future<String?> _uploadBytesToStorage(Uint8List bytes, String bucket) async {
+    try {
+      setState(() => _isUploading = true);
+      final user = supabase.auth.currentUser;
+      if (user == null) return null;
+
+      await _deleteOldFiles(bucket);
+
+      final filePath =
+          "${user.id}/${DateTime.now().millisecondsSinceEpoch}.png";
+
+      await supabase.storage
+          .from(bucket)
+          .uploadBinary(
+            filePath,
+            bytes,
+            fileOptions: const FileOptions(upsert: true),
+          );
+
+      return supabase.storage.from(bucket).getPublicUrl(filePath);
+    } catch (e) {
+      debugPrint("⚠️ Upload gagal: $e");
+      return null;
+    } finally {
+      setState(() => _isUploading = false);
+    }
   }
 
   /// 🔹 Simpan perubahan data ke database
