@@ -1,11 +1,13 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:signature/signature.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../config/app_colors.dart';
 import '../../../../config/app_text_style.dart';
+import 'package:image/image.dart' as img;
 
 class ProfilPage extends StatefulWidget {
   const ProfilPage({super.key});
@@ -113,19 +115,37 @@ class _ProfilPageState extends State<ProfilPage> {
   }
 
   /// 🔹 Upload file ke Supabase Storage
-  Future<String?> _uploadToStorage(File file, String bucket) async {
+  Future<String?> _uploadToStorage(XFile file, String bucket) async {
     try {
       final user = supabase.auth.currentUser;
       if (user == null) return null;
 
-      final path = '$bucket/${user.id}.png';
-      await supabase.storage
-          .from(bucket)
-          .upload(path, file, fileOptions: const FileOptions(upsert: true));
+      final fileName = "${DateTime.now().millisecondsSinceEpoch}.png";
+      final filePath = "${user.id}/$fileName"; // ✅ simpan dalam folder user
 
-      return supabase.storage.from(bucket).getPublicUrl(path);
+      if (kIsWeb) {
+        final bytes = await file.readAsBytes();
+        await supabase.storage
+            .from(bucket)
+            .uploadBinary(
+              filePath,
+              bytes,
+              fileOptions: const FileOptions(upsert: true),
+            );
+      } else {
+        final localFile = File(file.path);
+        await supabase.storage
+            .from(bucket)
+            .upload(
+              filePath,
+              localFile,
+              fileOptions: const FileOptions(upsert: true),
+            );
+      }
+
+      return supabase.storage.from(bucket).getPublicUrl(filePath);
     } catch (e) {
-      debugPrint('⚠️ Upload ke storage gagal: $e');
+      debugPrint("⚠️ Upload gagal: $e");
       return null;
     }
   }
@@ -138,18 +158,121 @@ class _ProfilPageState extends State<ProfilPage> {
     );
     if (pickedFile == null) return;
 
-    final file = File(pickedFile.path);
-    setState(() => _selectedImage = file);
+    // Baca gambar sebagai bytes (web/iOS/Android compatible)
+    final bytes = await pickedFile.readAsBytes();
 
-    final uploadedUrl = await _uploadToStorage(file, 'foto_profil');
+    // Decode ke objek Image
+    img.Image? original = img.decodeImage(bytes);
+    if (original == null) return;
+
+    // Crop menjadi persegi (ambil tengah)
+    final cropSize = original.width < original.height
+        ? original.width
+        : original.height;
+    final x = (original.width - cropSize) ~/ 2;
+    final y = (original.height - cropSize) ~/ 2;
+    img.Image cropped = img.copyCrop(
+      original,
+      x: x,
+      y: y,
+      width: cropSize,
+      height: cropSize,
+    );
+
+    // Resize ke ukuran avatar (contoh 300x300)
+    img.Image resized = img.copyResize(cropped, width: 300, height: 300);
+
+    // Encode ke PNG (lebih aman & cocok utk display)
+    final Uint8List pngBytes = Uint8List.fromList(img.encodePng(resized));
+
+    // ---- UPLOAD KE STORAGE TANPA File() (Compatible WEB) ----
+    final user = supabase.auth.currentUser;
+    if (user == null) return;
+
+    final storagePath =
+        'foto_profil/${user.id}/${DateTime.now().millisecondsSinceEpoch}.png';
+
+    await supabase.storage
+        .from('foto_profil')
+        .uploadBinary(
+          storagePath,
+          pngBytes,
+          fileOptions: const FileOptions(upsert: true),
+        );
+
+    // Ambil public URL untuk disimpan
+    final uploadedUrl = supabase.storage
+        .from('foto_profil')
+        .getPublicUrl(storagePath);
+
+    // ---- UPDATE DATABASE ----
+    await supabase
+        .from('profiles')
+        .update({'foto_profil': uploadedUrl})
+        .eq('email', user.email ?? '');
+
+    // ---- UPDATE UI ----
+    setState(() {
+      _fotoProfilUrl = uploadedUrl;
+      _selectedImage = null; // karena sekarang kita pakai bytes, bukan File
+    });
+  }
+
+  /// 🔹 Ambil foto dari kamera
+  Future<void> _takePhoto() async {
+    final pickedFile = await _picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 70,
+    );
+    if (pickedFile == null) return;
+
+    if (!kIsWeb) {
+      setState(() => _selectedImage = File(pickedFile.path));
+    }
+
+    final uploadedUrl = await _uploadToStorage(pickedFile, 'foto_profil');
+
     if (uploadedUrl != null) {
-      final user = supabase.auth.currentUser;
       await supabase
           .from('profiles')
           .update({'foto_profil': uploadedUrl})
-          .eq('email', user?.email ?? '');
+          .eq('email', supabase.auth.currentUser?.email ?? '');
+
       setState(() => _fotoProfilUrl = uploadedUrl);
     }
+  }
+
+  /// 🔹 Menu pilih sumber gambar
+  void _showImageSourceMenu() {
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      builder: (context) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text("Pilih dari Galeri"),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(); // yang sudah ada
+                },
+              ),
+              if (!kIsWeb) // kamera hanya di Android/iOS
+                ListTile(
+                  leading: const Icon(Icons.camera_alt),
+                  title: const Text("Ambil dari Kamera"),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _takePhoto(); // kita bikin di bawah
+                  },
+                ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   /// 🔹 Upload tanda tangan dari galeri
@@ -160,16 +283,16 @@ class _ProfilPageState extends State<ProfilPage> {
     );
     if (pickedFile == null) return;
 
-    final file = File(pickedFile.path);
-    setState(() => _signatureImage = file);
+    if (!kIsWeb) setState(() => _signatureImage = File(pickedFile.path));
 
-    final uploadedUrl = await _uploadToStorage(file, 'ttd');
+    final uploadedUrl = await _uploadToStorage(pickedFile, 'ttd');
+
     if (uploadedUrl != null) {
-      final user = supabase.auth.currentUser;
       await supabase
           .from('profiles')
           .update({'ttd': uploadedUrl})
-          .eq('email', user?.email ?? '');
+          .eq('email', supabase.auth.currentUser?.email ?? '');
+
       setState(() => _ttdUrl = uploadedUrl);
     }
   }
@@ -204,7 +327,11 @@ class _ProfilPageState extends State<ProfilPage> {
                   final tempFile = File('${Directory.systemTemp.path}/ttd.png');
                   await tempFile.writeAsBytes(data);
 
-                  final uploadedUrl = await _uploadToStorage(tempFile, 'ttd');
+                  final uploadedUrl = await _uploadToStorage(
+                    XFile(tempFile.path),
+                    'ttd',
+                  );
+
                   if (uploadedUrl != null) {
                     final user = supabase.auth.currentUser;
                     await supabase
@@ -288,7 +415,7 @@ class _ProfilPageState extends State<ProfilPage> {
             children: [
               // FOTO PROFIL
               GestureDetector(
-                onTap: _isEditing ? _pickImage : null,
+                onTap: _isEditing ? _showImageSourceMenu : null,
                 child: CircleAvatar(
                   radius: 45,
                   backgroundColor: Colors.white,
@@ -307,6 +434,7 @@ class _ProfilPageState extends State<ProfilPage> {
                       : null,
                 ),
               ),
+
               const SizedBox(height: 20),
 
               // FORM
