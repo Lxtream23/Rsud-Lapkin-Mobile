@@ -8,7 +8,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../config/app_colors.dart';
 import '../../../../config/app_text_style.dart';
 import 'package:image/image.dart' as img;
-import 'package:image/image.dart' as img;
 
 class ProfilPage extends StatefulWidget {
   const ProfilPage({super.key});
@@ -509,111 +508,157 @@ class _ProfilPageState extends State<ProfilPage> {
 
     await showDialog(
       context: context,
-      barrierDismissible: false,
+      barrierDismissible: true, // ✅ klik luar tutup popup
       builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: const Text('Buat Tanda Tangan'),
-        content: SizedBox(
-          width: double.maxFinite,
-          height: 250,
-          child: Signature(
-            controller: _signatureController,
-            backgroundColor: Colors.grey[200]!,
-          ),
+        contentPadding: EdgeInsets.zero,
+
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ✅ Header Title + Tombol Close (X)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Buat Tanda Tangan',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: const Icon(Icons.close, size: 24),
+                  ),
+                ],
+              ),
+            ),
+
+            // ✅ Signature Canvas box
+            Container(
+              margin: const EdgeInsets.all(16),
+              width: 320,
+              height: 220,
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                border: Border.all(color: Colors.black26),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Signature(
+                controller: _signatureController,
+                backgroundColor: Colors.transparent,
+              ),
+            ),
+
+            // ✅ Tombol Actions
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton(
+                    onPressed: _signatureController.clear,
+                    child: const Text('Hapus'),
+                  ),
+
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
+                    onPressed: () async {
+                      if (_signatureController.isEmpty) return;
+
+                      final Uint8List? rawBytes = await _signatureController
+                          .toPngBytes();
+                      if (rawBytes == null) return;
+
+                      final Uint8List previewBytes = removeWhiteBackground(
+                        rawBytes,
+                      );
+
+                      // ✅ Tampilkan Preview
+                      await showDialog(
+                        context: context,
+                        barrierDismissible: true,
+                        builder: (context) => AlertDialog(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          title: const Text('Preview Tanda Tangan'),
+                          content: SizedBox(
+                            width: 260,
+                            height: 150,
+                            child: Image.memory(previewBytes),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Edit Ulang'),
+                            ),
+
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                              ),
+                              onPressed: () async {
+                                Navigator.pop(context);
+                                Navigator.pop(context);
+
+                                try {
+                                  setState(() => _isUploading = true);
+
+                                  final user = supabase.auth.currentUser;
+                                  if (user == null) return;
+
+                                  await _deleteOldFiles('ttd');
+
+                                  final uploadedUrl =
+                                      await _uploadBytesToStorage(
+                                        previewBytes,
+                                        'ttd',
+                                      );
+
+                                  if (uploadedUrl != null) {
+                                    await supabase
+                                        .from('profiles')
+                                        .update({'ttd': uploadedUrl})
+                                        .eq('email', user.email ?? '');
+
+                                    setState(() {
+                                      _drawnSignature = previewBytes;
+                                      _ttdUrl = uploadedUrl;
+                                      _signatureImage = null;
+                                    });
+                                  }
+                                } catch (e) {
+                                  debugPrint("⚠️ Gagal simpan TTD: $e");
+                                } finally {
+                                  setState(() => _isUploading = false);
+                                }
+                              },
+                              child: const Text(
+                                'Simpan',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    child: const Text(
+                      'Preview',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: _signatureController.clear,
-            child: const Text('Hapus'),
-          ),
-
-          // ✅ Tombol PREVIEW
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-            onPressed: () async {
-              if (_signatureController.isEmpty) return;
-
-              final Uint8List? rawBytes = await _signatureController
-                  .toPngBytes();
-              if (rawBytes == null) return;
-
-              // Buat transparan (remove white)
-              final Uint8List previewBytes = removeWhiteBackground(rawBytes);
-
-              // Buka Dialog Preview
-              await showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (context) => AlertDialog(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  title: const Text('Preview Tanda Tangan'),
-                  content: SizedBox(
-                    width: 260,
-                    height: 150,
-                    child: Image.memory(previewBytes),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Edit Ulang'),
-                    ),
-
-                    // ✅ SIMPAN (Upload)
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                      ),
-                      onPressed: () async {
-                        Navigator.pop(context); // tutup preview
-                        Navigator.pop(context); // tutup signature canvas
-
-                        try {
-                          setState(() => _isUploading = true);
-
-                          final user = supabase.auth.currentUser;
-                          if (user == null) return;
-
-                          // Hapus ttd lama dulu
-                          await _deleteOldFiles('ttd');
-
-                          // Upload file
-                          final uploadedUrl = await _uploadBytesToStorage(
-                            previewBytes,
-                            'ttd',
-                          );
-
-                          if (uploadedUrl != null) {
-                            await supabase
-                                .from('profiles')
-                                .update({'ttd': uploadedUrl})
-                                .eq('email', user.email ?? '');
-
-                            setState(() {
-                              _drawnSignature = previewBytes;
-                              _ttdUrl = uploadedUrl;
-                              _signatureImage = null;
-                            });
-                          }
-                        } catch (e) {
-                          debugPrint("⚠️ Gagal simpan TTD manual: $e");
-                        } finally {
-                          setState(() => _isUploading = false);
-                        }
-                      },
-                      child: const Text(
-                        'Simpan',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-            child: const Text('Preview', style: TextStyle(color: Colors.white)),
-          ),
-        ],
       ),
     );
   }
