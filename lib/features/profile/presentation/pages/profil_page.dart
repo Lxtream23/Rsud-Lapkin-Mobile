@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../config/app_colors.dart';
 import '../../../../config/app_text_style.dart';
 import 'package:image/image.dart' as img;
+import 'package:image/image.dart' as img;
 
 class ProfilPage extends StatefulWidget {
   const ProfilPage({super.key});
@@ -34,32 +35,89 @@ class _ProfilPageState extends State<ProfilPage> {
   bool _isUploading = false;
   Uint8List? _selectedImageBytes;
 
+  /// Menghapus background putih, smoothing ringan, dan sharpen.
+  /// Aman untuk berbagai versi package:image (mis. 4.5.4).
   Uint8List removeWhiteBackground(Uint8List pngBytes) {
     img.Image? image = img.decodeImage(pngBytes);
     if (image == null) return pngBytes;
 
-    const tolerance = 25;
+    const int tolerance = 25;
 
+    // Pastikan RGBA (4 channels)
+    image = image.convert(numChannels: 4);
+
+    // Helper: ambil r,g,b dari pixel. `pixel` biasanya int (packed), kadang object.
+    int _getR(dynamic pixel) {
+      // Jika pixel adalah int (packed ARGB / RGBA), ambil via bit ops
+      if (pixel is int) {
+        // packed format dari image package: 0xAARRGGBB
+        return (pixel >> 16) & 0xFF;
+      }
+      // Jika pixel menyediakan .r
+      try {
+        final val = pixel.r;
+        if (val is int) return val;
+        return int.parse(val.toString());
+      } catch (_) {
+        // fallback defensif: convert pixel to int then shift
+        final asInt = pixel as int;
+        return (asInt >> 16) & 0xFF;
+      }
+    }
+
+    int _getG(dynamic pixel) {
+      if (pixel is int) {
+        return (pixel >> 8) & 0xFF;
+      }
+      try {
+        final val = pixel.g;
+        if (val is int) return val;
+        return int.parse(val.toString());
+      } catch (_) {
+        final asInt = pixel as int;
+        return (asInt >> 8) & 0xFF;
+      }
+    }
+
+    int _getB(dynamic pixel) {
+      if (pixel is int) {
+        return pixel & 0xFF;
+      }
+      try {
+        final val = pixel.b;
+        if (val is int) return val;
+        return int.parse(val.toString());
+      } catch (_) {
+        final asInt = pixel as int;
+        return asInt & 0xFF;
+      }
+    }
+
+    // Loop semua pixel, set alpha = 0 ketika putih (dalam tolerance)
     for (int y = 0; y < image.height; y++) {
       for (int x = 0; x < image.width; x++) {
-        final pixel = image.getPixel(x, y); // Pixel object
+        final px = image.getPixel(x, y);
+        final r = _getR(px);
+        final g = _getG(px);
+        final b = _getB(px);
 
-        final r = pixel.r;
-        final g = pixel.g;
-        final b = pixel.b;
-
-        // Jika mendekati warna putih → buat transparan
         if ((r - 255).abs() < tolerance &&
             (g - 255).abs() < tolerance &&
             (b - 255).abs() < tolerance) {
-          image.setPixelRgba(x, y, r, g, b, 0); // alpha = 0
+          // set alpha 0 (transparan)
+          image.setPixelRgba(x, y, r, g, b, 0);
         }
       }
     }
 
-    return Uint8List.fromList(
-      img.encodePng(image),
-    ); // simpan kembali sebagai PNG
+    // Smoothing ringan
+    image = img.gaussianBlur(image, radius: 1);
+
+    // Sharpen via convolution kernel (subtle)
+    const List<int> sharpenKernel = [0, -1, 0, -1, 5, -1, 0, -1, 0];
+    image = img.convolution(image, filter: sharpenKernel, div: 1);
+
+    return Uint8List.fromList(img.encodePng(image));
   }
 
   Map<String, String> userData = {
@@ -369,31 +427,78 @@ class _ProfilPageState extends State<ProfilPage> {
     setState(() => _isUploading = true);
 
     try {
-      // 📌 Baca file sebagai bytes
       final bytes = await pickedFile.readAsBytes();
 
-      // 🎯 Hapus background putih → jadi transparan
-      final transparentBytes = removeWhiteBackground(bytes);
+      // 🎯 Proses hapus background putih
+      final transparentBytes = await Future.delayed(
+        const Duration(milliseconds: 150),
+        () => removeWhiteBackground(bytes),
+      );
 
-      // ☁️ Upload ke Supabase
-      final uploadedUrl = await _uploadBytesToStorage(transparentBytes, 'ttd');
+      setState(() => _isUploading = false);
 
-      // 📝 Simpan URL ke database
-      if (uploadedUrl != null) {
-        await supabase
-            .from('profiles')
-            .update({'ttd': uploadedUrl})
-            .eq('email', supabase.auth.currentUser?.email ?? '');
+      // ✅ Tampilkan preview
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          title: const Text('Preview Tanda Tangan'),
+          content: SizedBox(
+            width: 260,
+            height: 150,
+            child: Image.memory(transparentBytes),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Ganti Foto'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+              ),
+              onPressed: () async {
+                Navigator.pop(context);
+                setState(() => _isUploading = true);
 
-        setState(() {
-          _ttdUrl = uploadedUrl;
-          _drawnSignature = transparentBytes; // agar preview langsung muncul
-          _signatureImage = null; // hilangkan preview lama
-        });
-      }
+                try {
+                  // 🗑️ Hapus TTD lama
+                  await _deleteOldFiles('ttd');
+
+                  // ☁️ Upload baru
+                  final uploadedUrl = await _uploadBytesToStorage(
+                    transparentBytes,
+                    'ttd',
+                  );
+
+                  if (uploadedUrl != null) {
+                    await supabase
+                        .from('profiles')
+                        .update({'ttd': uploadedUrl})
+                        .eq('email', supabase.auth.currentUser?.email ?? '');
+
+                    setState(() {
+                      _ttdUrl = uploadedUrl;
+                      _drawnSignature = transparentBytes;
+                    });
+                  }
+                } finally {
+                  setState(() => _isUploading = false);
+                }
+              },
+              child: const Text(
+                'Simpan',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+      );
     } catch (e) {
-      debugPrint("⚠️ Upload Foto TTD gagal: $e");
-    } finally {
+      debugPrint("⚠️ Error saat proses foto TTD: $e");
       setState(() => _isUploading = false);
     }
   }
@@ -422,52 +527,91 @@ class _ProfilPageState extends State<ProfilPage> {
             child: const Text('Hapus'),
           ),
 
+          // ✅ Tombol PREVIEW
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
             onPressed: () async {
               if (_signatureController.isEmpty) return;
 
-              setState(() => _isUploading = true);
+              final Uint8List? rawBytes = await _signatureController
+                  .toPngBytes();
+              if (rawBytes == null) return;
 
-              try {
-                final Uint8List? rawBytes = await _signatureController
-                    .toPngBytes();
-                if (rawBytes == null) return;
+              // Buat transparan (remove white)
+              final Uint8List previewBytes = removeWhiteBackground(rawBytes);
 
-                // 🎯 Jadikan background putih → Transparan
-                final Uint8List transparentBytes = removeWhiteBackground(
-                  rawBytes,
-                );
+              // Buka Dialog Preview
+              await showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => AlertDialog(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  title: const Text('Preview Tanda Tangan'),
+                  content: SizedBox(
+                    width: 260,
+                    height: 150,
+                    child: Image.memory(previewBytes),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Edit Ulang'),
+                    ),
 
-                final user = supabase.auth.currentUser;
-                if (user == null) return;
+                    // ✅ SIMPAN (Upload)
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                      ),
+                      onPressed: () async {
+                        Navigator.pop(context); // tutup preview
+                        Navigator.pop(context); // tutup signature canvas
 
-                // ☁️ Upload ke Storage
-                final uploadedUrl = await _uploadBytesToStorage(
-                  transparentBytes,
-                  'ttd',
-                );
+                        try {
+                          setState(() => _isUploading = true);
 
-                if (uploadedUrl != null) {
-                  await supabase
-                      .from('profiles')
-                      .update({'ttd': uploadedUrl})
-                      .eq('email', user.email ?? '');
+                          final user = supabase.auth.currentUser;
+                          if (user == null) return;
 
-                  setState(() {
-                    _drawnSignature = transparentBytes;
-                    _ttdUrl = uploadedUrl;
-                    _signatureImage = null;
-                  });
-                }
-              } catch (e) {
-                debugPrint("⚠️ Gagal simpan TTD manual: $e");
-              } finally {
-                setState(() => _isUploading = false);
-                Navigator.pop(context);
-              }
+                          // Hapus ttd lama dulu
+                          await _deleteOldFiles('ttd');
+
+                          // Upload file
+                          final uploadedUrl = await _uploadBytesToStorage(
+                            previewBytes,
+                            'ttd',
+                          );
+
+                          if (uploadedUrl != null) {
+                            await supabase
+                                .from('profiles')
+                                .update({'ttd': uploadedUrl})
+                                .eq('email', user.email ?? '');
+
+                            setState(() {
+                              _drawnSignature = previewBytes;
+                              _ttdUrl = uploadedUrl;
+                              _signatureImage = null;
+                            });
+                          }
+                        } catch (e) {
+                          debugPrint("⚠️ Gagal simpan TTD manual: $e");
+                        } finally {
+                          setState(() => _isUploading = false);
+                        }
+                      },
+                      child: const Text(
+                        'Simpan',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+              );
             },
-            child: const Text('Simpan', style: TextStyle(color: Colors.white)),
+            child: const Text('Preview', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
