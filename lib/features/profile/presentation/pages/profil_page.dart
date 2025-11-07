@@ -3,11 +3,13 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:signature/signature.dart';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../config/app_colors.dart';
 import '../../../../config/app_text_style.dart';
 import 'package:image/image.dart' as img;
+import 'package:syncfusion_flutter_signaturepad/signaturepad.dart';
+import 'dart:ui' as ui;
 
 class ProfilPage extends StatefulWidget {
   const ProfilPage({super.key});
@@ -19,10 +21,7 @@ class ProfilPage extends StatefulWidget {
 class _ProfilPageState extends State<ProfilPage> {
   final supabase = Supabase.instance.client;
   final ImagePicker _picker = ImagePicker();
-  final SignatureController _signatureController = SignatureController(
-    penStrokeWidth: 3,
-    penColor: Colors.black,
-  );
+  final GlobalKey<SfSignaturePadState> _signaturePadKey = GlobalKey();
 
   File? _selectedImage;
   File? _signatureImage;
@@ -155,7 +154,6 @@ class _ProfilPageState extends State<ProfilPage> {
 
   @override
   void dispose() {
-    _signatureController.dispose();
     for (var controller in _controllers.values) {
       controller.dispose();
     }
@@ -504,11 +502,9 @@ class _ProfilPageState extends State<ProfilPage> {
 
   /// 🔹 Popup tanda tangan manual
   Future<void> _showSignaturePopup() async {
-    _signatureController.clear();
-
     await showDialog(
       context: context,
-      barrierDismissible: true, // ✅ klik luar tutup popup
+      barrierDismissible: true, // klik luar → tutup
       builder: (context) => AlertDialog(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -517,7 +513,7 @@ class _ProfilPageState extends State<ProfilPage> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // ✅ Header Title + Tombol Close (X)
+            // HEADER
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
@@ -529,13 +525,13 @@ class _ProfilPageState extends State<ProfilPage> {
                   ),
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: const Icon(Icons.close, size: 24),
+                    child: const Icon(Icons.close, size: 22),
                   ),
                 ],
               ),
             ),
 
-            // ✅ Signature Canvas box
+            // TTD AREA
             Container(
               margin: const EdgeInsets.all(16),
               width: 320,
@@ -545,20 +541,23 @@ class _ProfilPageState extends State<ProfilPage> {
                 border: Border.all(color: Colors.black26),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Signature(
-                controller: _signatureController,
+              child: SfSignaturePad(
+                key: _signaturePadKey,
                 backgroundColor: Colors.transparent,
+                strokeColor: Colors.black,
+                minimumStrokeWidth: 2.0,
+                maximumStrokeWidth: 4.0,
               ),
             ),
 
-            // ✅ Tombol Actions
+            // TOMBOL AKSI
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   TextButton(
-                    onPressed: _signatureController.clear,
+                    onPressed: () => _signaturePadKey.currentState!.clear(),
                     child: const Text('Hapus'),
                   ),
 
@@ -570,85 +569,29 @@ class _ProfilPageState extends State<ProfilPage> {
                       ),
                     ),
                     onPressed: () async {
-                      if (_signatureController.isEmpty) return;
+                      // ✅ Tampilkan overlay loading
+                      setState(() => _isUploading = true);
 
-                      final Uint8List? rawBytes = await _signatureController
-                          .toPngBytes();
-                      if (rawBytes == null) return;
+                      // ✅ Beri waktu UI untuk update dulu
+                      await Future.delayed(const Duration(milliseconds: 150));
 
-                      final Uint8List previewBytes = removeWhiteBackground(
-                        rawBytes,
-                      );
+                      // ✅ Ambil gambar TTD kualitas tinggi
+                      final Uint8List? previewBytes =
+                          await _exportHighQualitySignature();
 
-                      // ✅ Tampilkan Preview
-                      await showDialog(
-                        context: context,
-                        barrierDismissible: true,
-                        builder: (context) => AlertDialog(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          title: const Text('Preview Tanda Tangan'),
-                          content: SizedBox(
-                            width: 260,
-                            height: 150,
-                            child: Image.memory(previewBytes),
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: const Text('Edit Ulang'),
-                            ),
+                      // Kalau gagal → matikan loading dan keluar
+                      if (previewBytes == null) {
+                        setState(() => _isUploading = false);
+                        return;
+                      }
 
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primary,
-                              ),
-                              onPressed: () async {
-                                Navigator.pop(context);
-                                Navigator.pop(context);
+                      // ✅ Matikan loading dulu sebelum buka dialog preview
+                      setState(() => _isUploading = false);
 
-                                try {
-                                  setState(() => _isUploading = true);
-
-                                  final user = supabase.auth.currentUser;
-                                  if (user == null) return;
-
-                                  await _deleteOldFiles('ttd');
-
-                                  final uploadedUrl =
-                                      await _uploadBytesToStorage(
-                                        previewBytes,
-                                        'ttd',
-                                      );
-
-                                  if (uploadedUrl != null) {
-                                    await supabase
-                                        .from('profiles')
-                                        .update({'ttd': uploadedUrl})
-                                        .eq('email', user.email ?? '');
-
-                                    setState(() {
-                                      _drawnSignature = previewBytes;
-                                      _ttdUrl = uploadedUrl;
-                                      _signatureImage = null;
-                                    });
-                                  }
-                                } catch (e) {
-                                  debugPrint("⚠️ Gagal simpan TTD: $e");
-                                } finally {
-                                  setState(() => _isUploading = false);
-                                }
-                              },
-                              child: const Text(
-                                'Simpan',
-                                style: TextStyle(color: Colors.white),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
+                      // ✅ Tampilkan dialog preview normal
+                      _showPreviewDialog(previewBytes);
                     },
+
                     child: const Text(
                       'Preview',
                       style: TextStyle(color: Colors.white),
@@ -661,6 +604,19 @@ class _ProfilPageState extends State<ProfilPage> {
         ),
       ),
     );
+  }
+
+  Future<Uint8List?> _exportHighQualitySignature() async {
+    final ui.Image image = await _signaturePadKey.currentState!.toImage(
+      pixelRatio: 4.0,
+    );
+
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    if (byteData == null) return null;
+
+    final Uint8List pngBytes = byteData.buffer.asUint8List();
+
+    return removeWhiteBackground(pngBytes);
   }
 
   Future<void> _deleteSignature() async {
@@ -713,6 +669,75 @@ class _ProfilPageState extends State<ProfilPage> {
               await _deleteSignature(); // Panggil fungsi hapus asli
             },
             child: const Text("Hapus", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showPreviewDialog(Uint8List previewBytes) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: const Text('Preview Tanda Tangan'),
+        content: SizedBox(
+          width: 260,
+          height: 150,
+          child: Image.memory(previewBytes),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Edit Ulang'),
+          ),
+
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+            ),
+            onPressed: () async {
+              Navigator.pop(context); // Tutup preview dialog
+              Navigator.pop(context); // Tutup canvas dialog
+
+              try {
+                setState(() => _isUploading = true);
+
+                final user = supabase.auth.currentUser;
+                if (user == null) return;
+
+                // 🔥 Hapus TTD lama
+                await _deleteOldFiles('ttd');
+
+                // 🔥 Upload TTD baru
+                final uploadedUrl = await _uploadBytesToStorage(
+                  previewBytes,
+                  'ttd',
+                );
+
+                if (uploadedUrl != null) {
+                  await supabase
+                      .from('profiles')
+                      .update({'ttd': uploadedUrl})
+                      .eq('email', user.email ?? '');
+
+                  setState(() {
+                    _drawnSignature = previewBytes;
+                    _ttdUrl = uploadedUrl;
+                    _signatureImage = null;
+                  });
+                }
+              } catch (e) {
+                debugPrint("⚠️ Gagal simpan TTD: $e");
+              } finally {
+                setState(() => _isUploading = false);
+              }
+            },
+            child: const Text('Simpan', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),

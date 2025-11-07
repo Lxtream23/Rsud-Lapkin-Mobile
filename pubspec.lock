@@ -33,22 +33,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.4"
-  apple_vision_commons:
-    dependency: transitive
-    description:
-      name: apple_vision_commons
-      sha256: "494e26c50f43a14fcd242ff9708e17afd72b83df7fac1795dbcbde828be8ed8b"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.0.3"
-  apple_vision_selfie:
-    dependency: transitive
-    description:
-      name: apple_vision_selfie
-      sha256: "8440777028473f746c5a46add6688292a2378ed7c7bb98faee2befdf8452f749"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.0.2"
   archive:
     dependency: transitive
     description:
@@ -232,14 +216,6 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
-  flutterbackgroundremover:
-    dependency: "direct main"
-    description:
-      name: flutterbackgroundremover
-      sha256: d5f89c05b03e8eb600ac947a56028140925fce1e16397b8a7b6e5b875dd49756
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.0.1"
   functions_client:
     dependency: transitive
     description:
@@ -248,22 +224,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.5.0"
-  google_mlkit_commons:
-    dependency: transitive
-    description:
-      name: google_mlkit_commons
-      sha256: "046586b381cdd139f7f6a05ad6998f7e339d061bd70158249907358394b5f496"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.6.1"
-  google_mlkit_selfie_segmentation:
-    dependency: transitive
-    description:
-      name: google_mlkit_selfie_segmentation
-      sha256: ca30972a4fca5d46c12c6add4cb839385552a322ee0d4e500c888b0817b93003
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.6.0"
   gotrue:
     dependency: transitive
     description:
@@ -717,6 +677,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.10.3"
+  syncfusion_flutter_core:
+    dependency: transitive
+    description:
+      name: syncfusion_flutter_core
+      sha256: "825670efc828e18e14ff310cbcf6de91c8ff73b55c75ae6868a2b3cd87e88b6c"
+      url: "https://pub.dev"
+    source: hosted
+    version: "31.2.5"
+  syncfusion_flutter_signaturepad:
+    dependency: "direct main"
+    description:
+      name: syncfusion_flutter_signaturepad
+      sha256: "6e60af61cec5ee7436b01ecb3fd944602aed42887789a67a27314678ad04d38a"
+      url: "https://pub.dev"
+    source: hosted
+    version: "31.2.5"
   term_glyph:
     dependency: transitive
     description:
@@ -903,4 +879,4 @@ packages:
     version: "2.1.0"
 sdks:
   dart: ">=3.9.2 <4.0.0"
-  flutter: ">=3.35.0"
+  flutter: ">=3.35.1"
