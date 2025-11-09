@@ -11,6 +11,8 @@ import '../../features/home/presentation/pages/panduan_page.dart';
 import '../../features/home/presentation/pages/tentang_aplikasi_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
 import '../../features/splash/presentation/pages/splash_screen.dart';
+import '../../features/perjanjian/presentation/pages/page_perjanjian.dart';
+import '../../features/perjanjian/presentation/pages/form_perjanjian_page.dart';
 
 class AppRoutes {
   static const splash = '/';
@@ -29,5 +31,7 @@ class AppRoutes {
     '/panduan': (context) => const PanduanPage(),
     '/settings': (context) => const SettingsPage(),
     '/tentang': (context) => const TentangAplikasiPage(),
+    '/perjanjian': (context) => const PagePerjanjian(),
+    '/formPerjanjian': (context) => const FormPerjanjianPage(),
   };
 }
