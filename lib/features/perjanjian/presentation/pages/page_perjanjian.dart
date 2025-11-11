@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../../config/app_colors.dart';
+import '../../../../config/app_text_style.dart';
 
 class PagePerjanjian extends StatelessWidget {
   const PagePerjanjian({super.key});
@@ -6,17 +8,17 @@ class PagePerjanjian extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFE4F7FB), // warna background biru muda
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 1,
         centerTitle: true,
-        title: const Text(
-          "Perjanjian",
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.w300),
+        title: Text(
+          'Perjanjian',
+          style: AppTextStyle.bold16.copyWith(color: AppColors.textDark),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back, color: AppColors.textDark),
           onPressed: () => Navigator.pop(context),
         ),
       ),

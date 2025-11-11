@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../../config/app_colors.dart';
+import '../../../../config/app_text_style.dart';
 
 class FormPerjanjianPage extends StatefulWidget {
   const FormPerjanjianPage({Key? key}) : super(key: key);
@@ -88,17 +90,17 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFE1F4F3),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text(
-          "Form Perjanjian",
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-        ),
         backgroundColor: Colors.white,
-        centerTitle: true,
         elevation: 1,
+        centerTitle: true,
+        title: Text(
+          'Form Perjanjian',
+          style: AppTextStyle.bold16.copyWith(color: AppColors.textDark),
+        ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back, color: AppColors.textDark),
           onPressed: () => Navigator.pop(context),
         ),
       ),
