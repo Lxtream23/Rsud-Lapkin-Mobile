@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-// import 'package:auto_size_text/auto_size_text.dart';
-// import 'package:data_table_2/data_table_2.dart';
+import 'package:auto_size_text/auto_size_text.dart';
 import '../../../../config/app_colors.dart';
 import '../../../../config/app_text_style.dart';
 
@@ -29,15 +28,15 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     'Admin/Staf',
   ];
 
-  /// Membuat tabel dinamis
-  List<List<TextEditingController>> generateTableData(int rows, int columns) {
+  // helper untuk membuat data tabel (controllers)
+  List<List<TextEditingController>> generateTableData(int rows, int cols) {
     return List.generate(
       rows,
-      (_) => List.generate(columns, (_) => TextEditingController()),
+      (_) => List.generate(cols, (_) => TextEditingController()),
     );
   }
 
-  // Data tabel (pastikan kolom sesuai header yang nanti dipakai)
+  // ==== data tabel (pastikan kolom sesuai header) ====
   late final List<List<TextEditingController>> tabel1 = generateTableData(5, 5);
   late final List<List<TextEditingController>> tabel2 = generateTableData(3, 7);
   late final List<List<TextEditingController>> tabel3 = generateTableData(4, 3);
@@ -45,170 +44,135 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
   @override
   void dispose() {
     namaController.dispose();
-    for (final row in tabel1) {
-      for (final c in row) {
-        c.dispose();
-      }
-    }
-    for (final row in tabel2) {
-      for (final c in row) {
-        c.dispose();
-      }
-    }
-    for (final row in tabel3) {
-      for (final c in row) {
-        c.dispose();
-      }
-    }
+    for (final r in tabel1) for (final c in r) c.dispose();
+    for (final r in tabel2) for (final c in r) c.dispose();
+    for (final r in tabel3) for (final c in r) c.dispose();
     super.dispose();
   }
 
-  // ---------- helper widgets for tables ----------
-
-  // Tabel umum (1 & 3) — dibungkus supaya dapat layout sebelum hit-test
-  Widget buildTable({
+  // ---------- SIMPLE / SAFE TABLE BUILDER ----------
+  // headers = list header (excludes "NO")
+  // data = list of rows, each row must have same length as headers (TextEditingController)
+  Widget buildTableSafe({
     required List<String> headers,
     required List<List<TextEditingController>> data,
+    bool showNumber = true,
   }) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: DataTable(
-        columnSpacing: 12,
-        headingRowHeight: 42,
-        dataRowMinHeight: 48,
-        dataRowMaxHeight: 48,
-        columns: [
-          for (var h in headers)
-            DataColumn(
-              label: Text(
-                h,
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-        ],
-        rows: [
-          for (var row in data)
-            DataRow(
-              cells: [
-                for (var cell in row)
-                  DataCell(
-                    SizedBox(
-                      width: 150,
-                      child: TextField(
-                        controller: cell,
-                        decoration: const InputDecoration(
-                          border: InputBorder.none,
-                          isDense: true,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : MediaQuery.of(context).size.width;
+        final totalCols = headers.length + (showNumber ? 1 : 0);
+
+        // minimal column width (boleh disesuaikan)
+        const minColWidth = 100.0;
+
+        // hitung columnWidth: jika layar cukup, pakai pembagian proporsional,
+        // kalau tidak, columnWidth tetap minimal sehingga horizontal scroll muncul.
+        final columnWidth = (availableWidth / totalCols).clamp(
+          minColWidth,
+          double.infinity,
+        );
+
+        // buat map columnWidths untuk Table widget
+        final Map<int, TableColumnWidth> columnWidths = {
+          for (int i = 0; i < totalCols; i++) i: FixedColumnWidth(columnWidth),
+        };
+
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: ConstrainedBox(
+            // pastikan tabel minimal selebar parent sehingga Table dapat menghitung layout
+            constraints: BoxConstraints(minWidth: availableWidth),
+            child: Table(
+              columnWidths: columnWidths,
+              border: TableBorder.all(color: Colors.grey.shade400, width: 0.8),
+              defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+              children: [
+                // header row
+                TableRow(
+                  decoration: BoxDecoration(color: Colors.grey.shade200),
+                  children:
+                      [
+                        if (showNumber)
+                          _tableHeaderCell("NO")
+                        else
+                          const SizedBox.shrink(),
+                        for (final h in headers)
+                          _tableHeaderCell(h.toUpperCase()),
+                      ].map((w) {
+                        // ensure each header has a widget (no nulls)
+                        return (w is SizedBox && w.child == null)
+                            ? const SizedBox.shrink()
+                            : w;
+                      }).toList(),
+                ),
+                // data rows
+                for (int i = 0; i < data.length; i++)
+                  TableRow(
+                    children: [
+                      if (showNumber)
+                        _tableBodyCell(
+                          Text('${i + 1}', textAlign: TextAlign.center),
+                        )
+                      else
+                        const SizedBox.shrink(),
+                      for (int j = 0; j < headers.length; j++)
+                        _tableBodyCell(
+                          TextField(
+                            controller: data[i][j],
+                            decoration: const InputDecoration(
+                              border: InputBorder.none,
+                              isDense: true,
+                              contentPadding: EdgeInsets.symmetric(
+                                vertical: 8,
+                                horizontal: 6,
+                              ),
+                            ),
+                            style: const TextStyle(fontSize: 13),
+                          ),
                         ),
-                      ),
-                    ),
+                    ],
                   ),
               ],
             ),
-        ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _tableHeaderCell(String text) {
+    return Padding(
+      padding: const EdgeInsets.all(8),
+      child: AutoSizeText(
+        text,
+        maxLines: 2,
+        minFontSize: 9,
+        textAlign: TextAlign.center,
+        style: const TextStyle(fontWeight: FontWeight.bold),
       ),
     );
   }
 
-  // Tabel Triwulan (header dua baris), dibungkus aman
-  Widget buildTableTriwulan({required List<List<TextEditingController>> data}) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: DataTable(
-        columnSpacing: 12,
-        headingRowHeight: 42,
-        dataRowMinHeight: 48,
-        dataRowMaxHeight: 48,
-        columns: const [
-          DataColumn(
-            label: Text(
-              "SASARAN",
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-          DataColumn(
-            label: Text(
-              "INDIKATOR",
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-          DataColumn(
-            label: Text(
-              "TARGET",
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-          DataColumn(
-            label: Text("I", style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-          DataColumn(
-            label: Text("II", style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-          DataColumn(
-            label: Text("III", style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-          DataColumn(
-            label: Text("IV", style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-        ],
-        rows: [
-          for (var row in data)
-            DataRow(
-              cells: [
-                for (var cell in row)
-                  DataCell(
-                    SizedBox(
-                      width: 150,
-                      child: TextField(
-                        controller: cell,
-                        decoration: const InputDecoration(
-                          border: InputBorder.none,
-                          isDense: true,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-        ],
-      ),
+  Widget _tableBodyCell(Widget child) {
+    return Padding(
+      padding: const EdgeInsets.all(6),
+      child: SizedBox(height: 44, child: Center(child: child)),
     );
   }
 
-  // Widget _headerBox(String text, {required int flex}) {
-  //   return Expanded(
-  //     flex: flex,
-  //     child: Container(
-  //       height: 48,
-  //       alignment: Alignment.center,
-  //       decoration: BoxDecoration(
-  //         border: Border.all(color: Colors.grey.shade400, width: 0.7),
-  //         color: Colors.grey.shade200,
-  //       ),
-  //       child: AutoSizeText(
-  //         text,
-  //         maxLines: 2,
-  //         minFontSize: 9,
-  //         style: const TextStyle(fontWeight: FontWeight.bold),
-  //       ),
-  //     ),
-  //   );
-  // }
+  // ---------- versi sederhana untuk tabel triwulan (7 kolom) ----------
+  Widget buildTableTriwulanSafe({
+    required List<List<TextEditingController>> data,
+  }) {
+    // headers triwulan (tanpa NO)
+    final headers = ["SASARAN", "INDIKATOR", "TARGET", "I", "II", "III", "IV"];
+    return buildTableSafe(headers: headers, data: data, showNumber: false);
+  }
 
-  // Widget _emptyBox({required int flex}) {
-  //   return Expanded(
-  //     flex: flex,
-  //     child: Container(
-  //       height: 32,
-  //       decoration: BoxDecoration(
-  //         border: Border.all(color: Colors.grey.shade400, width: 0.7),
-  //         color: Colors.grey.shade200,
-  //       ),
-  //     ),
-  //   );
-  // }
-
-  // ---------- main build ----------
+  // ---------- build utama ----------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -228,6 +192,7 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
       ),
       body: Column(
         children: [
+          // konten scrollable
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
@@ -262,7 +227,7 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                     ),
                     const SizedBox(height: 20),
 
-                    // FORM NAMA & JABATAN
+                    // --- Form singkat ---
                     _input("BUDI SANTOSO"),
                     const SizedBox(height: 8),
                     _input("Administrasi Pengembangan"),
@@ -285,8 +250,8 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                     ),
                     const SizedBox(height: 20),
 
-                    // --- tabel 1 ---
-                    buildTable(
+                    // --- Tabel 1 (safe) ---
+                    buildTableSafe(
                       headers: [
                         "SASARAN",
                         "INDIKATOR KINERJA",
@@ -295,17 +260,19 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                         "SUMBER DATA",
                       ],
                       data: tabel1,
+                      showNumber: true,
                     ),
                     const SizedBox(height: 12),
 
-                    // --- tabel triwulan ---
-                    buildTableTriwulan(data: tabel2),
+                    // --- Tabel Triwulan (safe) ---
+                    buildTableTriwulanSafe(data: tabel2),
                     const SizedBox(height: 12),
 
-                    // --- tabel 3 ---
-                    buildTable(
+                    // --- Tabel 3 (safe) ---
+                    buildTableSafe(
                       headers: ["PROGRAM", "ANGGARAN", "KETERANGAN"],
                       data: tabel3,
+                      showNumber: true,
                     ),
                     const SizedBox(height: 18),
 
