@@ -165,95 +165,251 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
 
   // ---------- versi sederhana untuk tabel triwulan (7 kolom) ----------
 
-  Widget buildTriwulanTable({required List<List<TextEditingController>> data}) {
-    return DataTable(
-      headingRowHeight: 0,
-      columnSpacing: 12,
-      dataRowHeight: 50,
-
-      /// otomatis mengikuti jumlah kolom dari data
-      columns: [
-        for (int i = 0; i < data.first.length; i++)
-          const DataColumn(label: SizedBox()),
-      ],
-
-      rows: [
-        for (var row in data)
-          DataRow(
-            cells: [
-              for (var c in row)
-                DataCell(
-                  TextField(
-                    controller: c,
-                    decoration: const InputDecoration(
-                      border: InputBorder.none,
-                      isDense: true,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-      ],
-    );
-  }
-
-  Widget buildTriwulanHeader() {
+  /// ================== TABEL TRIWULAN FULL =====================
+  /// Panggil: buildTriwulanCombined(data: tabel2)
+  Widget buildTriwulanCombined({
+    required List<List<TextEditingController>> data,
+  }) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final width = constraints.maxWidth.isFinite
+        // lebar yang tersedia (finite) - pakai media jika tidak finite
+        final availableWidth = constraints.maxWidth.isFinite
             ? constraints.maxWidth
             : MediaQuery.of(context).size.width;
+
+        // rasio kolom (sesuaikan bila mau proporsi lain)
+        // Kita punya 7 kolom: SASARAN, INDIKATOR, TARGET (kolom tunggal), I, II, III, IV
+        // Beri bobot lebih besar pada kolom SASARAN & INDIKATOR
+        final ratios = <double>[2.0, 2.0, 1.2, 1.0, 1.0, 1.0, 1.0];
+        final totalRatio = ratios.reduce((a, b) => a + b);
+
+        // hitung width tiap kolom berdasarkan ratio
+        final columnWidths = ratios
+            .map(
+              (r) => (availableWidth * (r / totalRatio)).clamp(
+                80.0,
+                double.infinity,
+              ),
+            )
+            .toList();
+
+        final totalMinWidth = columnWidths.fold<double>(0, (s, w) => s + w);
 
         return SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: ConstrainedBox(
-            constraints: BoxConstraints(minWidth: width),
-            child: Table(
-              border: TableBorder.all(color: Colors.grey.shade400, width: 0.8),
-              columnWidths: const {
-                0: FlexColumnWidth(2),
-                1: FlexColumnWidth(2),
-                2: FlexColumnWidth(1),
-                3: FlexColumnWidth(1),
-                4: FlexColumnWidth(1),
-                5: FlexColumnWidth(1),
-              },
-              defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+            constraints: BoxConstraints(minWidth: totalMinWidth),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                /// ====== ROW 1 ======
-                TableRow(
+                // ===== HEADER (2 baris) =====
+                // Baris 1: SASARAN | INDIKATOR | TARGET TRIWULAN (menempati 4 kolom terakhir visual)
+                Row(
                   children: [
-                    headerTop("SASARAN"),
-                    headerTop("INDIKATOR KINERJA"),
-
-                    /// merge-like → 4 kolom TARGET
-                    TableCell(
-                      verticalAlignment: TableCellVerticalAlignment.middle,
+                    // SASARAN
+                    SizedBox(
+                      width: columnWidths[0],
                       child: Container(
-                        height: 40,
+                        height: 48,
                         alignment: Alignment.center,
-                        color: Colors.grey.shade200,
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: Colors.grey.shade400,
+                            width: 0.8,
+                          ),
+                          color: Colors.grey.shade200,
+                        ),
                         child: const Text(
-                          "TARGET",
+                          "SASARAN",
+                          textAlign: TextAlign.center,
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ),
                     ),
-                    const SizedBox(),
-                    const SizedBox(),
-                    const SizedBox(),
+
+                    // INDIKATOR
+                    SizedBox(
+                      width: columnWidths[1],
+                      child: Container(
+                        height: 48,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: Colors.grey.shade400,
+                            width: 0.8,
+                          ),
+                          color: Colors.grey.shade200,
+                        ),
+                        child: const Text(
+                          "INDIKATOR KINERJA",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+
+                    // TARGET (kolom tunggal, tampilkan label "TARGET" di atas kolom Target)
+                    SizedBox(
+                      width: columnWidths[2],
+                      child: Container(
+                        height: 48,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: Colors.grey.shade400,
+                            width: 0.8,
+                          ),
+                          color: Colors.grey.shade200,
+                        ),
+                        child: const Text(
+                          "TARGET",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+
+                    // Gabungan visual "Target Triwulan" di atas 4 kolom triwulan:
+                    SizedBox(
+                      width:
+                          columnWidths[3] +
+                          columnWidths[4] +
+                          columnWidths[5] +
+                          columnWidths[6],
+                      child: Container(
+                        height: 48,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: Colors.grey.shade400,
+                            width: 0.8,
+                          ),
+                          color: Colors.grey.shade200,
+                        ),
+                        child: const Text(
+                          "TARGET TRIWULAN",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
 
-                /// ====== ROW 2 ======
-                TableRow(
+                // Baris 2: kosong untuk SASARAN, kosong untuk INDIKATOR, kosong untuk TARGET,
+                // lalu subheaders I, II, III, IV masing-masing di bawah area "TARGET TRIWULAN"
+                Row(
                   children: [
-                    subHeaderEmpty(),
-                    subHeaderEmpty(),
-                    subHeader("I"),
-                    subHeader("II"),
-                    subHeader("III"),
-                    subHeader("IV"),
+                    SizedBox(
+                      width: columnWidths[0],
+                      child: Container(
+                        height: 40,
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: Colors.grey.shade400,
+                            width: 0.8,
+                          ),
+                          color: Colors.grey.shade200,
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      width: columnWidths[1],
+                      child: Container(
+                        height: 40,
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: Colors.grey.shade400,
+                            width: 0.8,
+                          ),
+                          color: Colors.grey.shade200,
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      width: columnWidths[2],
+                      child: Container(
+                        height: 40,
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: Colors.grey.shade400,
+                            width: 0.8,
+                          ),
+                          color: Colors.grey.shade200,
+                        ),
+                      ),
+                    ),
+
+                    // sekarang empat kolom subheaders (I..IV)
+                    for (int k = 3; k <= 6; k++)
+                      SizedBox(
+                        width: columnWidths[k],
+                        child: Container(
+                          height: 40,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: Colors.grey.shade400,
+                              width: 0.8,
+                            ),
+                            color: Colors.grey.shade200,
+                          ),
+                          child: Text(
+                            ["I", "II", "III", "IV"][k - 3],
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+
+                // ===== ISI TABEL (DataTable tanpa header bawaan) =====
+                // Kita buat DataTable dengan headingRowHeight: 0 sehingga header default tidak muncul.
+                // Pastikan setiap DataRow memiliki 7 DataCell (sama jumlah dengan columns di bawah).
+                DataTable(
+                  headingRowHeight: 0,
+                  dataRowHeight: 52,
+                  horizontalMargin: 0,
+                  columnSpacing: 0,
+                  // columns harus sama jumlahnya (7)
+                  columns: [
+                    DataColumn(label: SizedBox(width: columnWidths[0])),
+                    DataColumn(label: SizedBox(width: columnWidths[1])),
+                    DataColumn(label: SizedBox(width: columnWidths[2])),
+                    DataColumn(label: SizedBox(width: columnWidths[3])),
+                    DataColumn(label: SizedBox(width: columnWidths[4])),
+                    DataColumn(label: SizedBox(width: columnWidths[5])),
+                    DataColumn(label: SizedBox(width: columnWidths[6])),
+                  ],
+                  rows: [
+                    for (var row in data)
+                      DataRow(
+                        cells: [
+                          // pastikan setiap row.length == 7 (jika kurang/lebih -> isi/trim dulu)
+                          for (int i = 0; i < 7; i++)
+                            DataCell(
+                              SizedBox(
+                                width: columnWidths[i],
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                  ),
+                                  child: TextField(
+                                    controller: row[i],
+                                    decoration: const InputDecoration(
+                                      border: InputBorder.none,
+                                      isDense: true,
+                                      contentPadding: EdgeInsets.symmetric(
+                                        vertical: 8,
+                                      ),
+                                    ),
+                                    style: const TextStyle(fontSize: 13),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
                   ],
                 ),
               ],
@@ -288,6 +444,66 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
 
   Widget subHeaderEmpty() {
     return Container(height: 32, color: Colors.grey.shade200);
+  }
+
+  /// =========================
+  /// Helper header
+  /// =========================
+
+  DataCell headerCell(String text) {
+    return DataCell(
+      Container(
+        padding: const EdgeInsets.all(8),
+        color: Colors.grey.shade300,
+        alignment: Alignment.center,
+        child: Text(
+          text,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
+  DataCell subHeaderCell(String text) {
+    return DataCell(
+      Container(
+        padding: const EdgeInsets.all(8),
+        color: Colors.grey.shade200,
+        alignment: Alignment.center,
+        child: Text(
+          text,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
+  Widget emptyHeader() {
+    return Container(height: 36, color: Colors.grey.shade200);
+  }
+
+  Widget headerSub(String text) {
+    return Container(
+      height: 32,
+      alignment: Alignment.center,
+      color: Colors.grey.shade200,
+      child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold)),
+    );
+  }
+
+  Widget dataCellTF(TextEditingController c) {
+    return Padding(
+      padding: const EdgeInsets.all(6),
+      child: TextField(
+        controller: c,
+        decoration: const InputDecoration(
+          border: InputBorder.none,
+          isDense: true,
+        ),
+      ),
+    );
   }
 
   // ---------- build utama ----------
@@ -383,9 +599,9 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                     const SizedBox(height: 12),
 
                     // --- Tabel Triwulan (safe) ---
-                    buildTriwulanHeader(),
-                    const SizedBox(height: 4),
-                    buildTriwulanTable(data: tabel2),
+                    // buildTriwulanHeader(),
+                    // const SizedBox(height: 4),
+                    buildTriwulanCombined(data: tabel2),
 
                     const SizedBox(height: 12),
 
