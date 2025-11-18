@@ -164,12 +164,130 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
   }
 
   // ---------- versi sederhana untuk tabel triwulan (7 kolom) ----------
-  Widget buildTableTriwulanSafe({
-    required List<List<TextEditingController>> data,
-  }) {
-    // headers triwulan (tanpa NO)
-    final headers = ["SASARAN", "INDIKATOR", "TARGET", "I", "II", "III", "IV"];
-    return buildTableSafe(headers: headers, data: data, showNumber: false);
+
+  Widget buildTriwulanTable({required List<List<TextEditingController>> data}) {
+    return DataTable(
+      headingRowHeight: 0,
+      columnSpacing: 12,
+      dataRowHeight: 50,
+
+      /// otomatis mengikuti jumlah kolom dari data
+      columns: [
+        for (int i = 0; i < data.first.length; i++)
+          const DataColumn(label: SizedBox()),
+      ],
+
+      rows: [
+        for (var row in data)
+          DataRow(
+            cells: [
+              for (var c in row)
+                DataCell(
+                  TextField(
+                    controller: c,
+                    decoration: const InputDecoration(
+                      border: InputBorder.none,
+                      isDense: true,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+      ],
+    );
+  }
+
+  Widget buildTriwulanHeader() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : MediaQuery.of(context).size.width;
+
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minWidth: width),
+            child: Table(
+              border: TableBorder.all(color: Colors.grey.shade400, width: 0.8),
+              columnWidths: const {
+                0: FlexColumnWidth(2),
+                1: FlexColumnWidth(2),
+                2: FlexColumnWidth(1),
+                3: FlexColumnWidth(1),
+                4: FlexColumnWidth(1),
+                5: FlexColumnWidth(1),
+              },
+              defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+              children: [
+                /// ====== ROW 1 ======
+                TableRow(
+                  children: [
+                    headerTop("SASARAN"),
+                    headerTop("INDIKATOR KINERJA"),
+
+                    /// merge-like → 4 kolom TARGET
+                    TableCell(
+                      verticalAlignment: TableCellVerticalAlignment.middle,
+                      child: Container(
+                        height: 40,
+                        alignment: Alignment.center,
+                        color: Colors.grey.shade200,
+                        child: const Text(
+                          "TARGET",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(),
+                    const SizedBox(),
+                    const SizedBox(),
+                  ],
+                ),
+
+                /// ====== ROW 2 ======
+                TableRow(
+                  children: [
+                    subHeaderEmpty(),
+                    subHeaderEmpty(),
+                    subHeader("I"),
+                    subHeader("II"),
+                    subHeader("III"),
+                    subHeader("IV"),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget headerTop(String text) {
+    return Container(
+      height: 40,
+      alignment: Alignment.center,
+      color: Colors.grey.shade200,
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  Widget subHeader(String text) {
+    return Container(
+      height: 32,
+      alignment: Alignment.center,
+      color: Colors.grey.shade200,
+      child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold)),
+    );
+  }
+
+  Widget subHeaderEmpty() {
+    return Container(height: 32, color: Colors.grey.shade200);
   }
 
   // ---------- build utama ----------
@@ -265,7 +383,10 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                     const SizedBox(height: 12),
 
                     // --- Tabel Triwulan (safe) ---
-                    buildTableTriwulanSafe(data: tabel2),
+                    buildTriwulanHeader(),
+                    const SizedBox(height: 4),
+                    buildTriwulanTable(data: tabel2),
+
                     const SizedBox(height: 12),
 
                     // --- Tabel 3 (safe) ---
