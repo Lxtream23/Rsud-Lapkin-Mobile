@@ -280,50 +280,42 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                 ),
 
                 // ================= DATA TABLE =================
-                DataTable(
-                  headingRowHeight: 0,
-                  dataRowHeight: 52,
-                  horizontalMargin: 0,
-                  columnSpacing: 0,
-                  columns: [
+                Table(
+                  columnWidths: {
                     for (int i = 0; i < 7; i++)
-                      DataColumn(label: SizedBox(width: columnWidths[i])),
-                  ],
-                  rows: [
+                      i: FixedColumnWidth(columnWidths[i]),
+                  },
+                  border: TableBorder.all(
+                    color: Colors.grey.shade400,
+                    width: 1,
+                  ),
+                  defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                  children: [
                     for (int r = 0; r < data.length; r++)
-                      DataRow(
-                        cells: [
+                      TableRow(
+                        children: [
                           for (int c = 0; c < 7; c++)
-                            DataCell(
-                              Container(
-                                width: columnWidths[c],
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: Colors.grey.shade400,
-                                  ), // BORDER
+                            Container(
+                              height: 52,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                              ),
+                              alignment: Alignment.centerLeft,
+                              child: TextField(
+                                controller: data[r][c],
+                                decoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.zero,
                                 ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                ),
-                                child: TextField(
-                                  controller: data[r][c],
-                                  decoration: const InputDecoration(
-                                    border: InputBorder.none,
-                                    isDense: true,
-                                    contentPadding: EdgeInsets.symmetric(
-                                      vertical: 10,
-                                    ),
-                                  ),
-                                  style: const TextStyle(fontSize: 13),
-
-                                  onTap: () {
-                                    if (r == data.length - 1) onAddRow();
-                                  },
-                                  onChanged: (v) {
-                                    if (r == data.length - 1 && v.isNotEmpty)
-                                      onAddRow();
-                                  },
-                                ),
+                                style: const TextStyle(fontSize: 13),
+                                onTap: () {
+                                  if (r == data.length - 1) onAddRow();
+                                },
+                                onChanged: (v) {
+                                  if (r == data.length - 1 && v.isNotEmpty)
+                                    onAddRow();
+                                },
                               ),
                             ),
                         ],
