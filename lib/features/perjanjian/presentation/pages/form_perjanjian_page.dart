@@ -41,6 +41,8 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
   late final List<List<TextEditingController>> tabel2 = generateTableData(3, 7);
   late final List<List<TextEditingController>> tabel3 = generateTableData(4, 3);
 
+  List<List<TextEditingController>> data = [];
+
   @override
   void dispose() {
     namaController.dispose();
@@ -169,21 +171,17 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
   /// Panggil: buildTriwulanCombined(data: tabel2)
   Widget buildTriwulanCombined({
     required List<List<TextEditingController>> data,
+    required VoidCallback onAddRow, // <- callback untuk tambah baris
   }) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // lebar yang tersedia (finite) - pakai media jika tidak finite
         final availableWidth = constraints.maxWidth.isFinite
             ? constraints.maxWidth
             : MediaQuery.of(context).size.width;
 
-        // rasio kolom (sesuaikan bila mau proporsi lain)
-        // Kita punya 7 kolom: SASARAN, INDIKATOR, TARGET (kolom tunggal), I, II, III, IV
-        // Beri bobot lebih besar pada kolom SASARAN & INDIKATOR
         final ratios = <double>[2.0, 2.0, 1.2, 1.0, 1.0, 1.0, 1.0];
         final totalRatio = ratios.reduce((a, b) => a + b);
 
-        // hitung width tiap kolom berdasarkan ratio
         final columnWidths = ratios
             .map(
               (r) => (availableWidth * (r / totalRatio)).clamp(
@@ -202,74 +200,28 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ===== HEADER (2 baris) =====
-                // Baris 1: SASARAN | INDIKATOR | TARGET TRIWULAN (menempati 4 kolom terakhir visual)
+                // ================= HEADER =================
                 Row(
                   children: [
-                    // SASARAN
-                    SizedBox(
-                      width: columnWidths[0],
-                      child: Container(
-                        height: 48,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: Colors.grey.shade400,
-                            width: 0.8,
+                    for (int i = 0; i < 3; i++)
+                      SizedBox(
+                        width: columnWidths[i],
+                        child: Container(
+                          height: 48,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade400),
+                            color: Colors.grey.shade200,
                           ),
-                          color: Colors.grey.shade200,
-                        ),
-                        child: const Text(
-                          "SASARAN",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                          child: Text(
+                            ["SASARAN", "INDIKATOR KINERJA", "TARGET"][i],
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                            textAlign: TextAlign.center,
+                          ),
                         ),
                       ),
-                    ),
 
-                    // INDIKATOR
-                    SizedBox(
-                      width: columnWidths[1],
-                      child: Container(
-                        height: 48,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: Colors.grey.shade400,
-                            width: 0.8,
-                          ),
-                          color: Colors.grey.shade200,
-                        ),
-                        child: const Text(
-                          "INDIKATOR KINERJA",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ),
-
-                    // TARGET (kolom tunggal, tampilkan label "TARGET" di atas kolom Target)
-                    SizedBox(
-                      width: columnWidths[2],
-                      child: Container(
-                        height: 48,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: Colors.grey.shade400,
-                            width: 0.8,
-                          ),
-                          color: Colors.grey.shade200,
-                        ),
-                        child: const Text(
-                          "TARGET",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ),
-
-                    // Gabungan visual "Target Triwulan" di atas 4 kolom triwulan:
+                    // Gabungan target triwulan
                     SizedBox(
                       width:
                           columnWidths[3] +
@@ -280,82 +232,46 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                         height: 48,
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
-                          border: Border.all(
-                            color: Colors.grey.shade400,
-                            width: 0.8,
-                          ),
+                          border: Border.all(color: Colors.grey.shade400),
                           color: Colors.grey.shade200,
                         ),
                         child: const Text(
                           "TARGET TRIWULAN",
-                          textAlign: TextAlign.center,
                           style: TextStyle(fontWeight: FontWeight.bold),
+                          textAlign: TextAlign.center,
                         ),
                       ),
                     ),
                   ],
                 ),
 
-                // Baris 2: kosong untuk SASARAN, kosong untuk INDIKATOR, kosong untuk TARGET,
-                // lalu subheaders I, II, III, IV masing-masing di bawah area "TARGET TRIWULAN"
+                // Sub-header I–IV
                 Row(
                   children: [
-                    SizedBox(
-                      width: columnWidths[0],
-                      child: Container(
-                        height: 40,
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: Colors.grey.shade400,
-                            width: 0.8,
-                          ),
-                          color: Colors.grey.shade200,
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      width: columnWidths[1],
-                      child: Container(
-                        height: 40,
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: Colors.grey.shade400,
-                            width: 0.8,
-                          ),
-                          color: Colors.grey.shade200,
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      width: columnWidths[2],
-                      child: Container(
-                        height: 40,
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: Colors.grey.shade400,
-                            width: 0.8,
-                          ),
-                          color: Colors.grey.shade200,
-                        ),
-                      ),
-                    ),
-
-                    // sekarang empat kolom subheaders (I..IV)
-                    for (int k = 3; k <= 6; k++)
+                    for (int i = 0; i < 3; i++)
                       SizedBox(
-                        width: columnWidths[k],
+                        width: columnWidths[i],
+                        child: Container(
+                          height: 40,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade400),
+                            color: Colors.grey.shade200,
+                          ),
+                        ),
+                      ),
+
+                    for (int i = 0; i < 4; i++)
+                      SizedBox(
+                        width: columnWidths[i + 3],
                         child: Container(
                           height: 40,
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
-                            border: Border.all(
-                              color: Colors.grey.shade400,
-                              width: 0.8,
-                            ),
+                            border: Border.all(color: Colors.grey.shade400),
                             color: Colors.grey.shade200,
                           ),
                           child: Text(
-                            ["I", "II", "III", "IV"][k - 3],
+                            ["I", "II", "III", "IV"][i],
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                         ),
@@ -363,48 +279,50 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                   ],
                 ),
 
-                // ===== ISI TABEL (DataTable tanpa header bawaan) =====
-                // Kita buat DataTable dengan headingRowHeight: 0 sehingga header default tidak muncul.
-                // Pastikan setiap DataRow memiliki 7 DataCell (sama jumlah dengan columns di bawah).
+                // ================= DATA TABLE =================
                 DataTable(
                   headingRowHeight: 0,
                   dataRowHeight: 52,
                   horizontalMargin: 0,
                   columnSpacing: 0,
-                  // columns harus sama jumlahnya (7)
                   columns: [
-                    DataColumn(label: SizedBox(width: columnWidths[0])),
-                    DataColumn(label: SizedBox(width: columnWidths[1])),
-                    DataColumn(label: SizedBox(width: columnWidths[2])),
-                    DataColumn(label: SizedBox(width: columnWidths[3])),
-                    DataColumn(label: SizedBox(width: columnWidths[4])),
-                    DataColumn(label: SizedBox(width: columnWidths[5])),
-                    DataColumn(label: SizedBox(width: columnWidths[6])),
+                    for (int i = 0; i < 7; i++)
+                      DataColumn(label: SizedBox(width: columnWidths[i])),
                   ],
                   rows: [
-                    for (var row in data)
+                    for (int r = 0; r < data.length; r++)
                       DataRow(
                         cells: [
-                          // pastikan setiap row.length == 7 (jika kurang/lebih -> isi/trim dulu)
-                          for (int i = 0; i < 7; i++)
+                          for (int c = 0; c < 7; c++)
                             DataCell(
-                              SizedBox(
-                                width: columnWidths[i],
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                  ),
-                                  child: TextField(
-                                    controller: row[i],
-                                    decoration: const InputDecoration(
-                                      border: InputBorder.none,
-                                      isDense: true,
-                                      contentPadding: EdgeInsets.symmetric(
-                                        vertical: 8,
-                                      ),
+                              Container(
+                                width: columnWidths[c],
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: Colors.grey.shade400,
+                                  ), // BORDER
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                ),
+                                child: TextField(
+                                  controller: data[r][c],
+                                  decoration: const InputDecoration(
+                                    border: InputBorder.none,
+                                    isDense: true,
+                                    contentPadding: EdgeInsets.symmetric(
+                                      vertical: 10,
                                     ),
-                                    style: const TextStyle(fontSize: 13),
                                   ),
+                                  style: const TextStyle(fontSize: 13),
+
+                                  onTap: () {
+                                    if (r == data.length - 1) onAddRow();
+                                  },
+                                  onChanged: (v) {
+                                    if (r == data.length - 1 && v.isNotEmpty)
+                                      onAddRow();
+                                  },
                                 ),
                               ),
                             ),
@@ -506,6 +424,32 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     );
   }
 
+  @override
+  void initState() {
+    super.initState();
+    addRow(); // tambah baris pertama
+  }
+
+  void addRow() {
+    data.add(List.generate(7, (index) => TextEditingController()));
+    setState(() {});
+  }
+
+  // Fungsi cek apakah harus auto tambah row
+  void checkAutoAdd(int rowIndex, int colIndex) {
+    final controller = data[rowIndex][colIndex];
+
+    controller.addListener(() {
+      final isLastRow = rowIndex == data.length - 1;
+      final hasText = controller.text.trim().isNotEmpty;
+
+      if (isLastRow && hasText) {
+        // print("Auto create row...");
+        addRow();
+      }
+    });
+  }
+
   // ---------- build utama ----------
   @override
   Widget build(BuildContext context) {
@@ -601,8 +545,7 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                     // --- Tabel Triwulan (safe) ---
                     // buildTriwulanHeader(),
                     // const SizedBox(height: 4),
-                    buildTriwulanCombined(data: tabel2),
-
+                    buildTriwulanCombined(data: data, onAddRow: () => addRow()),
                     const SizedBox(height: 12),
 
                     // --- Tabel 3 (safe) ---
