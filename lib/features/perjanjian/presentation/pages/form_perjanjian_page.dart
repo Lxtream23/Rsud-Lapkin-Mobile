@@ -168,137 +168,241 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
   // ---------- versi sederhana untuk tabel triwulan (7 kolom) ----------
 
   /// ================== TABEL TRIWULAN FULL =====================
-  /// Panggil: buildTriwulanCombined(data: tabel2)
+  // --- PASTE / REPLACE buildTriwulanCombined dengan ini ---
   Widget buildTriwulanCombined({
     required List<List<TextEditingController>> data,
-    required VoidCallback onAddRow, // <- callback untuk tambah baris
+    required VoidCallback onAddRow,
   }) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        // Lebar yang tersedia; fallback ke width layar jika tidak finite.
         final availableWidth = constraints.maxWidth.isFinite
             ? constraints.maxWidth
             : MediaQuery.of(context).size.width;
 
-        final ratios = <double>[2.0, 2.0, 1.2, 1.0, 1.0, 1.0, 1.0];
-        final totalRatio = ratios.reduce((a, b) => a + b);
+        // FIXED column widths (sesuaikan angka jika ingin lebih sempit/lebar)
+        // Ini memastikan layout terlihat sama pada berbagai device (scroll muncul bila perlu)
+        final List<double> fixed = [
+          240, // SASARAN
+          240, // INDIKATOR KINERJA
+          120, // TARGET
+          90, // I
+          90, // II
+          90, // III
+          90, // IV
+        ];
 
-        final columnWidths = ratios
-            .map(
-              (r) => (availableWidth * (r / totalRatio)).clamp(
-                80.0,
-                double.infinity,
+        // Jika availableWidth lebih besar daripada jumlah fixed, kita bisa scale sedikit
+        final totalFixed = fixed.reduce((a, b) => a + b);
+        final scale = (availableWidth > totalFixed)
+            ? (availableWidth / totalFixed)
+            : 1.0;
+        final columnWidths = fixed.map((w) => w * scale).toList();
+        final minTotalWidth = columnWidths.fold<double>(0, (s, w) => s + w);
+
+        Widget headerCell(
+          String text, {
+          required double w,
+          required double h,
+          bool drawBottom = true,
+          bool drawTop = true,
+        }) {
+          return Container(
+            width: w,
+            height: h,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade200,
+              border: Border(
+                top: drawTop
+                    ? BorderSide(color: Colors.black, width: 1)
+                    : BorderSide.none,
+                left: BorderSide(color: Colors.black, width: 1),
+                right: BorderSide(color: Colors.black, width: 1),
+                bottom: drawBottom
+                    ? BorderSide(color: Colors.black, width: 1)
+                    : BorderSide.none,
               ),
-            )
-            .toList();
+            ),
+            child: Text(
+              text,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          );
+        }
 
-        final totalMinWidth = columnWidths.fold<double>(0, (s, w) => s + w);
+        Widget emptyCell(
+          double w,
+          double h, {
+          bool drawTop = true,
+          bool drawBottom = true,
+        }) {
+          return Container(
+            width: w,
+            height: h,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade200,
+              border: Border(
+                top: drawTop
+                    ? BorderSide(color: Colors.black, width: 1)
+                    : BorderSide.none,
+                left: BorderSide(color: Colors.black, width: 1),
+                right: BorderSide(color: Colors.black, width: 1),
+                bottom: drawBottom
+                    ? BorderSide(color: Colors.black, width: 1)
+                    : BorderSide.none,
+              ),
+            ),
+          );
+        }
+
+        Widget dataCell(TextEditingController controller, double w) {
+          return Container(
+            width: w,
+            height: 52,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            decoration: BoxDecoration(
+              border: Border(
+                left: BorderSide(color: Colors.black, width: 1),
+                right: BorderSide(color: Colors.black, width: 1),
+                bottom: BorderSide(color: Colors.black, width: 1),
+              ),
+            ),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: TextField(
+                controller: controller,
+                decoration: const InputDecoration(
+                  border: InputBorder.none,
+                  isDense: true,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                style: const TextStyle(fontSize: 13),
+                // pemanggilan onAddRow diserahkan dari pemanggil
+              ),
+            ),
+          );
+        }
 
         return SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: ConstrainedBox(
-            constraints: BoxConstraints(minWidth: totalMinWidth),
+            constraints: BoxConstraints(minWidth: minTotalWidth),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ================= HEADER =================
+                // ROW 1: SASARAN | INDIKATOR | TARGET | TARGET TRIWULAN(spans 4 cols)
                 Row(
                   children: [
-                    for (int i = 0; i < 3; i++)
-                      SizedBox(
-                        width: columnWidths[i],
-                        child: Container(
-                          height: 48,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade400),
-                            color: Colors.grey.shade200,
-                          ),
-                          child: Text(
-                            ["SASARAN", "INDIKATOR KINERJA", "TARGET"][i],
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ),
-
-                    // Gabungan target triwulan
-                    SizedBox(
+                    // SASARAN (visual: span two rows) => tidak menggambar bottom border supaya terlihat menyatu
+                    headerCell(
+                      "SASARAN",
+                      w: columnWidths[0],
+                      h: 70,
+                      drawBottom: false,
+                    ),
+                    headerCell(
+                      "INDIKATOR KINERJA",
+                      w: columnWidths[1],
+                      h: 70,
+                      drawBottom: false,
+                    ),
+                    headerCell(
+                      "TARGET",
+                      w: columnWidths[2],
+                      h: 70,
+                      drawBottom: false,
+                    ),
+                    // Merged header area for 4 triwulan columns:
+                    Container(
                       width:
                           columnWidths[3] +
                           columnWidths[4] +
                           columnWidths[5] +
                           columnWidths[6],
-                      child: Container(
-                        height: 48,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade400),
-                          color: Colors.grey.shade200,
+                      height: 35,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade200,
+                        border: Border(
+                          top: BorderSide(color: Colors.black, width: 1),
+                          left: BorderSide(color: Colors.black, width: 1),
+                          right: BorderSide(color: Colors.black, width: 1),
+                          bottom: BorderSide(color: Colors.black, width: 1),
                         ),
-                        child: const Text(
-                          "TARGET TRIWULAN",
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                          textAlign: TextAlign.center,
-                        ),
+                      ),
+                      child: const Text(
+                        "TARGET TRIWULAN",
+                        style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
                   ],
                 ),
 
-                // Sub-header I–IV
+                // ROW 2: empty for first three columns (to simulate vertical merge), then I..IV subheaders
                 Row(
                   children: [
-                    for (int i = 0; i < 3; i++)
-                      SizedBox(
-                        width: columnWidths[i],
-                        child: Container(
-                          height: 40,
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade400),
-                            color: Colors.grey.shade200,
+                    // kosong di bawah SASARAN/INDIKATOR/TARGET (tanpa top border supaya menyatu)
+                    emptyCell(columnWidths[0], 35, drawTop: false),
+                    emptyCell(columnWidths[1], 35, drawTop: false),
+                    emptyCell(columnWidths[2], 35, drawTop: false),
+                    // subheaders I..IV (each with full border)
+                    for (int i = 0; i < 4; i++)
+                      Container(
+                        width: columnWidths[i + 3],
+                        height: 35,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade200,
+                          border: Border(
+                            top: BorderSide(color: Colors.black, width: 1),
+                            left: BorderSide(color: Colors.black, width: 1),
+                            right: BorderSide(color: Colors.black, width: 1),
+                            bottom: BorderSide(color: Colors.black, width: 1),
                           ),
                         ),
-                      ),
-
-                    for (int i = 0; i < 4; i++)
-                      SizedBox(
-                        width: columnWidths[i + 3],
-                        child: Container(
-                          height: 40,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade400),
-                            color: Colors.grey.shade200,
-                          ),
-                          child: Text(
-                            ["I", "II", "III", "IV"][i],
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
+                        child: Text(
+                          ["I", "II", "III", "IV"][i],
+                          style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ),
                   ],
                 ),
 
-                // ================= DATA TABLE =================
-                Table(
-                  columnWidths: {
-                    for (int i = 0; i < 7; i++)
-                      i: FixedColumnWidth(columnWidths[i]),
-                  },
-                  border: TableBorder.all(
-                    color: Colors.grey.shade400,
-                    width: 1,
-                  ),
-                  defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-                  children: [
-                    for (int r = 0; r < data.length; r++)
-                      TableRow(
-                        children: [
-                          for (int c = 0; c < 7; c++)
-                            Container(
+                // DATA ROWS: gunakan Row per data row supaya alignment persis sesuai header widths
+                for (int r = 0; r < data.length; r++)
+                  Row(
+                    children: [
+                      // Pastikan setiap row memiliki 7 controller (jika kurang, isi dulu di caller)
+                      for (int c = 0; c < 7; c++)
+                        SizedBox(
+                          width: columnWidths[c],
+                          child: GestureDetector(
+                            // agar tap pada textfield bisa memicu addRow di pemanggil (boleh disesuaikan)
+                            onTap: () {
+                              if (r == data.length - 1) onAddRow();
+                            },
+                            child: Container(
                               height: 52,
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
+                                horizontal: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                border: Border(
+                                  left: BorderSide(
+                                    color: Colors.black,
+                                    width: 1,
+                                  ),
+                                  right: BorderSide(
+                                    color: Colors.black,
+                                    width: 1,
+                                  ),
+                                  bottom: BorderSide(
+                                    color: Colors.black,
+                                    width: 1,
+                                  ),
+                                ),
                               ),
                               alignment: Alignment.centerLeft,
                               child: TextField(
@@ -309,24 +413,79 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                                   contentPadding: EdgeInsets.zero,
                                 ),
                                 style: const TextStyle(fontSize: 13),
-                                onTap: () {
-                                  if (r == data.length - 1) onAddRow();
-                                },
                                 onChanged: (v) {
-                                  if (r == data.length - 1 && v.isNotEmpty)
+                                  if (r == data.length - 1 &&
+                                      v.trim().isNotEmpty) {
                                     onAddRow();
+                                  }
                                 },
                               ),
                             ),
-                        ],
-                      ),
-                  ],
-                ),
+                          ),
+                        ),
+                    ],
+                  ),
               ],
             ),
           ),
         );
       },
+    );
+  }
+
+  // ================= WIDGET BANTUAN =================
+
+  final boxHeader = BoxDecoration(
+    border: Border.all(color: Colors.black),
+    color: Colors.grey.shade300,
+  );
+
+  Widget _headerCell(String text, double width, {double height = 60}) {
+    return Container(
+      width: width,
+      height: height,
+      alignment: Alignment.center,
+      decoration: boxHeader,
+      child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold)),
+    );
+  }
+
+  Widget _emptyHeader(double width) {
+    return Container(
+      width: width,
+      height: 35,
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.black),
+        color: Colors.grey.shade300,
+      ),
+    );
+  }
+
+  Widget _subHeader(String text, double width) {
+    return Container(
+      width: width,
+      height: 35,
+      alignment: Alignment.center,
+      decoration: boxHeader,
+      child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold)),
+    );
+  }
+
+  // Helper header widget
+  Widget headerBox(String text, double width, double height) {
+    return Container(
+      width: width,
+      height: height,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.black),
+        color: Colors.grey.shade200,
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(fontWeight: FontWeight.bold),
+        textAlign: TextAlign.center,
+      ),
     );
   }
 
