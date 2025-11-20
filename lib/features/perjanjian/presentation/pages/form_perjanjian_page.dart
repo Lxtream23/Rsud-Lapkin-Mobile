@@ -293,9 +293,10 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // ROW 1: SASARAN | INDIKATOR | TARGET | TARGET TRIWULAN(spans 4 cols)
+                // =============== ROW 1 ===============
+                // SASARAN | INDIKATOR | TARGET | TARGET TRIWULAN (merged visual)
                 Row(
                   children: [
-                    // SASARAN (visual: span two rows) => tidak menggambar bottom border supaya terlihat menyatu
                     headerCell(
                       "SASARAN",
                       w: columnWidths[0],
@@ -314,40 +315,55 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                       h: 70,
                       drawBottom: false,
                     ),
-                    // Merged header area for 4 triwulan columns:
-                    Container(
-                      width:
-                          columnWidths[3] +
-                          columnWidths[4] +
-                          columnWidths[5] +
-                          columnWidths[6],
-                      height: 35,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade200,
-                        border: Border(
-                          top: BorderSide(color: Colors.black, width: 1),
-                          left: BorderSide(color: Colors.black, width: 1),
-                          right: BorderSide(color: Colors.black, width: 1),
-                          bottom: BorderSide(color: Colors.black, width: 1),
+
+                    // 4 kolom header triwulan (merged secara visual)
+                    for (int i = 0; i < 4; i++)
+                      Container(
+                        width: columnWidths[i + 3],
+                        height: 70, // separuh tinggi
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade200,
+                          border: Border(
+                            top: const BorderSide(
+                              color: Colors.black,
+                              width: 1,
+                            ),
+                            bottom: BorderSide.none,
+                            left: i == 0
+                                ? const BorderSide(
+                                    color: Colors.black,
+                                    width: 1,
+                                  )
+                                : BorderSide.none,
+                            right: i == 3
+                                ? const BorderSide(
+                                    color: Colors.black,
+                                    width: 1,
+                                  )
+                                : BorderSide.none,
+                          ),
                         ),
+                        child:
+                            (i ==
+                                1) // kolom kedua dipakai sebagai posisi teks tengah
+                            ? const Text(
+                                "TARGET TRIWULAN",
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              )
+                            : null,
                       ),
-                      child: const Text(
-                        "TARGET TRIWULAN",
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
                   ],
                 ),
 
-                // ROW 2: empty for first three columns (to simulate vertical merge), then I..IV subheaders
+                // =============== ROW 2 ===============
+                // Subheader I–IV
                 Row(
                   children: [
-                    // kosong di bawah SASARAN/INDIKATOR/TARGET (tanpa top border supaya menyatu)
                     emptyCell(columnWidths[0], 35, drawTop: false),
                     emptyCell(columnWidths[1], 35, drawTop: false),
                     emptyCell(columnWidths[2], 35, drawTop: false),
-                    // subheaders I..IV (each with full border)
+
                     for (int i = 0; i < 4; i++)
                       Container(
                         width: columnWidths[i + 3],
@@ -355,7 +371,7 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color: Colors.grey.shade200,
-                          border: Border(
+                          border: const Border(
                             top: BorderSide(color: Colors.black, width: 1),
                             left: BorderSide(color: Colors.black, width: 1),
                             right: BorderSide(color: Colors.black, width: 1),
