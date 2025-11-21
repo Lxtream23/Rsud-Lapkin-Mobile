@@ -1,7 +1,13 @@
+// lib/views/your_path/form_perjanjian_page.dart
 import 'package:flutter/material.dart';
 import 'package:auto_size_text/auto_size_text.dart';
 import '../../../../config/app_colors.dart';
 import '../../../../config/app_text_style.dart';
+
+// sesuaikan path import widget sesuai struktur proyekmu:
+import '../widgets/tabel1.dart';
+import '../widgets/tabel2.dart';
+import '../widgets/tabelTriwulan.dart';
 
 class FormPerjanjianPage extends StatefulWidget {
   const FormPerjanjianPage({Key? key}) : super(key: key);
@@ -14,6 +20,7 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
   final TextEditingController namaController = TextEditingController();
   String? selectedJabatan;
 
+  // contoh daftar jabatan
   final List<String> jabatanList = [
     'Direktur',
     'Wadir Umum dan Keuangan',
@@ -28,555 +35,94 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     'Admin/Staf',
   ];
 
-  // helper untuk membuat data tabel (controllers)
-  List<List<TextEditingController>> generateTableData(int rows, int cols) {
-    return List.generate(
-      rows,
-      (_) => List.generate(cols, (_) => TextEditingController()),
-    );
-  }
+  // ---- tabel statis (dipakai untuk tabel1 & tabel3) ----
+  // jika kamu ingin Table1 dan Table3 external state, kamu bisa mengubah.
+  late final List<List<TextEditingController>> tabel1 = _gen(1, 5);
+  late final List<List<TextEditingController>> tabel3 = _gen(1, 3);
 
-  // ==== data tabel (pastikan kolom sesuai header) ====
-  late final List<List<TextEditingController>> tabel1 = generateTableData(5, 5);
-  late final List<List<TextEditingController>> tabel2 = generateTableData(3, 7);
-  late final List<List<TextEditingController>> tabel3 = generateTableData(4, 3);
+  // ---- data triwulan (dinamis) ----
+  final List<List<TextEditingController>> triwulanData = [];
 
-  List<List<TextEditingController>> data = [];
-
-  @override
-  void dispose() {
-    namaController.dispose();
-    for (final r in tabel1) for (final c in r) c.dispose();
-    for (final r in tabel2) for (final c in r) c.dispose();
-    for (final r in tabel3) for (final c in r) c.dispose();
-    super.dispose();
-  }
-
-  // ---------- SIMPLE / SAFE TABLE BUILDER ----------
-  List<String> headersB = [
-    "SASARAN",
-    "INDIKATOR KINERJA",
-    "TARGET",
-    "FORMULASI HITUNG",
-    "SUMBER DATA",
-  ];
-
-  List<List<TextEditingController>> dataB = [];
-
-  // headers = list header (excludes "NO")
-  // data = list of rows, each row must have same length as headers (TextEditingController)
-  Widget buildTableSafe({
-    required List<String> headers,
-    required List<List<TextEditingController>> data,
-    bool showNumber = true,
-    double colWidth = 160,
-  }) {
-    // Jika data masih kosong, tampilkan 1 baris
-    if (data.isEmpty) {
-      data.add([
-        for (int i = 0; i < headers.length; i++) TextEditingController(),
-      ]);
-    }
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: IntrinsicWidth(
-        child: Table(
-          columnWidths: {
-            for (int i = 0; i < headers.length + (showNumber ? 1 : 0); i++)
-              i: FixedColumnWidth(colWidth),
-          },
-          border: TableBorder.all(color: Colors.grey.shade400, width: 0.8),
-          defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-          children: [
-            /// -------- HEADER --------
-            TableRow(
-              decoration: BoxDecoration(color: Colors.grey.shade200),
-              children: [
-                if (showNumber) _tableHeaderCell("NO"),
-                for (final h in headers) _tableHeaderCell(h),
-              ],
-            ),
-
-            /// -------- DATA ROWS --------
-            for (int i = 0; i < data.length; i++)
-              TableRow(
-                children: [
-                  if (showNumber)
-                    _tableBodyCell(
-                      Text("${i + 1}", textAlign: TextAlign.center),
-                    ),
-
-                  for (int j = 0; j < headers.length; j++)
-                    _tableBodyCell(
-                      TextField(
-                        controller: data[i][j],
-                        onChanged: (_) {
-                          // jika user mengetik di row terakhir → tambah row baru
-                          if (i == data.length - 1) {
-                            data.add([
-                              for (int k = 0; k < headers.length; k++)
-                                TextEditingController(),
-                            ]);
-                          }
-                        },
-                        decoration: const InputDecoration(
-                          border: InputBorder.none,
-                          isDense: true,
-                          contentPadding: EdgeInsets.symmetric(
-                            vertical: 8,
-                            horizontal: 6,
-                          ),
-                        ),
-                        style: const TextStyle(fontSize: 13),
-                      ),
-                    ),
-                ],
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _tableHeaderCell(String text) {
-    return Padding(
-      padding: const EdgeInsets.all(8),
-      child: AutoSizeText(
-        text,
-        maxLines: 2,
-        minFontSize: 9,
-        textAlign: TextAlign.center,
-        style: const TextStyle(fontWeight: FontWeight.bold),
-      ),
-    );
-  }
-
-  Widget _tableBodyCell(Widget child) {
-    return Padding(
-      padding: const EdgeInsets.all(6),
-      child: SizedBox(height: 44, child: Center(child: child)),
-    );
-  }
-
-  /// ================== TABEL TRIWULAN FULL =====================
-  Widget buildTriwulanCombined({
-    required List<List<TextEditingController>> data,
-    required VoidCallback onAddRow,
-  }) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final availableWidth = constraints.maxWidth.isFinite
-            ? constraints.maxWidth
-            : MediaQuery.of(context).size.width;
-
-        // FIXED WIDTH
-        final List<double> fixed = [
-          240, // SASARAN
-          240, // INDIKATOR
-          120, // TARGET
-          90, // I
-          90, // II
-          90, // III
-          90, // IV
-        ];
-
-        final totalFixed = fixed.reduce((a, b) => a + b);
-        final scale = availableWidth > totalFixed
-            ? (availableWidth / totalFixed)
-            : 1.0;
-        final columnWidths = fixed.map((w) => w * scale).toList();
-        final minTotalWidth = columnWidths.fold<double>(0, (s, w) => s + w);
-
-        // ======================== HEADER CELL ========================
-        Widget header(
-          String text,
-          double w, {
-          double h = 40,
-          bool bottom = true,
-        }) {
-          return Container(
-            width: w,
-            height: h,
-            alignment: Alignment.bottomCenter,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade200,
-              border: Border(
-                top: BorderSide(color: Colors.grey.shade400, width: 1),
-                left: BorderSide(color: Colors.grey.shade400, width: 1),
-                right: BorderSide(color: Colors.grey.shade400, width: 1),
-                bottom: bottom
-                    ? BorderSide(color: Colors.grey.shade400, width: 1)
-                    : BorderSide.none,
-              ),
-            ),
-            child: Text(
-              text,
-              textAlign: TextAlign.center,
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          );
-        }
-
-        // EMPTY CELL (untuk merge visual)
-        Widget empty(double w, double h) {
-          return Container(
-            width: w,
-            height: h,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade200,
-              border: Border(
-                left: BorderSide(color: Colors.grey.shade400, width: 1),
-                right: BorderSide(color: Colors.grey.shade400, width: 1),
-                bottom: BorderSide(color: Colors.grey.shade400, width: 1),
-              ),
-            ),
-          );
-        }
-
-        // ======================== DATA CELL ========================
-        Widget dataCell(TextEditingController c, double w) {
-          return Container(
-            width: w,
-            height: 52,
-            padding: EdgeInsets.symmetric(horizontal: 8),
-            decoration: BoxDecoration(
-              border: Border(
-                left: BorderSide(color: Colors.grey.shade400, width: 1),
-                right: BorderSide(color: Colors.grey.shade400, width: 1),
-                bottom: BorderSide(color: Colors.grey.shade400, width: 1),
-              ),
-            ),
-            child: TextField(
-              controller: c,
-              decoration: InputDecoration(
-                border: InputBorder.none,
-                isDense: true,
-                contentPadding: EdgeInsets.zero,
-              ),
-              style: TextStyle(fontSize: 13),
-              onChanged: (v) {
-                if (v.trim().isNotEmpty && c == data.last.last) {
-                  onAddRow();
-                }
-              },
-            ),
-          );
-        }
-
-        // ======================== BUILD MAIN TABLE ========================
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minWidth: minTotalWidth),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // =========================== ROW 1 ===========================
-                Row(
-                  children: [
-                    header("SASARAN", columnWidths[0], bottom: false),
-                    header("INDIKATOR KINERJA", columnWidths[1], bottom: false),
-                    header("TARGET", columnWidths[2], bottom: false),
-
-                    // 4 kolom digabung sebagai header TRIWULAN
-                    Container(
-                      width:
-                          columnWidths[3] +
-                          columnWidths[4] +
-                          columnWidths[5] +
-                          columnWidths[6],
-                      height: 40,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade200,
-                        border: Border(
-                          top: BorderSide(
-                            color: Colors.grey.shade400,
-                            width: 1,
-                          ),
-                          left: BorderSide(
-                            color: Colors.grey.shade400,
-                            width: 1,
-                          ),
-                          right: BorderSide(
-                            color: Colors.grey.shade400,
-                            width: 1,
-                          ),
-                          bottom: BorderSide.none,
-                        ),
-                      ),
-                      child: Text(
-                        "TARGET TRIWULAN",
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
-                ),
-
-                // =========================== ROW 2 ===========================
-                Row(
-                  children: [
-                    empty(columnWidths[0], 35),
-                    empty(columnWidths[1], 35),
-                    empty(columnWidths[2], 35),
-
-                    // subheader I–IV
-                    for (int i = 0; i < 4; i++)
-                      Container(
-                        width: columnWidths[i + 3],
-                        height: 35,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade200,
-                          border: Border(
-                            top: BorderSide(
-                              color: Colors.grey.shade400,
-                              width: 1,
-                            ),
-                            left: BorderSide(
-                              color: Colors.grey.shade400,
-                              width: 1,
-                            ),
-                            right: BorderSide(
-                              color: Colors.grey.shade400,
-                              width: 1,
-                            ),
-                            bottom: BorderSide(
-                              color: Colors.grey.shade400,
-                              width: 1,
-                            ),
-                          ),
-                        ),
-                        child: Text(
-                          ["I", "II", "III", "IV"][i],
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                  ],
-                ),
-
-                // ======================= DATA ROWS =======================
-                for (int r = 0; r < data.length; r++)
-                  Row(
-                    children: [
-                      for (int c = 0; c < 7; c++)
-                        dataCell(data[r][c], columnWidths[c]),
-                    ],
-                  ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  // ================= WIDGET BANTUAN =================
-
-  final boxHeader = BoxDecoration(
-    border: Border.all(color: Colors.black),
-    color: Colors.grey.shade300,
-  );
-
-  Border tightBorder({
-    bool left = false,
-    bool right = false,
-    bool top = false,
-    bool bottom = false,
-  }) {
-    return Border(
-      left: left ? BorderSide(color: Colors.black, width: 1) : BorderSide.none,
-      right: right
-          ? BorderSide(color: Colors.black, width: 1)
-          : BorderSide.none,
-      top: top ? BorderSide(color: Colors.black, width: 1) : BorderSide.none,
-      bottom: bottom
-          ? BorderSide(color: Colors.black, width: 1)
-          : BorderSide.none,
-    );
-  }
-
-  Widget _headerCell(String text, double width, {double height = 60}) {
-    return Container(
-      width: width,
-      height: height,
-      alignment: Alignment.center,
-      decoration: boxHeader,
-      child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold)),
-    );
-  }
-
-  Widget _emptyHeader(double width) {
-    return Container(
-      width: width,
-      height: 35,
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.black),
-        color: Colors.grey.shade300,
-      ),
-    );
-  }
-
-  Widget _subHeader(String text, double width) {
-    return Container(
-      width: width,
-      height: 35,
-      alignment: Alignment.center,
-      decoration: boxHeader,
-      child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold)),
-    );
-  }
-
-  // Helper header widget
-  Widget headerBox(String text, double width, double height) {
-    return Container(
-      width: width,
-      height: height,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.black),
-        color: Colors.grey.shade200,
-      ),
-      child: Text(
-        text,
-        style: const TextStyle(fontWeight: FontWeight.bold),
-        textAlign: TextAlign.center,
-      ),
-    );
-  }
-
-  Widget headerTop(String text) {
-    return Container(
-      height: 40,
-      alignment: Alignment.center,
-      color: Colors.grey.shade200,
-      child: Text(
-        text,
-        textAlign: TextAlign.center,
-        style: const TextStyle(fontWeight: FontWeight.bold),
-      ),
-    );
-  }
-
-  Widget subHeader(String text) {
-    return Container(
-      height: 32,
-      alignment: Alignment.center,
-      color: Colors.grey.shade200,
-      child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold)),
-    );
-  }
-
-  Widget subHeaderEmpty() {
-    return Container(height: 32, color: Colors.grey.shade200);
-  }
-
-  /// =========================
-  /// Helper header
-  /// =========================
-
-  DataCell headerCell(String text) {
-    return DataCell(
-      Container(
-        padding: const EdgeInsets.all(8),
-        color: Colors.grey.shade300,
-        alignment: Alignment.center,
-        child: Text(
-          text,
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-      ),
-    );
-  }
-
-  DataCell subHeaderCell(String text) {
-    return DataCell(
-      Container(
-        padding: const EdgeInsets.all(8),
-        color: Colors.grey.shade200,
-        alignment: Alignment.center,
-        child: Text(
-          text,
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-      ),
-    );
-  }
-
-  Widget emptyHeader() {
-    return Container(height: 36, color: Colors.grey.shade200);
-  }
-
-  Widget headerSub(String text) {
-    return Container(
-      height: 32,
-      alignment: Alignment.center,
-      color: Colors.grey.shade200,
-      child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold)),
-    );
-  }
-
-  Widget dataCellTF(TextEditingController c) {
-    return Padding(
-      padding: const EdgeInsets.all(6),
-      child: TextField(
-        controller: c,
-        decoration: const InputDecoration(
-          border: InputBorder.none,
-          isDense: true,
-        ),
-      ),
-    );
-  }
+  // helper: generate controllers
+  static List<List<TextEditingController>> _gen(int rows, int cols) =>
+      List.generate(
+        rows,
+        (_) => List.generate(cols, (_) => TextEditingController()),
+      );
 
   @override
   void initState() {
     super.initState();
-    addRow(); // tambah baris pertama
-    addEmptyRowB(); // mulai dengan 1 baris saja
+    // start triwulan dengan satu baris kosong
+    _addTriwulanRow();
+
+    // pastikan tabel statis minimal 1 baris (sesuai behavior yang kamu minta)
+    if (tabel1.isEmpty)
+      tabel1.add(List.generate(5, (_) => TextEditingController()));
+    if (tabel3.isEmpty)
+      tabel3.add(List.generate(3, (_) => TextEditingController()));
   }
 
-  void addRow() {
-    data.add(List.generate(7, (index) => TextEditingController()));
-    setState(() {});
+  @override
+  void dispose() {
+    namaController.dispose();
+
+    // dispose semua controller di tabel statis dan dinamis
+    for (final row in tabel1) {
+      for (final c in row) c.dispose();
+    }
+    for (final row in tabel3) {
+      for (final c in row) c.dispose();
+    }
+    for (final row in triwulanData) {
+      for (final c in row) c.dispose();
+    }
+
+    super.dispose();
   }
 
-  // Fungsi cek apakah harus auto tambah row
-  void checkAutoAdd(int rowIndex, int colIndex) {
-    final controller = data[rowIndex][colIndex];
-
-    controller.addListener(() {
-      final isLastRow = rowIndex == data.length - 1;
-      final hasText = controller.text.trim().isNotEmpty;
-
-      if (isLastRow && hasText) {
-        // print("Auto create row...");
-        addRow();
-      }
+  // ---------------- Triwulan helpers ----------------
+  void _addTriwulanRow() {
+    setState(() {
+      triwulanData.add(List.generate(7, (_) => TextEditingController()));
     });
   }
 
-  void addEmptyRowB() {
-    dataB.add(List.generate(headersB.length, (_) => TextEditingController()));
-  }
-
-  void attachListenersB(int row, int col) {
-    dataB[row][col].addListener(() {
-      final rowIsLast = row == dataB.length - 1;
-      final cellNotEmpty = dataB[row][col].text.trim().isNotEmpty;
-
-      if (rowIsLast && cellNotEmpty) {
-        setState(() {
-          addEmptyRowB(); // otomatis tambahkan baris
-        });
-      }
+  void _deleteTriwulanRow(int index) {
+    setState(() {
+      triwulanData.removeAt(index);
     });
   }
 
-  // ---------- build utama ----------
+  // ---------------- UI small helpers ----------------
+  Widget _input(String hint) => TextField(
+    decoration: InputDecoration(
+      hintText: hint,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+    ),
+  );
+
+  Widget _dropdown(String? value, void Function(String?) onChanged) => SizedBox(
+    height: 46,
+    child: DropdownButtonFormField<String>(
+      value: value,
+      decoration: InputDecoration(
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 10,
+        ),
+      ),
+      hint: const Text("Pilih Jabatan"),
+      items: jabatanList
+          .map((jab) => DropdownMenuItem(value: jab, child: Text(jab)))
+          .toList(),
+      onChanged: onChanged,
+    ),
+  );
+
+  // ----------------- BUILD -----------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -596,7 +142,6 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
       ),
       body: Column(
         children: [
-          // konten scrollable
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
@@ -654,38 +199,31 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                     ),
                     const SizedBox(height: 20),
 
-                    // --- Tabel 1 (safe) ---
-                    buildTableSafe(
-                      headers: [
-                        "SASARAN",
-                        "INDIKATOR KINERJA",
-                        "TARGET",
-                        "FORMULASI HITUNG",
-                        "SUMBER DATA",
-                      ],
-                      data: tabel1,
-                      showNumber: true,
+                    // --- Tabel 1 (external widget) ---
+                    // Table1Widget memiliki state internal (auto-add logic dan delete)
+                    const Table1Widget(),
+                    const SizedBox(height: 12),
+
+                    // --- Tabel Triwulan (external widget) ---
+                    // TabelTriwulanWidgets expects data & onAddRow
+                    TabelTriwulanWidgets(
+                      data: triwulanData,
+                      onAddRow: _addTriwulanRow,
+                      onDeleteRow: _deleteTriwulanRow,
                     ),
                     const SizedBox(height: 12),
 
-                    // --- Tabel Triwulan (safe) ---
-                    // buildTriwulanHeader(),
-                    // const SizedBox(height: 4),
-                    buildTriwulanCombined(data: data, onAddRow: () => addRow()),
-                    const SizedBox(height: 12),
-
-                    // --- Tabel 3 (safe) ---
-                    buildTableSafe(
-                      headers: ["PROGRAM", "ANGGARAN", "KETERANGAN"],
-                      data: tabel3,
-                      showNumber: true,
-                    ),
+                    // --- Tabel 2 (program) ---
+                    const Table2Widget(),
                     const SizedBox(height: 18),
 
                     SizedBox(
                       width: 150,
                       child: ElevatedButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          // contoh: ambil data untuk submit — kamu bisa implementasikan sesuai backend
+                          // readTriwulanData();
+                        },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.teal.shade600,
                           shape: RoundedRectangleBorder(
@@ -705,7 +243,7 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
             ),
           ),
 
-          // footer tetap di bawah
+          // footer
           Container(
             width: double.infinity,
             color: Colors.white,
@@ -720,31 +258,4 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
       ),
     );
   }
-
-  Widget _input(String hint) => TextField(
-    decoration: InputDecoration(
-      hintText: hint,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-    ),
-  );
-
-  Widget _dropdown(String? value, void Function(String?) onChanged) => SizedBox(
-    height: 46,
-    child: DropdownButtonFormField<String>(
-      value: value,
-      decoration: InputDecoration(
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 10,
-        ),
-      ),
-      hint: const Text("Pilih Jabatan"),
-      items: jabatanList
-          .map((jab) => DropdownMenuItem(value: jab, child: Text(jab)))
-          .toList(),
-      onChanged: onChanged,
-    ),
-  );
 }
