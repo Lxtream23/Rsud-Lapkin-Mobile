@@ -53,95 +53,89 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
   }
 
   // ---------- SIMPLE / SAFE TABLE BUILDER ----------
+  List<String> headersB = [
+    "SASARAN",
+    "INDIKATOR KINERJA",
+    "TARGET",
+    "FORMULASI HITUNG",
+    "SUMBER DATA",
+  ];
+
+  List<List<TextEditingController>> dataB = [];
+
   // headers = list header (excludes "NO")
   // data = list of rows, each row must have same length as headers (TextEditingController)
   Widget buildTableSafe({
     required List<String> headers,
     required List<List<TextEditingController>> data,
     bool showNumber = true,
+    double colWidth = 160,
   }) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final availableWidth = constraints.maxWidth.isFinite
-            ? constraints.maxWidth
-            : MediaQuery.of(context).size.width;
-        final totalCols = headers.length + (showNumber ? 1 : 0);
+    // Jika data masih kosong, tampilkan 1 baris
+    if (data.isEmpty) {
+      data.add([
+        for (int i = 0; i < headers.length; i++) TextEditingController(),
+      ]);
+    }
 
-        // minimal column width (boleh disesuaikan)
-        const minColWidth = 100.0;
-
-        // hitung columnWidth: jika layar cukup, pakai pembagian proporsional,
-        // kalau tidak, columnWidth tetap minimal sehingga horizontal scroll muncul.
-        final columnWidth = (availableWidth / totalCols).clamp(
-          minColWidth,
-          double.infinity,
-        );
-
-        // buat map columnWidths untuk Table widget
-        final Map<int, TableColumnWidth> columnWidths = {
-          for (int i = 0; i < totalCols; i++) i: FixedColumnWidth(columnWidth),
-        };
-
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: ConstrainedBox(
-            // pastikan tabel minimal selebar parent sehingga Table dapat menghitung layout
-            constraints: BoxConstraints(minWidth: availableWidth),
-            child: Table(
-              columnWidths: columnWidths,
-              border: TableBorder.all(color: Colors.grey.shade400, width: 0.8),
-              defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: IntrinsicWidth(
+        child: Table(
+          columnWidths: {
+            for (int i = 0; i < headers.length + (showNumber ? 1 : 0); i++)
+              i: FixedColumnWidth(colWidth),
+          },
+          border: TableBorder.all(color: Colors.grey.shade400, width: 0.8),
+          defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+          children: [
+            /// -------- HEADER --------
+            TableRow(
+              decoration: BoxDecoration(color: Colors.grey.shade200),
               children: [
-                // header row
-                TableRow(
-                  decoration: BoxDecoration(color: Colors.grey.shade200),
-                  children:
-                      [
-                        if (showNumber)
-                          _tableHeaderCell("NO")
-                        else
-                          const SizedBox.shrink(),
-                        for (final h in headers)
-                          _tableHeaderCell(h.toUpperCase()),
-                      ].map((w) {
-                        // ensure each header has a widget (no nulls)
-                        return (w is SizedBox && w.child == null)
-                            ? const SizedBox.shrink()
-                            : w;
-                      }).toList(),
-                ),
-                // data rows
-                for (int i = 0; i < data.length; i++)
-                  TableRow(
-                    children: [
-                      if (showNumber)
-                        _tableBodyCell(
-                          Text('${i + 1}', textAlign: TextAlign.center),
-                        )
-                      else
-                        const SizedBox.shrink(),
-                      for (int j = 0; j < headers.length; j++)
-                        _tableBodyCell(
-                          TextField(
-                            controller: data[i][j],
-                            decoration: const InputDecoration(
-                              border: InputBorder.none,
-                              isDense: true,
-                              contentPadding: EdgeInsets.symmetric(
-                                vertical: 8,
-                                horizontal: 6,
-                              ),
-                            ),
-                            style: const TextStyle(fontSize: 13),
-                          ),
-                        ),
-                    ],
-                  ),
+                if (showNumber) _tableHeaderCell("NO"),
+                for (final h in headers) _tableHeaderCell(h),
               ],
             ),
-          ),
-        );
-      },
+
+            /// -------- DATA ROWS --------
+            for (int i = 0; i < data.length; i++)
+              TableRow(
+                children: [
+                  if (showNumber)
+                    _tableBodyCell(
+                      Text("${i + 1}", textAlign: TextAlign.center),
+                    ),
+
+                  for (int j = 0; j < headers.length; j++)
+                    _tableBodyCell(
+                      TextField(
+                        controller: data[i][j],
+                        onChanged: (_) {
+                          // jika user mengetik di row terakhir → tambah row baru
+                          if (i == data.length - 1) {
+                            data.add([
+                              for (int k = 0; k < headers.length; k++)
+                                TextEditingController(),
+                            ]);
+                          }
+                        },
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                          isDense: true,
+                          contentPadding: EdgeInsets.symmetric(
+                            vertical: 8,
+                            horizontal: 6,
+                          ),
+                        ),
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                    ),
+                ],
+              ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -165,10 +159,7 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     );
   }
 
-  // ---------- versi sederhana untuk tabel triwulan (7 kolom) ----------
-
   /// ================== TABEL TRIWULAN FULL =====================
-  // --- PASTE / REPLACE buildTriwulanCombined dengan ini ---
   Widget buildTriwulanCombined({
     required List<List<TextEditingController>> data,
     required VoidCallback onAddRow,
@@ -545,6 +536,7 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
   void initState() {
     super.initState();
     addRow(); // tambah baris pertama
+    addEmptyRowB(); // mulai dengan 1 baris saja
   }
 
   void addRow() {
@@ -563,6 +555,23 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
       if (isLastRow && hasText) {
         // print("Auto create row...");
         addRow();
+      }
+    });
+  }
+
+  void addEmptyRowB() {
+    dataB.add(List.generate(headersB.length, (_) => TextEditingController()));
+  }
+
+  void attachListenersB(int row, int col) {
+    dataB[row][col].addListener(() {
+      final rowIsLast = row == dataB.length - 1;
+      final cellNotEmpty = dataB[row][col].text.trim().isNotEmpty;
+
+      if (rowIsLast && cellNotEmpty) {
+        setState(() {
+          addEmptyRowB(); // otomatis tambahkan baris
+        });
       }
     });
   }
