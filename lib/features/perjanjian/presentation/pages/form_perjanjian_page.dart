@@ -31,24 +31,69 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     'Admin/Staf',
   ];
 
-  // Table data stores (controllers)
-  final List<List<TextEditingController>> table1 =
-      []; // NO, SASARAN, INDIKATOR, TARGET, FORMULASI, SUMBER
-  final List<List<TextEditingController>> table2 =
-      []; // NO, PROGRAM, ANGGARAN, KETERANGAN
-  final List<List<TextEditingController>> triwulan = []; // 7 columns
+  // ============================================================
+  // TABLE 1 DATA
+  // ============================================================
+  List<List<TextEditingController>> table1 = [];
 
-  // helpers to create rows
-  List<TextEditingController> _newRow(int cols) =>
-      List.generate(cols, (_) => TextEditingController());
+  void _addRowTable1() {
+    setState(() {
+      table1.add(List.generate(5, (_) => TextEditingController()));
+    });
+  }
+
+  void _deleteRowTable1(int index) {
+    if (index == 0) return;
+    setState(() {
+      table1[index].forEach((c) => c.dispose());
+      table1.removeAt(index);
+    });
+  }
+
+  // ============================================================
+  // TABLE 2 DATA
+  // ============================================================
+  List<List<TextEditingController>> table2 = [];
+
+  void _addRowTable2() {
+    setState(() {
+      table2.add(List.generate(7, (_) => TextEditingController()));
+    });
+  }
+
+  void _deleteRowTable2(int index) {
+    if (index == 0) return;
+    setState(() {
+      table2[index].forEach((c) => c.dispose());
+      table2.removeAt(index);
+    });
+  }
+
+  // ============================================================
+  // TABLE 3 DATA
+  // ============================================================
+  List<List<TextEditingController>> table3 = [];
+
+  void _addRowTable3() {
+    setState(() {
+      table3.add(List.generate(3, (_) => TextEditingController()));
+    });
+  }
+
+  void _deleteRowTable3(int index) {
+    if (index == 0) return;
+    setState(() {
+      table3[index].forEach((c) => c.dispose());
+      table3.removeAt(index);
+    });
+  }
 
   @override
   void initState() {
     super.initState();
-    // start each table with 1 empty row
-    table1.add(_newRow(5));
-    table2.add(_newRow(3));
-    triwulan.add(_newRow(7));
+    _addRowTable1();
+    _addRowTable2();
+    _addRowTable3();
   }
 
   @override
@@ -56,7 +101,7 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     namaController.dispose();
     for (final r in table1) for (final c in r) c.dispose();
     for (final r in table2) for (final c in r) c.dispose();
-    for (final r in triwulan) for (final c in r) c.dispose();
+    for (final r in table3) for (final c in r) c.dispose();
     super.dispose();
   }
 
@@ -166,52 +211,25 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
 
                     // === Card-based Table 1 ===
                     CardTable1Widget(
-                      rows: table1,
-                      onAddRow: () => setState(() => table1.add(_newRow(5))),
-                      onDeleteRow: (i) {
-                        if (table1.length == 1) {
-                          for (final c in table1.first) c.clear();
-                        } else {
-                          setState(() {
-                            for (final c in table1[i]) c.dispose();
-                            table1.removeAt(i);
-                          });
-                        }
-                      },
+                      data: table1,
+                      onAddRow: _addRowTable1,
+                      onDeleteRow: _deleteRowTable1,
                     ),
                     const SizedBox(height: 12),
 
-                    // === Card-based Triwulan ===
+                    // === Card-based Table 2 ===
                     CardTable2Widget(
-                      rows: triwulan,
-                      onAddRow: () => setState(() => triwulan.add(_newRow(7))),
-                      onDeleteRow: (i) {
-                        if (triwulan.length == 1) {
-                          for (final c in triwulan.first) c.clear();
-                        } else {
-                          setState(() {
-                            for (final c in triwulan[i]) c.dispose();
-                            triwulan.removeAt(i);
-                          });
-                        }
-                      },
+                      data: table2,
+                      onAddRow: _addRowTable2,
+                      onDeleteRow: _deleteRowTable2,
                     ),
                     const SizedBox(height: 12),
 
                     // === Card-based Table 2 ===
                     CardTable3Widget(
-                      rows: table2,
-                      onAddRow: () => setState(() => table2.add(_newRow(3))),
-                      onDeleteRow: (i) {
-                        if (table2.length == 1) {
-                          for (final c in table2.first) c.clear();
-                        } else {
-                          setState(() {
-                            for (final c in table2[i]) c.dispose();
-                            table2.removeAt(i);
-                          });
-                        }
-                      },
+                      data: table2,
+                      onAddRow: _addRowTable3,
+                      onDeleteRow: _deleteRowTable3,
                     ),
 
                     const SizedBox(height: 18),

@@ -1,250 +1,152 @@
 import 'package:flutter/material.dart';
 
-// ============================
-// CARD TRI WULAN (special layout simulating merged header)
-// ============================
 class CardTable2Widget extends StatelessWidget {
-  final List<List<TextEditingController>> rows;
+  final List<List<TextEditingController>> data;
   final VoidCallback onAddRow;
   final Function(int) onDeleteRow;
 
   const CardTable2Widget({
-    required this.rows,
+    super.key,
+    required this.data,
     required this.onAddRow,
     required this.onDeleteRow,
-    Key? key,
-  }) : super(key: key);
-
-  bool _isRowEmpty(List<TextEditingController> r) =>
-      r.every((c) => c.text.trim().isEmpty);
+  });
 
   @override
   Widget build(BuildContext context) {
-    // fixed widths per column (approximate) — on small screens they'll wrap horizontally via SingleChildScrollView in parent
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.only(bottom: 8.0),
-          child: Text(
-            "TABEL 3 - TRIWULAN",
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
+        const SizedBox(height: 12),
+        _buildHeader(),
+        const SizedBox(height: 8),
+
+        // =============================
+        // LIST CARD PER BARIS
+        // =============================
+        for (int i = 0; i < data.length; i++)
+          _buildCardRow(context, i, data[i]),
+      ],
+    );
+  }
+
+  // ============================================================
+  // HEADER
+  // ============================================================
+  Widget _buildHeader() {
+    return Card(
+      color: Colors.blueGrey.shade50,
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            const Text(
+              "TABEL 2 — TARGET TRIWULAN",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              "Sasaran • Indikator Kinerja • Target • Triwulan I–IV",
+              style: TextStyle(color: Colors.grey.shade700),
+            ),
+          ],
         ),
-        // header card (visual merged)
-        Card(
-          color: Colors.grey.shade100,
-          elevation: 1,
-          child: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
+      ),
+    );
+  }
+
+  // ============================================================
+  // CARD PER BARIS
+  // ============================================================
+  Widget _buildCardRow(
+    BuildContext context,
+    int index,
+    List<TextEditingController> row,
+  ) {
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ============================
+            // ROW TITLE + BUTTON DELETE
+            // ============================
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const SizedBox(width: 40),
-                Expanded(
-                  flex: 3,
-                  child: Center(
-                    child: Text(
-                      "SASARAN",
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
+                Text(
+                  "Baris ${index + 1}",
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
                   ),
                 ),
-                Expanded(
-                  flex: 3,
-                  child: Center(
-                    child: Text(
-                      "INDIKATOR KINERJA",
-                      style: TextStyle(fontWeight: FontWeight.bold),
+
+                // tombol hapus kecuali baris pertama
+                if (index > 0)
+                  IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: Icon(
+                      Icons.delete_outline,
+                      color: Colors.red.shade400,
+                      size: 22,
                     ),
+                    onPressed: () => onDeleteRow(index),
                   ),
-                ),
-                Expanded(
-                  flex: 1,
-                  child: Center(
-                    child: Text(
-                      "TARGET",
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 4,
-                  child: Center(
-                    child: Text(
-                      "TARGET TRIWULAN",
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 48),
               ],
             ),
-          ),
-        ),
 
-        // rows as cards
-        for (int i = 0; i < rows.length; i++)
-          Padding(
-            padding: const EdgeInsets.only(top: 8.0),
-            child: Card(
-              elevation: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(10.0),
-                child: Column(
-                  children: [
-                    // main row
-                    Row(
-                      children: [
-                        SizedBox(
-                          width: 40,
-                          child: Center(child: Text('${i + 1}')),
-                        ),
-                        const SizedBox(width: 8),
-                        // SASARAN
-                        Expanded(
-                          flex: 3,
-                          child: TextField(
-                            controller: rows[i][0],
-                            decoration: const InputDecoration(
-                              labelText: "SASARAN",
-                              isDense: true,
-                            ),
-                            onChanged: (_) {
-                              if (i == rows.length - 1 &&
-                                  rows[i].any((c) => c.text.trim().isNotEmpty))
-                                onAddRow();
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        // INDIKATOR
-                        Expanded(
-                          flex: 3,
-                          child: TextField(
-                            controller: rows[i][1],
-                            decoration: const InputDecoration(
-                              labelText: "INDIKATOR",
-                              isDense: true,
-                            ),
-                            onChanged: (_) {
-                              if (i == rows.length - 1 &&
-                                  rows[i].any((c) => c.text.trim().isNotEmpty))
-                                onAddRow();
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        // TARGET
-                        Expanded(
-                          flex: 1,
-                          child: TextField(
-                            controller: rows[i][2],
-                            decoration: const InputDecoration(
-                              labelText: "TARGET",
-                              isDense: true,
-                            ),
-                            onChanged: (_) {
-                              if (i == rows.length - 1 &&
-                                  rows[i].any((c) => c.text.trim().isNotEmpty))
-                                onAddRow();
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        // FOUR small quarter fields I..IV
-                        Expanded(
-                          flex: 4,
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: rows[i][3],
-                                  decoration: const InputDecoration(
-                                    labelText: "I",
-                                    isDense: true,
-                                  ),
-                                  onChanged: (_) {
-                                    if (i == rows.length - 1 &&
-                                        rows[i].any(
-                                          (c) => c.text.trim().isNotEmpty,
-                                        ))
-                                      onAddRow();
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: TextField(
-                                  controller: rows[i][4],
-                                  decoration: const InputDecoration(
-                                    labelText: "II",
-                                    isDense: true,
-                                  ),
-                                  onChanged: (_) {
-                                    if (i == rows.length - 1 &&
-                                        rows[i].any(
-                                          (c) => c.text.trim().isNotEmpty,
-                                        ))
-                                      onAddRow();
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: TextField(
-                                  controller: rows[i][5],
-                                  decoration: const InputDecoration(
-                                    labelText: "III",
-                                    isDense: true,
-                                  ),
-                                  onChanged: (_) {
-                                    if (i == rows.length - 1 &&
-                                        rows[i].any(
-                                          (c) => c.text.trim().isNotEmpty,
-                                        ))
-                                      onAddRow();
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: TextField(
-                                  controller: rows[i][6],
-                                  decoration: const InputDecoration(
-                                    labelText: "IV",
-                                    isDense: true,
-                                  ),
-                                  onChanged: (_) {
-                                    if (i == rows.length - 1 &&
-                                        rows[i].any(
-                                          (c) => c.text.trim().isNotEmpty,
-                                        ))
-                                      onAddRow();
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+            const SizedBox(height: 8),
 
-                        // delete icon (when row empty and >1 row)
-                        const SizedBox(width: 8),
-                        if (_isRowEmpty(rows[i]) && rows.length > 1)
-                          IconButton(
-                            icon: Icon(
-                              Icons.delete_outline,
-                              color: Colors.red.shade400,
-                            ),
-                            onPressed: () => onDeleteRow(i),
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+            _field("Sasaran", row[0], index),
+            _field("Indikator Kinerja", row[1], index),
+            _field("Target", row[2], index),
+
+            const Divider(height: 20),
+
+            const Text(
+              "Target Tiap Triwulan",
+              style: TextStyle(fontWeight: FontWeight.bold),
             ),
-          ),
-      ],
+            const SizedBox(height: 8),
+
+            _field("Triwulan I", row[3], index),
+            _field("Triwulan II", row[4], index),
+            _field("Triwulan III", row[5], index),
+            _field("Triwulan IV", row[6], index),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // REUSABLE FIELD
+  // ============================================================
+  Widget _field(String title, TextEditingController controller, int rowIndex) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: TextField(
+        controller: controller,
+        decoration: InputDecoration(
+          labelText: title,
+          filled: true,
+          fillColor: Colors.grey.shade100,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+        onChanged: (v) {
+          if (rowIndex == data.length - 1 && v.trim().isNotEmpty) {
+            onAddRow();
+          }
+        },
+      ),
     );
   }
 }
