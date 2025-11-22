@@ -1,13 +1,10 @@
-// lib/views/your_path/form_perjanjian_page.dart
 import 'package:flutter/material.dart';
 import 'package:auto_size_text/auto_size_text.dart';
 import '../../../../config/app_colors.dart';
 import '../../../../config/app_text_style.dart';
-
-// sesuaikan path import widget sesuai struktur proyekmu:
-import '../widgets/tabel1.dart';
-import '../widgets/tabel2.dart';
-import '../widgets/tabelTriwulan.dart';
+import '../../presentation/widgets/card_table1.dart';
+import '../../presentation/widgets/card_table2.dart';
+import '../../presentation/widgets/card_table3.dart';
 
 class FormPerjanjianPage extends StatefulWidget {
   const FormPerjanjianPage({Key? key}) : super(key: key);
@@ -20,7 +17,6 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
   final TextEditingController namaController = TextEditingController();
   String? selectedJabatan;
 
-  // contoh daftar jabatan
   final List<String> jabatanList = [
     'Direktur',
     'Wadir Umum dan Keuangan',
@@ -35,66 +31,36 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     'Admin/Staf',
   ];
 
-  // ---- tabel statis (dipakai untuk tabel1 & tabel3) ----
-  // jika kamu ingin Table1 dan Table3 external state, kamu bisa mengubah.
-  late final List<List<TextEditingController>> tabel1 = _gen(1, 5);
-  late final List<List<TextEditingController>> tabel3 = _gen(1, 3);
+  // Table data stores (controllers)
+  final List<List<TextEditingController>> table1 =
+      []; // NO, SASARAN, INDIKATOR, TARGET, FORMULASI, SUMBER
+  final List<List<TextEditingController>> table2 =
+      []; // NO, PROGRAM, ANGGARAN, KETERANGAN
+  final List<List<TextEditingController>> triwulan = []; // 7 columns
 
-  // ---- data triwulan (dinamis) ----
-  final List<List<TextEditingController>> triwulanData = [];
-
-  // helper: generate controllers
-  static List<List<TextEditingController>> _gen(int rows, int cols) =>
-      List.generate(
-        rows,
-        (_) => List.generate(cols, (_) => TextEditingController()),
-      );
+  // helpers to create rows
+  List<TextEditingController> _newRow(int cols) =>
+      List.generate(cols, (_) => TextEditingController());
 
   @override
   void initState() {
     super.initState();
-    // start triwulan dengan satu baris kosong
-    _addTriwulanRow();
-
-    // pastikan tabel statis minimal 1 baris (sesuai behavior yang kamu minta)
-    if (tabel1.isEmpty)
-      tabel1.add(List.generate(5, (_) => TextEditingController()));
-    if (tabel3.isEmpty)
-      tabel3.add(List.generate(3, (_) => TextEditingController()));
+    // start each table with 1 empty row
+    table1.add(_newRow(5));
+    table2.add(_newRow(3));
+    triwulan.add(_newRow(7));
   }
 
   @override
   void dispose() {
     namaController.dispose();
-
-    // dispose semua controller di tabel statis dan dinamis
-    for (final row in tabel1) {
-      for (final c in row) c.dispose();
-    }
-    for (final row in tabel3) {
-      for (final c in row) c.dispose();
-    }
-    for (final row in triwulanData) {
-      for (final c in row) c.dispose();
-    }
-
+    for (final r in table1) for (final c in r) c.dispose();
+    for (final r in table2) for (final c in r) c.dispose();
+    for (final r in triwulan) for (final c in r) c.dispose();
     super.dispose();
   }
 
-  // ---------------- Triwulan helpers ----------------
-  void _addTriwulanRow() {
-    setState(() {
-      triwulanData.add(List.generate(7, (_) => TextEditingController()));
-    });
-  }
-
-  void _deleteTriwulanRow(int index) {
-    setState(() {
-      triwulanData.removeAt(index);
-    });
-  }
-
-  // ---------------- UI small helpers ----------------
+  // ----------------- UI helpers -----------------
   Widget _input(String hint) => TextField(
     decoration: InputDecoration(
       hintText: hint,
@@ -122,7 +88,7 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     ),
   );
 
-  // ----------------- BUILD -----------------
+  // ----------------- Main build -----------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -176,7 +142,6 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                     ),
                     const SizedBox(height: 20),
 
-                    // --- Form singkat ---
                     _input("BUDI SANTOSO"),
                     const SizedBox(height: 8),
                     _input("Administrasi Pengembangan"),
@@ -199,31 +164,61 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                     ),
                     const SizedBox(height: 20),
 
-                    // --- Tabel 1 (external widget) ---
-                    // Table1Widget memiliki state internal (auto-add logic dan delete)
-                    const Table1Widget(),
-                    const SizedBox(height: 12),
-
-                    // --- Tabel Triwulan (external widget) ---
-                    // TabelTriwulanWidgets expects data & onAddRow
-                    TabelTriwulanWidgets(
-                      data: triwulanData,
-                      onAddRow: _addTriwulanRow,
-                      onDeleteRow: _deleteTriwulanRow,
+                    // === Card-based Table 1 ===
+                    CardTable1Widget(
+                      rows: table1,
+                      onAddRow: () => setState(() => table1.add(_newRow(5))),
+                      onDeleteRow: (i) {
+                        if (table1.length == 1) {
+                          for (final c in table1.first) c.clear();
+                        } else {
+                          setState(() {
+                            for (final c in table1[i]) c.dispose();
+                            table1.removeAt(i);
+                          });
+                        }
+                      },
                     ),
                     const SizedBox(height: 12),
 
-                    // --- Tabel 2 (program) ---
-                    const Table2Widget(),
-                    const SizedBox(height: 18),
+                    // === Card-based Triwulan ===
+                    CardTable2Widget(
+                      rows: triwulan,
+                      onAddRow: () => setState(() => triwulan.add(_newRow(7))),
+                      onDeleteRow: (i) {
+                        if (triwulan.length == 1) {
+                          for (final c in triwulan.first) c.clear();
+                        } else {
+                          setState(() {
+                            for (final c in triwulan[i]) c.dispose();
+                            triwulan.removeAt(i);
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 12),
 
+                    // === Card-based Table 2 ===
+                    CardTable3Widget(
+                      rows: table2,
+                      onAddRow: () => setState(() => table2.add(_newRow(3))),
+                      onDeleteRow: (i) {
+                        if (table2.length == 1) {
+                          for (final c in table2.first) c.clear();
+                        } else {
+                          setState(() {
+                            for (final c in table2[i]) c.dispose();
+                            table2.removeAt(i);
+                          });
+                        }
+                      },
+                    ),
+
+                    const SizedBox(height: 18),
                     SizedBox(
                       width: 150,
                       child: ElevatedButton(
-                        onPressed: () {
-                          // contoh: ambil data untuk submit — kamu bisa implementasikan sesuai backend
-                          // readTriwulanData();
-                        },
+                        onPressed: () {},
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.teal.shade600,
                           shape: RoundedRectangleBorder(
