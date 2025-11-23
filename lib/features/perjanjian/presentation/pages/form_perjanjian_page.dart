@@ -31,78 +31,87 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     'Admin/Staf',
   ];
 
-  // ============================================================
-  // TABLE 1 DATA
-  // ============================================================
-  List<List<TextEditingController>> table1 = [];
-
-  void _addRowTable1() {
-    setState(() {
-      table1.add(List.generate(5, (_) => TextEditingController()));
-    });
-  }
-
-  void _deleteRowTable1(int index) {
-    if (index == 0) return;
-    setState(() {
-      table1[index].forEach((c) => c.dispose());
-      table1.removeAt(index);
-    });
-  }
-
-  // ============================================================
-  // TABLE 2 DATA
-  // ============================================================
-  List<List<TextEditingController>> table2 = [];
-
-  void _addRowTable2() {
-    setState(() {
-      table2.add(List.generate(7, (_) => TextEditingController()));
-    });
-  }
-
-  void _deleteRowTable2(int index) {
-    if (index == 0) return;
-    setState(() {
-      table2[index].forEach((c) => c.dispose());
-      table2.removeAt(index);
-    });
-  }
-
-  // ============================================================
-  // TABLE 3 DATA
-  // ============================================================
-  List<List<TextEditingController>> table3 = [];
-
-  void _addRowTable3() {
-    setState(() {
-      table3.add(List.generate(3, (_) => TextEditingController()));
-    });
-  }
-
-  void _deleteRowTable3(int index) {
-    if (index == 0) return;
-    setState(() {
-      table3[index].forEach((c) => c.dispose());
-      table3.removeAt(index);
-    });
-  }
+  // Keys untuk mengakses method/state widget tabel (dynamic-cast dipakai)
+  final GlobalKey table1Key = GlobalKey();
+  final GlobalKey table2Key = GlobalKey();
+  final GlobalKey table3Key = GlobalKey();
 
   @override
   void initState() {
     super.initState();
-    _addRowTable1();
-    _addRowTable2();
-    _addRowTable3();
   }
 
   @override
   void dispose() {
     namaController.dispose();
-    for (final r in table1) for (final c in r) c.dispose();
-    for (final r in table2) for (final c in r) c.dispose();
-    for (final r in table3) for (final c in r) c.dispose();
     super.dispose();
+  }
+
+  /// Ambil data dari setiap tabel dengan memanggil method yang tersedia di state widget.
+  /// Kita memakai `dynamic` casting karena state class pada file widget bersifat private.
+  Map<String, dynamic> _collectAllData() {
+    final result = <String, dynamic>{};
+
+    try {
+      final t1State = table1Key.currentState;
+      if (t1State != null) {
+        // widget Table1 harus expose method getRowsAsStrings() atau serupa
+        result['table1'] = (t1State as dynamic).getRowsAsStrings();
+      } else {
+        result['table1'] = [];
+      }
+    } catch (e) {
+      result['table1_error'] = e.toString();
+    }
+
+    try {
+      final t2State = table2Key.currentState;
+      if (t2State != null) {
+        result['table2'] = (t2State as dynamic).getRowsAsStrings();
+      } else {
+        result['table2'] = [];
+      }
+    } catch (e) {
+      result['table2_error'] = e.toString();
+    }
+
+    try {
+      final t3State = table3Key.currentState;
+      if (t3State != null) {
+        result['table3'] = (t3State as dynamic).getRowsAsStrings();
+      } else {
+        result['table3'] = [];
+      }
+    } catch (e) {
+      result['table3_error'] = e.toString();
+    }
+
+    // tambah data form lain
+    result['nama'] = namaController.text;
+    result['jabatan'] = selectedJabatan;
+
+    return result;
+  }
+
+  void _onSavePressed() {
+    final all = _collectAllData();
+    // untuk demo: tampilkan di dialog; di implementasi nyata: kirim ke API / simpan lokal
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Collected data (preview)'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(child: Text(all.toString())),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   // ----------------- UI helpers -----------------
@@ -210,33 +219,45 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                     const SizedBox(height: 20),
 
                     // === Card-based Table 1 ===
-                    CardTable1Widget(
-                      data: table1,
-                      onAddRow: _addRowTable1,
-                      onDeleteRow: _deleteRowTable1,
+                    // ---------------- TABEL 1 ----------------
+                    // CardTable1Widget sekarang menerima key (state manage sendiri)
+                    Card(
+                      elevation: 0,
+                      color: Colors.transparent,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // panggil widget table1 (di file widgets/card_table1.dart)
+                          // beri key agar kita bisa mengambil datanya lewat currentState
+                          CardTable1Widget(key: table1Key),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 12),
 
                     // === Card-based Table 2 ===
-                    CardTable2Widget(
-                      data: table2,
-                      onAddRow: _addRowTable2,
-                      onDeleteRow: _deleteRowTable2,
+                    // ---------------- TABEL TRIWULAN ----------------
+                    // Tabel triwulan menerima key & onAdd/onDelete internalnya sendiri.
+                    // Pastikan file widgets/tabel_triwulan.dart expose methods:
+                    // - getRowsAsStrings() untuk collect data
+                    // - (opsional) other helpers
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: CardTable2Widget(key: table2Key),
                     ),
                     const SizedBox(height: 12),
 
                     // === Card-based Table 2 ===
-                    CardTable3Widget(
-                      data: table2,
-                      onAddRow: _addRowTable3,
-                      onDeleteRow: _deleteRowTable3,
-                    ),
+                    // ---------------- TABEL 2 (Program) ----------------
+                    CardTable3Widget(key: table3Key),
 
                     const SizedBox(height: 18),
                     SizedBox(
                       width: 150,
                       child: ElevatedButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          _onSavePressed();
+                        },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.teal.shade600,
                           shape: RoundedRectangleBorder(

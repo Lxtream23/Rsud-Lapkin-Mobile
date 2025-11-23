@@ -1,149 +1,153 @@
 import 'package:flutter/material.dart';
 
-class CardTable2Widget extends StatelessWidget {
-  final List<List<TextEditingController>> data;
-  final VoidCallback onAddRow;
-  final Function(int) onDeleteRow;
+class CardTable2Widget extends StatefulWidget {
+  const CardTable2Widget({super.key});
 
-  const CardTable2Widget({
-    super.key,
-    required this.data,
-    required this.onAddRow,
-    required this.onDeleteRow,
-  });
+  @override
+  State<CardTable2Widget> createState() => _CardTable2WidgettState();
+}
 
+class _CardTable2WidgettState extends State<CardTable2Widget> {
+  List<List<TextEditingController>> rows = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _addRow();
+  }
+
+  @override
+  void dispose() {
+    for (var r in rows) {
+      for (var c in r) c.dispose();
+    }
+    super.dispose();
+  }
+
+  // ============================================================
+  // ROW MANAGEMENT
+  // ============================================================
+  void _addRow() {
+    setState(() {
+      rows.add(List.generate(7, (_) => TextEditingController()));
+    });
+  }
+
+  void _deleteRow(int index) {
+    if (index == 0) return;
+
+    setState(() {
+      for (var c in rows[index]) c.dispose();
+      rows.removeAt(index);
+    });
+  }
+
+  List<List<String>> getRowsAsStrings() {
+    return rows.map((row) => row.map((c) => c.text.trim()).toList()).toList();
+  }
+
+  // ============================================================
+  // BUILD UI
+  // ============================================================
   @override
   Widget build(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const Text(
+          "TABEL 2 — TARGET TRIWULAN",
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 12),
-        _buildHeader(),
-        const SizedBox(height: 8),
 
-        // =============================
-        // LIST CARD PER BARIS
-        // =============================
-        for (int i = 0; i < data.length; i++)
-          _buildCardRow(context, i, data[i]),
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: rows.length,
+          itemBuilder: (_, index) => _buildCard(index),
+        ),
       ],
     );
   }
 
-  // ============================================================
-  // HEADER
-  // ============================================================
-  Widget _buildHeader() {
-    return Card(
-      color: Colors.blueGrey.shade50,
-      elevation: 0,
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          children: [
-            const Text(
-              "TABEL 2 — TARGET TRIWULAN",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              "Sasaran • Indikator Kinerja • Target • Triwulan I–IV",
-              style: TextStyle(color: Colors.grey.shade700),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget _buildCard(int index) {
+    final labels = [
+      "Sasaran",
+      "Indikator Kinerja",
+      "Target",
+      "Triwulan I",
+      "Triwulan II",
+      "Triwulan III",
+      "Triwulan IV",
+    ];
 
-  // ============================================================
-  // CARD PER BARIS
-  // ============================================================
-  Widget _buildCardRow(
-    BuildContext context,
-    int index,
-    List<TextEditingController> row,
-  ) {
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(color: Colors.grey.shade300),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ============================
-            // ROW TITLE + BUTTON DELETE
-            // ============================
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  "Baris ${index + 1}",
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
+                // NUMBER
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade200,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    "${index + 1}",
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
 
-                // tombol hapus kecuali baris pertama
+                const Spacer(),
+
                 if (index > 0)
                   IconButton(
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
                     icon: Icon(
                       Icons.delete_outline,
                       color: Colors.red.shade400,
-                      size: 22,
                     ),
-                    onPressed: () => onDeleteRow(index),
+                    onPressed: () => _deleteRow(index),
                   ),
               ],
             ),
 
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
 
-            _field("Sasaran", row[0], index),
-            _field("Indikator Kinerja", row[1], index),
-            _field("Target", row[2], index),
-
-            const Divider(height: 20),
-
-            const Text(
-              "Target Tiap Triwulan",
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-
-            _field("Triwulan I", row[3], index),
-            _field("Triwulan II", row[4], index),
-            _field("Triwulan III", row[5], index),
-            _field("Triwulan IV", row[6], index),
+            for (int i = 0; i < 7; i++)
+              _input(labels[i], rows[index][i], index),
           ],
         ),
       ),
     );
   }
 
-  // ============================================================
-  // REUSABLE FIELD
-  // ============================================================
-  Widget _field(String title, TextEditingController controller, int rowIndex) {
+  Widget _input(String label, TextEditingController ctrl, int rowIndex) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: TextField(
-        controller: controller,
+        controller: ctrl,
         decoration: InputDecoration(
-          labelText: title,
+          labelText: label,
           filled: true,
           fillColor: Colors.grey.shade100,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         ),
-        onChanged: (v) {
-          if (rowIndex == data.length - 1 && v.trim().isNotEmpty) {
-            onAddRow();
+        onChanged: (_) {
+          if (rowIndex == rows.length - 1 &&
+              rows[rowIndex].every((c) => c.text.trim().isNotEmpty)) {
+            _addRow();
           }
         },
       ),

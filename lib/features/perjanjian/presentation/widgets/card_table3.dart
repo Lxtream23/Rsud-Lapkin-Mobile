@@ -1,17 +1,53 @@
 import 'package:flutter/material.dart';
 
-class CardTable3Widget extends StatelessWidget {
-  final List<List<TextEditingController>> data;
-  final VoidCallback onAddRow;
-  final Function(int) onDeleteRow;
+class CardTable3Widget extends StatefulWidget {
+  const CardTable3Widget({super.key});
 
-  const CardTable3Widget({
-    super.key,
-    required this.data,
-    required this.onAddRow,
-    required this.onDeleteRow,
-  });
+  @override
+  State<CardTable3Widget> createState() => _CardTable3WidgetState();
+}
 
+class _CardTable3WidgetState extends State<CardTable3Widget> {
+  List<List<TextEditingController>> rows = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _addRow();
+  }
+
+  @override
+  void dispose() {
+    for (var r in rows) {
+      for (var c in r) c.dispose();
+    }
+    super.dispose();
+  }
+
+  // ============================================================
+  // ROW MANAGEMENT
+  // ============================================================
+  void _addRow() {
+    setState(() {
+      rows.add(List.generate(3, (_) => TextEditingController()));
+    });
+  }
+
+  void _deleteRow(int index) {
+    if (index == 0) return;
+    setState(() {
+      for (var ctrl in rows[index]) ctrl.dispose();
+      rows.removeAt(index);
+    });
+  }
+
+  List<List<String>> getRowsAsStrings() {
+    return rows.map((row) => row.map((c) => c.text.trim()).toList()).toList();
+  }
+
+  // ============================================================
+  // BUILD WIDGET
+  // ============================================================
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -23,21 +59,17 @@ class CardTable3Widget extends StatelessWidget {
         ),
         const SizedBox(height: 12),
 
-        /// LIST CARD
         ListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          itemCount: data.length,
-          itemBuilder: (_, index) => _buildCard(context, index),
+          itemCount: rows.length,
+          itemBuilder: (_, index) => _buildCard(index),
         ),
       ],
     );
   }
 
-  // ============================================================
-  // CARD ITEM
-  // ============================================================
-  Widget _buildCard(BuildContext context, int index) {
+  Widget _buildCard(int index) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 1,
@@ -51,12 +83,9 @@ class CardTable3Widget extends StatelessWidget {
           children: [
             Row(
               children: [
-                /// NO
+                // NO
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     color: Colors.grey.shade200,
                     borderRadius: BorderRadius.circular(8),
@@ -72,65 +101,46 @@ class CardTable3Widget extends StatelessWidget {
 
                 const Spacer(),
 
-                /// DELETE
                 if (index > 0)
                   IconButton(
                     icon: Icon(
                       Icons.delete_outline,
                       color: Colors.red.shade400,
-                      size: 24,
                     ),
-                    onPressed: () => onDeleteRow(index),
+                    onPressed: () => _deleteRow(index),
                   ),
               ],
             ),
 
             const SizedBox(height: 10),
 
-            /// FIELDS
-            _field("Program", data[index][0]),
-            _field("Anggaran", data[index][1]),
-            _field("Keterangan", data[index][2]),
-
-            const SizedBox(height: 6),
-
-            /// AUTO ADD ROW
-            _autoAddTrigger(index),
+            _input("Program", rows[index][0], index),
+            _input("Anggaran", rows[index][1], index),
+            _input("Keterangan", rows[index][2], index),
           ],
         ),
       ),
     );
   }
 
-  // ------------------------------------------------------------
-  // FIELD INPUT
-  // ------------------------------------------------------------
-  Widget _field(String label, TextEditingController c) {
+  Widget _input(String label, TextEditingController ctrl, int rowIndex) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: TextField(
-        controller: c,
+        controller: ctrl,
         decoration: InputDecoration(
           labelText: label,
           filled: true,
           fillColor: Colors.grey.shade100,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         ),
+        onChanged: (_) {
+          if (rowIndex == rows.length - 1 &&
+              rows[rowIndex].every((c) => c.text.trim().isNotEmpty)) {
+            _addRow();
+          }
+        },
       ),
-    );
-  }
-
-  // ------------------------------------------------------------
-  // AUTO ADD TEXT
-  // ------------------------------------------------------------
-  Widget _autoAddTrigger(int index) {
-    return TextField(
-      decoration: const InputDecoration(border: InputBorder.none),
-      onChanged: (v) {
-        if (index == data.length - 1 && v.trim().isNotEmpty) {
-          onAddRow();
-        }
-      },
     );
   }
 }
