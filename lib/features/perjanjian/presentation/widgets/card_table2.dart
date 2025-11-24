@@ -4,11 +4,21 @@ class CardTable2Widget extends StatefulWidget {
   const CardTable2Widget({super.key});
 
   @override
-  State<CardTable2Widget> createState() => _CardTable2WidgettState();
+  State<CardTable2Widget> createState() => _CardTable2WidgetState();
 }
 
-class _CardTable2WidgettState extends State<CardTable2Widget> {
+class _CardTable2WidgetState extends State<CardTable2Widget> {
   List<List<TextEditingController>> rows = [];
+
+  final labels = [
+    "Sasaran",
+    "Indikator Kinerja",
+    "Target",
+    "Triwulan I",
+    "Triwulan II",
+    "Triwulan III",
+    "Triwulan IV",
+  ];
 
   @override
   void initState() {
@@ -24,9 +34,6 @@ class _CardTable2WidgettState extends State<CardTable2Widget> {
     super.dispose();
   }
 
-  // ============================================================
-  // ROW MANAGEMENT
-  // ============================================================
   void _addRow() {
     setState(() {
       rows.add(List.generate(7, (_) => TextEditingController()));
@@ -35,7 +42,6 @@ class _CardTable2WidgettState extends State<CardTable2Widget> {
 
   void _deleteRow(int index) {
     if (index == 0) return;
-
     setState(() {
       for (var c in rows[index]) c.dispose();
       rows.removeAt(index);
@@ -43,12 +49,12 @@ class _CardTable2WidgettState extends State<CardTable2Widget> {
   }
 
   List<List<String>> getRowsAsStrings() {
-    return rows.map((row) => row.map((c) => c.text.trim()).toList()).toList();
+    return rows.map((r) => r.map((c) => c.text.trim()).toList()).toList();
   }
 
-  // ============================================================
+  // ========================
   // BUILD UI
-  // ============================================================
+  // ========================
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -56,7 +62,7 @@ class _CardTable2WidgettState extends State<CardTable2Widget> {
       children: [
         const Text(
           "TABEL 2 — TARGET TRIWULAN",
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 12),
 
@@ -64,60 +70,48 @@ class _CardTable2WidgettState extends State<CardTable2Widget> {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: rows.length,
-          itemBuilder: (_, index) => _buildCard(index),
+          itemBuilder: (_, i) => _buildCard(i),
         ),
       ],
     );
   }
 
   Widget _buildCard(int index) {
-    final labels = [
-      "Sasaran",
-      "Indikator Kinerja",
-      "Target",
-      "Triwulan I",
-      "Triwulan II",
-      "Triwulan III",
-      "Triwulan IV",
-    ];
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-        side: BorderSide(color: Colors.grey.shade300),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+        border: Border.all(color: Colors.grey.shade200),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(15),
         child: Column(
           children: [
             Row(
               children: [
-                // NUMBER
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+                CircleAvatar(
+                  radius: 18,
+                  backgroundColor: Colors.teal.shade50,
                   child: Text(
                     "${index + 1}",
-                    style: const TextStyle(
-                      fontSize: 16,
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
+                      color: Colors.teal.shade700,
                     ),
                   ),
                 ),
-
                 const Spacer(),
-
                 if (index > 0)
                   IconButton(
-                    icon: Icon(
-                      Icons.delete_outline,
-                      color: Colors.red.shade400,
-                    ),
+                    icon: const Icon(Icons.delete_outline, color: Colors.red),
                     onPressed: () => _deleteRow(index),
                   ),
               ],
@@ -133,20 +127,21 @@ class _CardTable2WidgettState extends State<CardTable2Widget> {
     );
   }
 
-  Widget _input(String label, TextEditingController ctrl, int rowIndex) {
+  Widget _input(String label, TextEditingController ctrl, int index) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 12),
       child: TextField(
         controller: ctrl,
         decoration: InputDecoration(
           labelText: label,
+          labelStyle: const TextStyle(fontWeight: FontWeight.w600),
           filled: true,
           fillColor: Colors.grey.shade100,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         ),
         onChanged: (_) {
-          if (rowIndex == rows.length - 1 &&
-              rows[rowIndex].every((c) => c.text.trim().isNotEmpty)) {
+          if (index == rows.length - 1 &&
+              rows[index].every((c) => c.text.trim().isNotEmpty)) {
             _addRow();
           }
         },
