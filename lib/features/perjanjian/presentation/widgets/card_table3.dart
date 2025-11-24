@@ -51,6 +51,17 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
     return s.length > 30 ? '${s.substring(0, 30)}…' : s;
   }
 
+  Widget _labelChip(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(text, style: const TextStyle(fontWeight: FontWeight.w600)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -63,14 +74,7 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const Spacer(),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text("${_rows.length} baris"),
-            ),
+            _labelChip("${_rows.length} baris"),
           ],
         ),
         const SizedBox(height: 12),
@@ -113,7 +117,10 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
         labelText: label,
         filled: true,
         fillColor: Colors.grey.shade50,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide.none,
+        ),
       ),
       onChanged: (_) {},
     );
@@ -141,7 +148,7 @@ class _TableCardSmall extends StatefulWidget {
 
 class _TableCardSmallState extends State<_TableCardSmall>
     with TickerProviderStateMixin {
-  bool _open = true;
+  bool _open = false;
   late final AnimationController _rot;
 
   @override
@@ -150,7 +157,7 @@ class _TableCardSmallState extends State<_TableCardSmall>
     _rot = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
-      value: 0,
+      value: 0.5,
     );
   }
 

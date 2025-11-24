@@ -178,7 +178,7 @@ class _TableCard extends StatefulWidget {
 }
 
 class _TableCardState extends State<_TableCard> with TickerProviderStateMixin {
-  bool _open = true;
+  bool _open = false;
   late final AnimationController _rotateController;
 
   @override
@@ -187,7 +187,7 @@ class _TableCardState extends State<_TableCard> with TickerProviderStateMixin {
     _rotateController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
-      value: 0.0,
+      value: 0.5,
     );
   }
 

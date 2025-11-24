@@ -54,6 +54,17 @@ class _CardTable2WidgetState extends State<CardTable2Widget>
     return s.length > 30 ? '${s.substring(0, 30)}…' : s;
   }
 
+  Widget _labelChip(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(text, style: const TextStyle(fontWeight: FontWeight.w600)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final labels = [
@@ -72,18 +83,11 @@ class _CardTable2WidgetState extends State<CardTable2Widget>
         Row(
           children: [
             const Text(
-              "TABEL TRIWULAN — TARGET TRIWULAN",
+              "TABEL 2 — TARGET TRIWULAN",
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const Spacer(),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text("${_rows.length} baris"),
-            ),
+            _labelChip("${_rows.length} baris"),
           ],
         ),
         const SizedBox(height: 12),
@@ -150,7 +154,7 @@ class _TableCardTriwulan extends StatefulWidget {
 
 class _TableCardTriwulanState extends State<_TableCardTriwulan>
     with TickerProviderStateMixin {
-  bool _open = true;
+  bool _open = false;
   late final AnimationController _rotationController;
 
   @override
@@ -159,7 +163,7 @@ class _TableCardTriwulanState extends State<_TableCardTriwulan>
     _rotationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
-      value: 0.0,
+      value: 0.5,
     );
   }
 
@@ -258,6 +262,7 @@ class _TableCardTriwulanState extends State<_TableCardTriwulan>
                             fillColor: Colors.grey.shade50,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide.none,
                             ),
                           ),
                           onChanged: (_) => widget.onAnyFieldChanged(),
