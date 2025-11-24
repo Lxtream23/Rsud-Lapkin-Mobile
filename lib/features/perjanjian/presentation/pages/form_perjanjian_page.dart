@@ -188,20 +188,20 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                       textAlign: TextAlign.center,
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 30),
                     const Text(
-                      "Dalam rangka mewujudkan manajemen pemerintahan yang efektif, transparan, dan akuntabel serta berorientasi pada hasil...",
+                      "Dalam rangka mewujudkan manajemen pemerintahan yang efektif, transparan dan akuntabel serta berorientasi pada hasil, kami yang bertanda tangan dibawah ini : ",
                       textAlign: TextAlign.justify,
                       style: TextStyle(fontSize: 14),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 24),
 
                     _input("BUDI SANTOSO"),
                     const SizedBox(height: 8),
                     _input("Administrasi Pengembangan"),
                     const SizedBox(height: 8),
                     const Text("Selanjutnya disebut PIHAK PERTAMA."),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 24),
                     _input("Nama Lengkap"),
                     const SizedBox(height: 8),
                     _dropdown(
@@ -212,6 +212,19 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                     const Text("Selanjutnya disebut PIHAK KEDUA."),
                     const SizedBox(height: 24),
                     const Text(
+                      "Pihak pertama berjanji akan mewujudkan target kinerja yang seharusnya sesuai lampiran perjanjian ini, dalam rangka mencapai target kinerja jangka menengah seperti yang telah ditetapkan dalam dokumen perencanaan. Keberhasilan dan kegagalan pencapaian target kinerja tersebut menjadi tanggung jawab kami. ",
+                      textAlign: TextAlign.justify,
+                      style: TextStyle(fontSize: 14),
+                    ),
+                    const SizedBox(height: 14),
+                    const Text(
+                      "Pihak kedua akan melakukan evaluasi terhadap capaian kinerja dari perjanjian ini dan mengambil tindakan yang diperlukan dalam rangka pemberian penghargaan dan sanksi. ",
+                      textAlign: TextAlign.justify,
+                      style: TextStyle(fontSize: 14),
+                    ),
+                    // === "INDIKATOR KINERJA INDIVIDU\nUOBK RSUD BANGIL TAHUN 2025" ===
+                    const SizedBox(height: 40),
+                    const Text(
                       "INDIKATOR KINERJA INDIVIDU\nUOBK RSUD BANGIL TAHUN 2025",
                       textAlign: TextAlign.center,
                       style: TextStyle(fontWeight: FontWeight.bold),
@@ -219,36 +232,16 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                     const SizedBox(height: 20),
 
                     // === Card-based Table 1 ===
-                    // ---------------- TABEL 1 ----------------
-                    // CardTable1Widget sekarang menerima key (state manage sendiri)
-                    Card(
-                      elevation: 0,
-                      color: Colors.transparent,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // panggil widget table1 (di file widgets/card_table1.dart)
-                          // beri key agar kita bisa mengambil datanya lewat currentState
-                          CardTable1Widget(key: table1Key),
-                        ],
-                      ),
-                    ),
+                    CardTable1Widget(key: table1Key),
+
                     const SizedBox(height: 12),
 
                     // === Card-based Table 2 ===
-                    // ---------------- TABEL TRIWULAN ----------------
-                    // Tabel triwulan menerima key & onAdd/onDelete internalnya sendiri.
-                    // Pastikan file widgets/tabel_triwulan.dart expose methods:
-                    // - getRowsAsStrings() untuk collect data
-                    // - (opsional) other helpers
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: CardTable2Widget(key: table2Key),
-                    ),
+                    CardTable2Widget(key: table2Key),
+
                     const SizedBox(height: 12),
 
-                    // === Card-based Table 2 ===
-                    // ---------------- TABEL 2 (Program) ----------------
+                    // === Card-based Table 3 ===
                     CardTable3Widget(key: table3Key),
 
                     const SizedBox(height: 18),

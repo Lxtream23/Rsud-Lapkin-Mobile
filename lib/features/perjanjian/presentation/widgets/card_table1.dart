@@ -1,3 +1,4 @@
+// lib/presentation/widgets/card_table1.dart
 import 'package:flutter/material.dart';
 
 class CardTable1Widget extends StatefulWidget {
@@ -7,8 +8,10 @@ class CardTable1Widget extends StatefulWidget {
   State<CardTable1Widget> createState() => _CardTable1WidgetState();
 }
 
-class _CardTable1WidgetState extends State<CardTable1Widget> {
-  List<List<TextEditingController>> rows = [];
+class _CardTable1WidgetState extends State<CardTable1Widget>
+    with TickerProviderStateMixin {
+  // tiap baris punya 5 kolom: Sasaran, Indikator, Target, Formulasi, Sumber
+  final List<List<TextEditingController>> _rows = [];
 
   @override
   void initState() {
@@ -18,129 +21,266 @@ class _CardTable1WidgetState extends State<CardTable1Widget> {
 
   @override
   void dispose() {
-    for (final row in rows) {
-      for (final c in row) c.dispose();
+    for (final r in _rows) {
+      for (final c in r) c.dispose();
     }
     super.dispose();
   }
 
-  // ============================
-  // ROW MANAGEMENT
-  // ============================
   void _addRow() {
     setState(() {
-      rows.add(List.generate(5, (_) => TextEditingController()));
+      _rows.add(List.generate(5, (_) => TextEditingController()));
     });
   }
 
   void _deleteRow(int index) {
-    if (index == 0) return;
+    if (index == 0 && _rows.length == 1) {
+      // jangan hapus baris terakhir jika cuma satu; cukup clear
+      for (final c in _rows.first) c.clear();
+      setState(() {});
+      return;
+    }
+    for (final c in _rows[index]) c.dispose();
     setState(() {
-      for (var c in rows[index]) c.dispose();
-      rows.removeAt(index);
+      _rows.removeAt(index);
     });
   }
 
-  // Expose data
   List<List<String>> getRowsAsStrings() {
-    return rows.map((r) => r.map((c) => c.text.trim()).toList()).toList();
+    return _rows.map((r) => r.map((c) => c.text.trim()).toList()).toList();
   }
 
-  // ============================
-  // UI
-  // ============================
+  bool _rowIsEmpty(List<TextEditingController> row) =>
+      row.every((c) => c.text.trim().isEmpty);
+
+  // ringkasan: ambil teks kolom pertama, potong jika panjang
+  String _summaryForRow(List<TextEditingController> row) {
+    final s = row[0].text.trim();
+    if (s.isEmpty) return '— kosong —';
+    return s.length > 30 ? '${s.substring(0, 30)}…' : s;
+  }
+
+  Widget _labelChip(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(text, style: const TextStyle(fontWeight: FontWeight.w600)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          "TABEL 1 — SASARAN & INDIKATOR",
-          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+        // Section title
+        Row(
+          children: [
+            const Text(
+              "TABEL 1 — SASARAN & INDIKATOR",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const Spacer(),
+            _labelChip("${_rows.length} baris"),
+          ],
         ),
         const SizedBox(height: 12),
 
+        // Cards
         ListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          itemCount: rows.length,
-          itemBuilder: (_, i) => _buildCard(i),
+          itemCount: _rows.length,
+          itemBuilder: (context, i) {
+            final row = _rows[i];
+            final controller = row[0];
+            // controller listener untuk auto-add
+            controller.addListener(() {
+              final isLast = i == _rows.length - 1;
+              if (isLast && row.any((c) => c.text.trim().isNotEmpty)) {
+                // tambahkan baris baru (safe: hanya sekali)
+                final anyNotEmpty = _rows.last.any(
+                  (c) => c.text.trim().isNotEmpty,
+                );
+                if (anyNotEmpty) _addRow();
+              }
+              // rebuild so summary updates
+              setState(() {});
+            });
+
+            return _TableCard(
+              index: i,
+              headerSummary: _summaryForRow(row),
+              isEmpty: _rowIsEmpty(row),
+              onDelete: () => _deleteRow(i),
+              child: Column(
+                children: [
+                  _inputField("Sasaran", row[0]),
+                  const SizedBox(height: 8),
+                  _inputField("Indikator Kinerja", row[1]),
+                  const SizedBox(height: 8),
+                  _inputField("Target", row[2]),
+                  const SizedBox(height: 8),
+                  _inputField("Formulasi Hitung", row[3]),
+                  const SizedBox(height: 8),
+                  _inputField("Sumber Data", row[4]),
+                ],
+              ),
+            );
+          },
         ),
       ],
     );
   }
 
-  Widget _buildCard(int index) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(15),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 18,
-                  backgroundColor: Colors.teal.shade50,
-                  child: Text(
-                    "${index + 1}",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.teal.shade700,
-                    ),
-                  ),
-                ),
-                const Spacer(),
-                if (index > 0)
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Colors.red),
-                    onPressed: () => _deleteRow(index),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 10),
-
-            _input("Sasaran", rows[index][0], index),
-            _input("Indikator Kinerja", rows[index][1], index),
-            _input("Target", rows[index][2], index),
-            _input("Formulasi Hitung", rows[index][3], index),
-            _input("Sumber Data", rows[index][4], index),
-          ],
+  Widget _inputField(String label, TextEditingController ctrl) {
+    return TextField(
+      controller: ctrl,
+      decoration: InputDecoration(
+        labelText: label,
+        filled: true,
+        fillColor: Colors.grey.shade50,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 12,
         ),
       ),
+      style: const TextStyle(fontWeight: FontWeight.w600),
+    );
+  }
+}
+
+// Reusable card widget with expand/collapse + header summary + delete icon
+class _TableCard extends StatefulWidget {
+  final int index;
+  final String headerSummary;
+  final Widget child;
+  final VoidCallback onDelete;
+  final bool isEmpty;
+
+  const _TableCard({
+    required this.index,
+    required this.headerSummary,
+    required this.child,
+    required this.onDelete,
+    required this.isEmpty,
+  });
+
+  @override
+  State<_TableCard> createState() => _TableCardState();
+}
+
+class _TableCardState extends State<_TableCard> with TickerProviderStateMixin {
+  bool _open = true;
+  late final AnimationController _rotateController;
+
+  @override
+  void initState() {
+    super.initState();
+    _rotateController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+      value: 0.0,
     );
   }
 
-  Widget _input(String label, TextEditingController ctrl, int index) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: TextField(
-        controller: ctrl,
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: const TextStyle(fontWeight: FontWeight.w600),
-          filled: true,
-          fillColor: Colors.grey.shade100,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+  @override
+  void dispose() {
+    _rotateController.dispose();
+    super.dispose();
+  }
+
+  void _toggle() {
+    setState(() {
+      _open = !_open;
+      if (_open) {
+        _rotateController.reverse();
+      } else {
+        _rotateController.forward();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: AnimatedSize(
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeInOut,
+        child: Column(
+          children: [
+            InkWell(
+              onTap: _toggle,
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        "${widget.index + 1}",
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        widget.headerSummary,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                    // delete icon: tampilkan hanya jika row empty and more than one
+                    if (widget.isEmpty)
+                      IconButton(
+                        onPressed: widget.onDelete,
+                        icon: Icon(
+                          Icons.delete_outline,
+                          color: Colors.red.shade400,
+                        ),
+                        splashRadius: 20,
+                      ),
+                    RotationTransition(
+                      turns: Tween(
+                        begin: 0.0,
+                        end: 0.5,
+                      ).animate(_rotateController),
+                      child: const Icon(Icons.keyboard_arrow_down),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (_open)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
+                child: widget.child,
+              ),
+          ],
         ),
-        onChanged: (_) {
-          if (index == rows.length - 1 &&
-              rows[index].every((c) => c.text.trim().isNotEmpty)) {
-            _addRow();
-          }
-        },
       ),
     );
   }
