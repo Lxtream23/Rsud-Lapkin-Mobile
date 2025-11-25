@@ -24,6 +24,9 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
     super.dispose();
   }
 
+  // -------------------------------------------------------------------
+  // ROW MANAGEMENT
+  // -------------------------------------------------------------------
   void _addRow() {
     setState(() => _rows.add(List.generate(3, (_) => TextEditingController())));
   }
@@ -64,9 +67,11 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // ---------- HEADER ----------
         Row(
           children: [
             const Text(
@@ -78,6 +83,8 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
           ],
         ),
         const SizedBox(height: 12),
+
+        // ---------- LIST CARD ----------
         ListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -106,6 +113,22 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
             );
           },
         ),
+
+        // ---------- BUTTON TAMBAH BARIS ----------
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: _addRow,
+            icon: Icon(Icons.add, color: theme.primary),
+            label: Text(
+              "Tambah Baris",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: theme.primary,
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -127,6 +150,9 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
   }
 }
 
+// *********************************************************************
+// *                           CARD WIDGET                             *
+// *********************************************************************
 class _TableCardSmall extends StatefulWidget {
   final int index;
   final String headerSummary;
@@ -149,12 +175,12 @@ class _TableCardSmall extends StatefulWidget {
 class _TableCardSmallState extends State<_TableCardSmall>
     with TickerProviderStateMixin {
   bool _open = false;
-  late final AnimationController _rot;
+  late final AnimationController _rotationController;
 
   @override
   void initState() {
     super.initState();
-    _rot = AnimationController(
+    _rotationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
       value: 0.5,
@@ -163,17 +189,18 @@ class _TableCardSmallState extends State<_TableCardSmall>
 
   @override
   void dispose() {
-    _rot.dispose();
+    _rotationController.dispose();
     super.dispose();
   }
 
-  void _toggle() {
+  void _toggleOpen() {
     setState(() {
       _open = !_open;
-      if (_open)
-        _rot.reverse();
-      else
-        _rot.forward();
+      if (_open) {
+        _rotationController.reverse();
+      } else {
+        _rotationController.forward();
+      }
     });
   }
 
@@ -189,7 +216,7 @@ class _TableCardSmallState extends State<_TableCardSmall>
         child: Column(
           children: [
             InkWell(
-              onTap: _toggle,
+              onTap: _toggleOpen,
               borderRadius: BorderRadius.circular(12),
               child: Padding(
                 padding: const EdgeInsets.symmetric(
@@ -226,7 +253,10 @@ class _TableCardSmallState extends State<_TableCardSmall>
                         splashRadius: 20,
                       ),
                     RotationTransition(
-                      turns: Tween(begin: 0.0, end: 0.5).animate(_rot),
+                      turns: Tween(
+                        begin: 0.0,
+                        end: 0.5,
+                      ).animate(_rotationController),
                       child: const Icon(Icons.keyboard_arrow_down),
                     ),
                   ],

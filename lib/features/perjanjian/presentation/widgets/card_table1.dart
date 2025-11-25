@@ -27,6 +27,9 @@ class _CardTable1WidgetState extends State<CardTable1Widget>
     super.dispose();
   }
 
+  // -------------------------------------------------------------------
+  // ROW MANAGEMENT
+  // -------------------------------------------------------------------
   void _addRow() {
     setState(() {
       _rows.add(List.generate(5, (_) => TextEditingController()));
@@ -71,12 +74,14 @@ class _CardTable1WidgetState extends State<CardTable1Widget>
     );
   }
 
+  // -------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Section title
+        // ---------- HEADER ----------
         Row(
           children: [
             const Text(
@@ -89,7 +94,7 @@ class _CardTable1WidgetState extends State<CardTable1Widget>
         ),
         const SizedBox(height: 12),
 
-        // Cards
+        // ---------- LIST CARD ----------
         ListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -132,6 +137,22 @@ class _CardTable1WidgetState extends State<CardTable1Widget>
             );
           },
         ),
+
+        // ---------- BUTTON TAMBAH BARIS ----------
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: _addRow,
+            icon: Icon(Icons.add, color: theme.primary),
+            label: Text(
+              "Tambah Baris",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: theme.primary,
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -157,7 +178,9 @@ class _CardTable1WidgetState extends State<CardTable1Widget>
   }
 }
 
-// Reusable card widget with expand/collapse + header summary + delete icon
+// *********************************************************************
+// *                           CARD WIDGET                             *
+// *********************************************************************
 class _TableCard extends StatefulWidget {
   final int index;
   final String headerSummary;
@@ -179,12 +202,12 @@ class _TableCard extends StatefulWidget {
 
 class _TableCardState extends State<_TableCard> with TickerProviderStateMixin {
   bool _open = false;
-  late final AnimationController _rotateController;
+  late final AnimationController _rotationController;
 
   @override
   void initState() {
     super.initState();
-    _rotateController = AnimationController(
+    _rotationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
       value: 0.5,
@@ -193,7 +216,7 @@ class _TableCardState extends State<_TableCard> with TickerProviderStateMixin {
 
   @override
   void dispose() {
-    _rotateController.dispose();
+    _rotationController.dispose();
     super.dispose();
   }
 
@@ -201,9 +224,9 @@ class _TableCardState extends State<_TableCard> with TickerProviderStateMixin {
     setState(() {
       _open = !_open;
       if (_open) {
-        _rotateController.reverse();
+        _rotationController.reverse();
       } else {
-        _rotateController.forward();
+        _rotationController.forward();
       }
     });
   }
@@ -264,7 +287,7 @@ class _TableCardState extends State<_TableCard> with TickerProviderStateMixin {
                       turns: Tween(
                         begin: 0.0,
                         end: 0.5,
-                      ).animate(_rotateController),
+                      ).animate(_rotationController),
                       child: const Icon(Icons.keyboard_arrow_down),
                     ),
                   ],

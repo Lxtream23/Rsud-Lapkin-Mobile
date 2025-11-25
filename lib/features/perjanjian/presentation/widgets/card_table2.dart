@@ -25,6 +25,9 @@ class _CardTable2WidgetState extends State<CardTable2Widget>
     super.dispose();
   }
 
+  // -------------------------------------------------------------------
+  // ROW MANAGEMENT
+  // -------------------------------------------------------------------
   void _addRow() {
     setState(() {
       _rows.add(List.generate(7, (_) => TextEditingController()));
@@ -65,6 +68,7 @@ class _CardTable2WidgetState extends State<CardTable2Widget>
     );
   }
 
+  // -------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     final labels = [
@@ -77,9 +81,12 @@ class _CardTable2WidgetState extends State<CardTable2Widget>
       'Triwulan IV',
     ];
 
+    final theme = Theme.of(context).colorScheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // ---------- HEADER ----------
         Row(
           children: [
             const Text(
@@ -91,14 +98,13 @@ class _CardTable2WidgetState extends State<CardTable2Widget>
           ],
         ),
         const SizedBox(height: 12),
-
+        // ---------- LIST CARD ----------
         ListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: _rows.length,
           itemBuilder: (context, i) {
             final row = _rows[i];
-
             // attach listener on first column to update summary and auto-add
             row[0].addListener(() {
               final isLast = i == _rows.length - 1;
@@ -123,12 +129,30 @@ class _CardTable2WidgetState extends State<CardTable2Widget>
             );
           },
         ),
+
+        // ---------- BUTTON TAMBAH BARIS ----------
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: _addRow,
+            icon: Icon(Icons.add, color: theme.primary),
+            label: Text(
+              "Tambah Baris",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: theme.primary,
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
 }
 
-// Card khusus untuk triwulan
+// *********************************************************************
+// *                           CARD WIDGET                             *
+// *********************************************************************
 class _TableCardTriwulan extends StatefulWidget {
   final int index;
   final String headerSummary;
