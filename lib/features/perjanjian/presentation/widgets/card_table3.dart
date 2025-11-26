@@ -287,17 +287,28 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
   // modern input style
   Widget _input(String label, TextEditingController ctrl) {
     final theme = Theme.of(context).colorScheme;
-
-    return TextField(
-      controller: ctrl,
-      decoration: InputDecoration(
-        labelText: label,
-        filled: true,
-        fillColor: theme.surfaceContainerLowest,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: theme.outline.withOpacity(0.18)),
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 150),
+      curve: Curves.easeInOut,
+      child: TextField(
+        controller: ctrl,
+        minLines: 1,
+        maxLines: null,
+        keyboardType: TextInputType.multiline,
+        decoration: InputDecoration(
+          labelText: label,
+          filled: true,
+          fillColor: theme.surfaceContainerLowest,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: theme.outline.withOpacity(0.18)),
+          ),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 12,
+          ),
         ),
+        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
       ),
     );
   }
