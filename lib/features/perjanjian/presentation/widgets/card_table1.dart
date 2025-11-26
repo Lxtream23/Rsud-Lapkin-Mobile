@@ -38,16 +38,60 @@ class _CardTable1WidgetState extends State<CardTable1Widget>
   }
 
   void _deleteRow(int index) {
-    if (index == 0 && _rows.length == 1) {
-      for (final c in _rows.first) c.clear();
+    debugPrint("[TABEL1] Request delete row index=$index");
+
+    // --- Validasi Index ---
+    if (index < 0 || index >= _rows.length) {
+      debugPrint("[TABEL1] ❌ ERROR: index out of range. Tidak jadi hapus.");
+      return;
+    }
+
+    // --- Kasus: hanya ada 1 baris, jangan hapus hanya kosongkan ---
+    if (_rows.length == 1) {
+      debugPrint("[TABEL1] Hanya satu baris. Membersihkan saja...");
+      for (final c in _rows.first) {
+        try {
+          c.clear();
+        } catch (e) {
+          debugPrint("[TABEL1] ❌ Error clear controller: $e");
+        }
+      }
       setState(() {});
       return;
     }
-    for (final c in _rows[index]) c.dispose();
+
+    // --- Hapus baris normal ---
+    final removed = _rows[index];
+
+    debugPrint(
+      "[TABEL1] Menghapus row ke-$index "
+      "(kolom: ${removed.length} controller).",
+    );
+
+    // dispose tiap controller dengan aman
+    for (final c in removed) {
+      try {
+        c.dispose(); // aman, tidak perlu isDisposed
+      } catch (e) {
+        debugPrint("[TABEL1] ❌ Error dispose controller: $e");
+      }
+    }
+
     setState(() {
       _rows.removeAt(index);
-      if (_openIndex == index) _openIndex = null;
+
+      // tutup card jika yang terbuka adalah index ini
+      if (_openIndex == index) {
+        debugPrint("[TABEL1] Menutup card karena baris dihapus.");
+        _openIndex = null;
+      }
+      // Geser openIndex jika index card bergeser akibat penghapusan
+      else if (_openIndex != null && _openIndex! > index) {
+        _openIndex = _openIndex! - 1;
+      }
     });
+
+    debugPrint("[TABEL1] Row berhasil dihapus. Sisa baris: ${_rows.length}");
   }
 
   bool _rowIsEmpty(List<TextEditingController> row) =>
