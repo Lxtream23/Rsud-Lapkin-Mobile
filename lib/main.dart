@@ -6,6 +6,8 @@ import 'features/profile/presentation/controllers/profile_controller.dart';
 import 'features/register/presentation/controllers/register_controller.dart';
 import 'features/login/presentation/controllers/login_controller.dart';
 
+import 'core/widgets/ui_helpers/app_snackbar.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -32,13 +34,25 @@ class MyApp extends StatelessWidget {
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
+
+        /// 🔹 Judul aplikasi
         title: 'RSUD Lapkin Mobile',
+
+        /// 🔹 Tema aplikasi
         theme: ThemeData(
           fontFamily: 'Poppins',
           useMaterial3: true,
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
           scaffoldBackgroundColor: Colors.white,
         ),
+
+        /// 🔹 Overlay global untuk snackbar custom
+        builder: (context, child) {
+          return Overlay(
+            key: overlaySnackbarKey,
+            initialEntries: [OverlayEntry(builder: (context) => child!)],
+          );
+        },
 
         /// 🔹 Splash dulu → lalu login / home otomatis
         initialRoute: AppRoutes.splash,

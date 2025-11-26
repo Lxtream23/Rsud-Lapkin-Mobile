@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rsud_lapkin_mobile/core/widgets/ui_helpers/app_snackbar.dart';
 
 class CardTable1Widget extends StatefulWidget {
   const CardTable1Widget({super.key});
@@ -40,60 +41,72 @@ class _CardTable1WidgetState extends State<CardTable1Widget>
 
   // DELETE ROW
   void _deleteRow(int index) {
-    debugPrint("[TABEL1] Request delete row index=$index");
+    debugPrint(
+      "🗑 DELETE REQUEST [TABEL1] → index: $index, total rows: ${_rows.length}",
+    );
 
     // --- Validasi Index ---
     if (index < 0 || index >= _rows.length) {
-      debugPrint("[TABEL1] ❌ ERROR: index out of range. Tidak jadi hapus.");
+      debugPrint(
+        "❌ DELETE FAILED [TABEL1] → index out of range. Tidak jadi hapus.",
+      );
+      _showDeleteError("Gagal menghapus: index tidak valid");
       return;
     }
+
+    // ---- Ambil summary row untuk pesan snackbar ----
+    final deletedSummary = _summary(_rows[index]);
 
     // --- Kasus: hanya ada 1 baris, jangan hapus hanya kosongkan ---
     if (_rows.length == 1) {
-      debugPrint("[TABEL1] Hanya satu baris. Membersihkan saja...");
+      debugPrint("🗑 DELETE [TABEL1] → Hanya satu baris. Membersihkan saja...");
       for (final c in _rows.first) {
-        try {
+        if (!c.isClosed)
           c.clear();
-        } catch (e) {
-          debugPrint("[TABEL1] ❌ Error clear controller: $e");
+        else {
+          debugPrint("⚠ Controller [TABEL1] sudah closed, skip clear");
         }
       }
+
       setState(() {});
+
+      debugPrint(
+        "🗑 DELETE [TABEL1] → Menghapus row ke-$index "
+        "(kolom: ${_rows.first.length} controller).",
+      );
+
+      _showDeleteSuccess("Baris 1 telah dikosongkan");
       return;
     }
 
-    // --- Hapus baris normal ---
-    final removed = _rows[index];
-
-    debugPrint(
-      "[TABEL1] Menghapus row ke-$index "
-      "(kolom: ${removed.length} controller).",
-    );
-
-    // dispose tiap controller dengan aman
-    for (final c in removed) {
-      try {
-        c.dispose(); // aman, tidak perlu isDisposed
-      } catch (e) {
-        debugPrint("[TABEL1] ❌ Error dispose controller: $e");
+    // ---- Hapus controller dengan aman ----
+    for (final c in _rows[index]) {
+      if (!c.isClosed) {
+        c.dispose();
+      } else {
+        debugPrint("⚠ [TABEL1]Controller sudah closed, skip dispose");
       }
     }
 
+    // ---- Update UI ----
     setState(() {
       _rows.removeAt(index);
 
-      // tutup card jika yang terbuka adalah index ini
+      // Tutup accordion jika row yang dihapus adalah row terbuka
       if (_openIndex == index) {
-        debugPrint("[TABEL1] Menutup card karena baris dihapus.");
         _openIndex = null;
       }
-      // Geser openIndex jika index card bergeser akibat penghapusan
-      else if (_openIndex != null && _openIndex! > index) {
-        _openIndex = _openIndex! - 1;
+
+      // Jika openIndex melebihi panjang list setelah delete → geser
+      if (_openIndex != null && _openIndex! >= _rows.length) {
+        _openIndex = _rows.length - 1;
       }
     });
 
-    debugPrint("[TABEL1] Row berhasil dihapus. Sisa baris: ${_rows.length}");
+    debugPrint("✅ DELETE SUCCESS [TABEL1] → removed row index: $index");
+
+    // ---- Snackbar sukses ----
+    _showDeleteSuccess("Baris ${index + 1} dihapus: \"$deletedSummary\"");
   }
 
   // CEK APAKAH ROW KOSONG
@@ -201,6 +214,25 @@ class _CardTable1WidgetState extends State<CardTable1Widget>
           },
         ) ??
         false;
+  }
+
+  // SHOW DELETE SUCCESS SNACKBAR
+  void _showDeleteSuccess(String msg) {
+    final ctx = overlaySnackbarKey.currentContext;
+    if (ctx == null) {
+      debugPrint("Overlay NULL → Snackbar gagal ditampilkan");
+      return;
+    }
+
+    AppSnackbar.success(ctx, msg);
+  }
+
+  // SHOW DELETE ERROR SNACKBAR
+  void _showDeleteError(String msg) {
+    final ctx = overlaySnackbarKey.currentContext;
+    if (ctx == null) return;
+
+    AppSnackbar.error(ctx, msg);
   }
 
   // ===================================================================
@@ -313,6 +345,19 @@ class _CardTable1WidgetState extends State<CardTable1Widget>
         style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
       ),
     );
+  }
+}
+
+//
+extension ControllerSafeDispose on TextEditingController {
+  bool get isClosed {
+    try {
+      // akses apapun yang memerlukan controller hidup
+      text;
+      return false; // tidak error → belum disposed
+    } catch (_) {
+      return true; // error → sudah disposed
+    }
   }
 }
 
