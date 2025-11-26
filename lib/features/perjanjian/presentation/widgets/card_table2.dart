@@ -10,8 +10,11 @@ class CardTable2Widget extends StatefulWidget {
 
 class _CardTable2WidgetState extends State<CardTable2Widget>
     with TickerProviderStateMixin {
-  // masing-masing baris: 7 kolom (Sasaran, Indikator, Target, I, II, III, IV)
+  /// setiap baris: 7 kolom
   final List<List<TextEditingController>> _rows = [];
+
+  /// index card yang terbuka (accordion mode)
+  int? _openIndex;
 
   @override
   void initState() {
@@ -21,13 +24,15 @@ class _CardTable2WidgetState extends State<CardTable2Widget>
 
   @override
   void dispose() {
-    for (final r in _rows) for (final c in r) c.dispose();
+    for (final r in _rows) {
+      for (final c in r) c.dispose();
+    }
     super.dispose();
   }
 
-  // -------------------------------------------------------------------
+  // ===================================================================
   // ROW MANAGEMENT
-  // -------------------------------------------------------------------
+  // ===================================================================
   void _addRow() {
     setState(() {
       _rows.add(List.generate(7, (_) => TextEditingController()));
@@ -41,52 +46,65 @@ class _CardTable2WidgetState extends State<CardTable2Widget>
       return;
     }
     for (final c in _rows[index]) c.dispose();
-    setState(() => _rows.removeAt(index));
+    setState(() {
+      _rows.removeAt(index);
+      if (_openIndex == index) _openIndex = null;
+    });
   }
 
-  List<List<String>> getRowsAsStrings() {
-    return _rows.map((r) => r.map((c) => c.text.trim()).toList()).toList();
+  bool _rowIsEmpty(List<TextEditingController> row) =>
+      row.every((c) => c.text.trim().isEmpty);
+
+  String _summary(List<TextEditingController> row) {
+    final s = row[0].text.trim();
+    if (s.isEmpty) return "— kosong —";
+    return s.length > 24 ? "${s.substring(0, 24)}…" : s;
   }
 
-  bool _rowEmpty(List<TextEditingController> r) =>
-      r.every((c) => c.text.trim().isEmpty);
+  void _toggleCard(int index) {
+    final current = _openIndex;
 
-  String _summary(List<TextEditingController> r) {
-    final s = r[0].text.trim();
-    if (s.isEmpty) return '— kosong —';
-    return s.length > 30 ? '${s.substring(0, 30)}…' : s;
+    // Jika sedang buka card lain
+    if (current != null && current != index) {
+      final isOtherEmpty = _rowIsEmpty(_rows[current]);
+
+      if (isOtherEmpty) {
+        // tutup otomatis
+        setState(() => _openIndex = index);
+      } else {
+        // jangan tutup card berisi data
+        setState(() => _openIndex = index);
+      }
+      return;
+    }
+
+    // Jika buka/tutup card yang sama
+    setState(() {
+      _openIndex = (_openIndex == index) ? null : index;
+    });
   }
 
+  // LABEL CHIP
   Widget _labelChip(String text) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
+        color: Color(0xFFBEF8FF),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(text, style: const TextStyle(fontWeight: FontWeight.w600)),
     );
   }
 
-  // -------------------------------------------------------------------
+  // ===================================================================
   @override
   Widget build(BuildContext context) {
-    final labels = [
-      'Sasaran',
-      'Indikator Kinerja',
-      'Target',
-      'Triwulan I',
-      'Triwulan II',
-      'Triwulan III',
-      'Triwulan IV',
-    ];
-
     final theme = Theme.of(context).colorScheme;
-
+    // LABELS
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ---------- HEADER ----------
+        // HEADER
         Row(
           children: [
             const Text(
@@ -97,203 +115,227 @@ class _CardTable2WidgetState extends State<CardTable2Widget>
             _labelChip("${_rows.length} baris"),
           ],
         ),
+
         const SizedBox(height: 12),
-        // ---------- LIST CARD ----------
+
+        // LIST OF CARDS
         ListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: _rows.length,
           itemBuilder: (context, i) {
             final row = _rows[i];
-            // attach listener on first column to update summary and auto-add
-            row[0].addListener(() {
-              final isLast = i == _rows.length - 1;
-              if (isLast && row.any((c) => c.text.trim().isNotEmpty)) _addRow();
-              setState(() {});
-            });
+            final ctrl = row[0];
 
-            return _TableCardTriwulan(
-              index: i,
-              headerSummary: _summary(row),
-              isEmpty: _rowEmpty(row),
-              onDelete: () => _deleteRow(i),
-              labels: labels,
-              rowControllers: row,
-              onAnyFieldChanged: () {
-                // jika mengetik di baris terakhir pada salah satu field, auto add
-                if (i == _rows.length - 1 &&
-                    row.any((c) => c.text.trim().isNotEmpty)) {
+            // AUTO ADD ROW WHEN LAST ROW TYPED
+            ctrl.addListener(() {
+              final isLast = i == _rows.length - 1;
+              if (isLast && row.any((c) => c.text.trim().isNotEmpty)) {
+                if (_rows.last.any((c) => c.text.trim().isNotEmpty)) {
                   _addRow();
                 }
-              },
+              }
+              setState(() {}); // refresh summary
+            });
+            // TOGGLE CARD
+            return _TriwulanCardItem(
+              index: i,
+              isOpen: _openIndex == i,
+              isEmpty: _rowIsEmpty(row),
+              headerSummary: _summary(row),
+              onToggle: () => _toggleCard(i),
+              onDelete: () => _deleteRow(i),
+              child: Column(
+                children: [
+                  _input("Sasaran", row[0]), // Sasaran
+                  const SizedBox(height: 8),
+                  _input("Indikator", row[1]), // Indikator
+                  const SizedBox(height: 8),
+                  _input("Target", row[2]), // Target
+                  const SizedBox(height: 8),
+                  _input("Triwulan I", row[3]), // Triwulan I
+                  const SizedBox(height: 8),
+                  _input("Triwulan II", row[4]), // Triwulan II
+                  const SizedBox(height: 8),
+                  _input("Triwulan III", row[5]), // Triwulan III
+                  const SizedBox(height: 8),
+                  _input("Triwulan IV", row[6]), // Triwulan IV
+                  const SizedBox(height: 8),
+                ],
+              ),
             );
           },
         ),
 
-        // ---------- BUTTON TAMBAH BARIS ----------
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            onPressed: _addRow,
-            icon: Icon(Icons.add, color: theme.primary),
-            label: Text(
-              "Tambah Baris",
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: theme.primary,
-              ),
-            ),
+        const SizedBox(height: 6),
+
+        // ADD ROW BUTTON
+        TextButton.icon(
+          onPressed: _addRow,
+          icon: Icon(Icons.add, color: theme.primary),
+          label: Text(
+            "Tambah Baris",
+            style: TextStyle(fontWeight: FontWeight.bold, color: theme.primary),
           ),
         ),
       ],
     );
   }
+
+  // modern input style
+  Widget _input(String label, TextEditingController ctrl) {
+    final theme = Theme.of(context).colorScheme;
+
+    return TextField(
+      controller: ctrl,
+      decoration: InputDecoration(
+        labelText: label,
+        filled: true,
+        fillColor: theme.surfaceContainerLowest,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: theme.outline.withOpacity(0.18)),
+        ),
+      ),
+    );
+  }
 }
 
-// *********************************************************************
-// *                           CARD WIDGET                             *
-// *********************************************************************
-class _TableCardTriwulan extends StatefulWidget {
+// ===================================================================
+// CARD WIDGET
+// ===================================================================
+class _TriwulanCardItem extends StatefulWidget {
   final int index;
   final String headerSummary;
+  final bool isOpen;
   final bool isEmpty;
+  final VoidCallback onToggle;
   final VoidCallback onDelete;
-  final List<String> labels;
-  final List<TextEditingController> rowControllers;
-  final VoidCallback onAnyFieldChanged;
+  final Widget child;
 
-  const _TableCardTriwulan({
+  const _TriwulanCardItem({
     required this.index,
     required this.headerSummary,
+    required this.isOpen,
     required this.isEmpty,
+    required this.onToggle,
     required this.onDelete,
-    required this.labels,
-    required this.rowControllers,
-    required this.onAnyFieldChanged,
+    required this.child,
   });
 
   @override
-  State<_TableCardTriwulan> createState() => _TableCardTriwulanState();
+  State<_TriwulanCardItem> createState() => _TriwulanCardItemState();
 }
 
-class _TableCardTriwulanState extends State<_TableCardTriwulan>
+class _TriwulanCardItemState extends State<_TriwulanCardItem>
     with TickerProviderStateMixin {
-  bool _open = false;
-  late final AnimationController _rotationController;
+  late final AnimationController _rotation;
 
   @override
   void initState() {
     super.initState();
-    _rotationController = AnimationController(
+    _rotation = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 300),
-      value: 0.5,
+      duration: const Duration(milliseconds: 260),
+      value: widget.isOpen ? 0.0 : 0.5,
     );
   }
 
   @override
-  void dispose() {
-    _rotationController.dispose();
-    super.dispose();
-  }
-
-  void _toggleOpen() {
-    setState(() {
-      _open = !_open;
-      if (_open) {
-        _rotationController.reverse();
-      } else {
-        _rotationController.forward();
-      }
-    });
+  void didUpdateWidget(covariant _TriwulanCardItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isOpen != oldWidget.isOpen) {
+      widget.isOpen ? _rotation.reverse() : _rotation.forward();
+    }
   }
 
   @override
+  void dispose() {
+    _rotation.dispose();
+    super.dispose();
+  }
+
+  // ===================================================================
+  @override
   Widget build(BuildContext context) {
+    // CARD
     return Card(
+      color: Color(0xFFBEF8FF),
       elevation: 2,
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: AnimatedSize(
         duration: const Duration(milliseconds: 260),
         curve: Curves.easeInOut,
         child: Column(
+          // HEADER & CHILDREN
           children: [
             InkWell(
-              onTap: _toggleOpen,
-              borderRadius: BorderRadius.circular(14),
+              onTap: widget.onToggle,
+              customBorder: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
               child: Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
-                  vertical: 10,
+                  vertical: 12,
                 ),
                 child: Row(
                   children: [
+                    // NUMBER CHIP
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
                         color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
                         "${widget.index + 1}",
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
+
                     const SizedBox(width: 12),
+                    // SUMMARY TEXT
                     Expanded(
                       child: Text(
                         widget.headerSummary,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
                       ),
                     ),
-                    if (widget.isEmpty)
-                      IconButton(
-                        onPressed: widget.onDelete,
-                        icon: Icon(
-                          Icons.delete_outline,
-                          color: Colors.red.shade400,
-                        ),
-                        splashRadius: 20,
+
+                    // DELETE BUTTON
+                    // if (widget.isEmpty)
+                    IconButton(
+                      onPressed: widget.onDelete,
+                      icon: Icon(
+                        Icons.delete_outline,
+                        color: Color(0xFFE74C3C),
                       ),
+                      splashRadius: 20,
+                    ),
+
+                    // ARROW ICON
                     RotationTransition(
-                      turns: Tween(
-                        begin: 0.0,
-                        end: 0.5,
-                      ).animate(_rotationController),
-                      child: const Icon(Icons.keyboard_arrow_down),
+                      turns: Tween(begin: 0.0, end: 0.5).animate(_rotation),
+                      child: Icon(Icons.keyboard_arrow_down),
                     ),
                   ],
                 ),
               ),
             ),
-            if (_open)
+
+            // CHILD CONTENT
+            if (widget.isOpen)
               Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
                   vertical: 12,
                 ),
-                child: Column(
-                  children: [
-                    for (int i = 0; i < widget.labels.length; i++)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: TextField(
-                          controller: widget.rowControllers[i],
-                          decoration: InputDecoration(
-                            labelText: widget.labels[i],
-                            filled: true,
-                            fillColor: Colors.grey.shade50,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide.none,
-                            ),
-                          ),
-                          onChanged: (_) => widget.onAnyFieldChanged(),
-                        ),
-                      ),
-                  ],
-                ),
+                child: widget.child,
               ),
           ],
         ),

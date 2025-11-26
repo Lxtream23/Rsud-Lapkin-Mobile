@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:auto_size_text/auto_size_text.dart';
+// import 'package:auto_size_text/auto_size_text.dart';
 import '../../../../config/app_colors.dart';
 import '../../../../config/app_text_style.dart';
 import '../../presentation/widgets/card_table1.dart';
