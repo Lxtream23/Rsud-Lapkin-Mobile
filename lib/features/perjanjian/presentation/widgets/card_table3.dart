@@ -94,6 +94,66 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
     );
   }
 
+  // CONFIRM DELETE DIALOG
+  Future<bool> showConfirmDeleteDialog(BuildContext context) async {
+    final theme = Theme.of(context);
+
+    return await showDialog<bool>(
+          context: context,
+          barrierDismissible: true,
+          builder: (context) {
+            return AlertDialog(
+              backgroundColor: theme.colorScheme.surface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+              title: Text(
+                "Hapus Baris?",
+                style: TextStyle(color: theme.colorScheme.onSurface),
+              ),
+              content: Text(
+                "Apakah Anda yakin ingin menghapus baris ini?",
+                style: TextStyle(
+                  color: theme.colorScheme.onSurface.withOpacity(0.8),
+                ),
+              ),
+              actionsPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
+              ),
+              actions: [
+                TextButton(
+                  child: Text(
+                    "Batal",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                  onPressed: () => Navigator.pop(context, false),
+                ),
+
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: theme.colorScheme.error,
+                    foregroundColor: theme.colorScheme.onError,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text(
+                    "Hapus",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context).colorScheme;
@@ -298,7 +358,17 @@ class _CardSmallAccordionState extends State<_CardSmallAccordion>
                     // DELETE BUTTON
                     // if (widget.isEmpty)
                     IconButton(
-                      onPressed: widget.onDelete,
+                      onPressed: () async {
+                        final ok =
+                            await (context
+                                    .findAncestorStateOfType<
+                                      _CardTable3WidgetState
+                                    >()
+                                    ?.showConfirmDeleteDialog(context) ??
+                                Future.value(false));
+
+                        if (ok) widget.onDelete();
+                      },
                       icon: Icon(
                         Icons.delete_outline,
                         color: Color(0xFFE74C3C),
