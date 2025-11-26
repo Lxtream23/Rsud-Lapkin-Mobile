@@ -256,6 +256,7 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           );
                         },
+
                         child: const Text(
                           "Daftar Akun",
                           style: TextStyle(

@@ -269,39 +269,60 @@ class _HomePageState extends State<HomePage> {
     required VoidCallback onTap,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      width: 250, // 🔹 kontrol lebar agar tidak terlalu lebar
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+      margin: const EdgeInsets.symmetric(vertical: 10),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(2, 2)),
+          BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(2, 2)),
         ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: Colors.blueAccent, size: 60),
-          const SizedBox(height: 10),
-          Text(
-            title,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 10),
-          ElevatedButton(
-            onPressed: onTap,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF008037),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+          Row(
+            mainAxisAlignment:
+                MainAxisAlignment.center, // 🔹 benar-benar tengah
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Icon(icon, color: Colors.blueAccent, size: 60),
+              const SizedBox(width: 12),
+              Flexible(
+                child: Text(
+                  title,
+                  textAlign: TextAlign.left,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Colors.black87,
+                  ),
+                ),
               ),
-            ),
-            child: const Text(
-              'BUKA',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          /// 🔹 Tombol BUKA
+          SizedBox(
+            // width: 140,
+            // height: 40,
+            child: ElevatedButton(
+              onPressed: onTap,
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 60,
+                  vertical: 14,
+                ),
+                backgroundColor: Colors.teal,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text(
+                'BUKA',
+                style: TextStyle(fontSize: 16, color: Colors.white),
               ),
             ),
           ),
