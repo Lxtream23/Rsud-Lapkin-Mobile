@@ -121,6 +121,7 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
     ),
+    style: const TextStyle(fontSize: 14),
   );
 
   Widget _dropdown(String? value, void Function(String?) onChanged) => SizedBox(
@@ -134,6 +135,7 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
           vertical: 10,
         ),
       ),
+      style: const TextStyle(fontSize: 14),
       hint: const Text("Pilih Jabatan"),
       items: jabatanList
           .map((jab) => DropdownMenuItem(value: jab, child: Text(jab)))
@@ -183,10 +185,14 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
+                    const SizedBox(height: 10),
                     const Text(
                       "PERJANJIAN KINERJA TAHUN 2025 WAKIL\nDIREKTUR PELAYANAN UOBK RSUD BANGIL\nKABUPATEN PASURUAN",
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 30),
                     const Text(
@@ -227,7 +233,10 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                     const Text(
                       "INDIKATOR KINERJA INDIVIDU\nUOBK RSUD BANGIL TAHUN 2025",
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 20),
 

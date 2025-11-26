@@ -32,12 +32,14 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
   // ===================================================================
   // ROW MANAGEMENT
   // ===================================================================
+  // ADD ROW
   void _addRow() {
     setState(() {
       _rows.add(List.generate(3, (_) => TextEditingController()));
     });
   }
 
+  // DELETE ROW
   void _deleteRow(int index) {
     debugPrint("[TABEL3] Request delete row index=$index");
 
@@ -95,9 +97,11 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
     debugPrint("[TABEL3] Row berhasil dihapus. Sisa baris: ${_rows.length}");
   }
 
+  // CEK APAKAH ROW KOSONG
   bool _rowIsEmpty(List<TextEditingController> row) =>
       row.every((c) => c.text.trim().isEmpty);
 
+  // SUMMARY TEXT
   String _summary(List<TextEditingController> row) {
     final s = row[0].text.trim();
     if (s.isEmpty) return '— kosong —';
@@ -212,7 +216,7 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
           children: [
             const Text(
               "TABEL 3 — PROGRAM & ANGGARAN",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
             ),
             const Spacer(),
             _labelChip("${_rows.length} baris"),
@@ -269,7 +273,11 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
           icon: Icon(Icons.add, color: theme.primary),
           label: Text(
             "Tambah Baris",
-            style: TextStyle(fontWeight: FontWeight.bold, color: theme.primary),
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: theme.primary,
+            ),
           ),
         ),
       ],
