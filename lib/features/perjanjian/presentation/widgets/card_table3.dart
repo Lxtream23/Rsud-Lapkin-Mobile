@@ -330,10 +330,12 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
         keyboardType: TextInputType.multiline,
         decoration: InputDecoration(
           labelText: label,
+          labelStyle: TextStyle(fontSize: 14),
           filled: true,
           fillColor: theme.surfaceContainerLowest,
+          isDense: true, // <<< membuat tinggi lebih kecil
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(8),
             borderSide: BorderSide(color: theme.outline.withOpacity(0.18)),
           ),
           contentPadding: const EdgeInsets.symmetric(
