@@ -276,15 +276,23 @@ class _CardTable2WidgetState extends State<CardTable2Widget>
             final ctrl = row[0];
 
             // AUTO ADD ROW WHEN LAST ROW TYPED
-            ctrl.addListener(() {
-              final isLast = i == _rows.length - 1;
-              if (isLast && row.any((c) => c.text.trim().isNotEmpty)) {
-                if (_rows.last.any((c) => c.text.trim().isNotEmpty)) {
-                  _addRow();
+            for (final ctrl in row) {
+              ctrl.addListener(() {
+                final isLastRow = i == _rows.length - 1;
+                final rowData = _rows[i];
+
+                // Jika baris terakhir dan ADA kolom yg terisi → auto-add-row
+                if (isLastRow && rowData.any((c) => c.text.trim().isNotEmpty)) {
+                  // Cek row terakhir yg asli juga ada isi → baru tambah row
+                  if (_rows.last.any((c) => c.text.trim().isNotEmpty)) {
+                    _addRow();
+                  }
                 }
-              }
-              setState(() {}); // refresh summary
-            });
+
+                setState(() {}); // refresh UI & summary
+              });
+            }
+
             // TOGGLE CARD
             return _TriwulanCardItem(
               index: i,
