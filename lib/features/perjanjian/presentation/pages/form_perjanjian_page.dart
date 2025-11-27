@@ -14,7 +14,12 @@ class FormPerjanjianPage extends StatefulWidget {
 }
 
 class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
-  final TextEditingController namaController = TextEditingController();
+  final TextEditingController namaPihakPertamaController =
+      TextEditingController();
+
+  final TextEditingController namaPihakKeduaController =
+      TextEditingController();
+
   String? selectedJabatan;
 
   final List<String> jabatanList = [
@@ -43,7 +48,8 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
 
   @override
   void dispose() {
-    namaController.dispose();
+    namaPihakPertamaController.dispose();
+    namaPihakKeduaController.dispose();
     super.dispose();
   }
 
@@ -87,7 +93,9 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     }
 
     // tambah data form lain
-    result['nama'] = namaController.text;
+    result['namaPihakPertama'] = namaPihakPertamaController.text;
+    result['namaPihakKedua'] = namaPihakKeduaController.text;
+
     result['jabatan'] = selectedJabatan;
 
     return result;
@@ -114,35 +122,39 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     );
   }
 
-  // ----------------- UI helpers -----------------
-  Widget _input(String hint) => TextField(
-    decoration: InputDecoration(
-      hintText: hint,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-    ),
-    style: const TextStyle(fontSize: 14),
-  );
+  // Dropdown jabatan
+  Widget _dropdown(String? value, void Function(String?) onChanged) {
+    final theme = Theme.of(context).colorScheme;
 
-  Widget _dropdown(String? value, void Function(String?) onChanged) => SizedBox(
-    height: 46,
-    child: DropdownButtonFormField<String>(
+    return DropdownButtonFormField<String>(
       value: value,
+      isDense: true, // <<< kecilkan tinggi
       decoration: InputDecoration(
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        labelText: "Jabatan",
+        labelStyle: TextStyle(fontSize: 14),
+        filled: true,
+        fillColor: theme.surfaceContainerLowest,
+        isDense: true, // <<< menambah efek tinggi lebih kecil
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 12,
-          vertical: 10,
+          vertical: 12, // <<< kecilkan tinggi dropdown
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: theme.outline.withOpacity(0.18)),
         ),
       ),
-      style: const TextStyle(fontSize: 14),
-      hint: const Text("Pilih Jabatan"),
       items: jabatanList
-          .map((jab) => DropdownMenuItem(value: jab, child: Text(jab)))
+          .map(
+            (e) => DropdownMenuItem(
+              value: e,
+              child: Text(e, style: const TextStyle(fontSize: 14)),
+            ),
+          )
           .toList(),
       onChanged: onChanged,
-    ),
-  );
+    );
+  }
 
   // Modern input field with label
   final jabatanController = TextEditingController();
@@ -154,64 +166,36 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
   final fungsiEController = TextEditingController();
 
   Widget _buildModernInput({
-    // required String label,
     required String hint,
     required TextEditingController controller,
   }) {
-    // return Row(
-    //   crossAxisAlignment: CrossAxisAlignment.start,
-    //   children: [
-    //     Expanded(
-    //       child: TextField(
-    //         controller: controller,
-    //         decoration: InputDecoration(
-    //           hintText: hint,
-    //           filled: true,
-    //           fillColor: Colors.grey.shade100,
-    //           contentPadding: const EdgeInsets.symmetric(
-    //             horizontal: 14,
-    //             vertical: 12,
-    //           ),
-    //           hintStyle: const TextStyle(fontSize: 14),
-    //           border: OutlineInputBorder(
-    //             borderRadius: BorderRadius.circular(12),
-    //             borderSide: BorderSide(color: Colors.grey.shade300),
-    //           ),
-    //           focusedBorder: OutlineInputBorder(
-    //             borderRadius: BorderRadius.circular(12),
-    //             borderSide: const BorderSide(color: Colors.teal, width: 1.4),
-    //           ),
-    //         ),
-    //       ),
-    //     ),
-    //   ],
-    // );
     final theme = Theme.of(context).colorScheme;
-    return AnimatedSize(
-      duration: const Duration(milliseconds: 150),
-      curve: Curves.easeInOut,
-      child: TextField(
-        controller: controller,
-        minLines: 1,
-        maxLines: null,
-        keyboardType: TextInputType.multiline,
-        decoration: InputDecoration(
-          labelText: hint,
-          filled: true,
-          fillColor: theme.surfaceContainerLowest,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: theme.outline.withOpacity(0.18)),
-          ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 12,
-          ),
+
+    return TextField(
+      controller: controller,
+      minLines: 1,
+      maxLines: null,
+      keyboardType: TextInputType.multiline,
+      decoration: InputDecoration(
+        labelText: hint,
+        labelStyle: TextStyle(fontSize: 14),
+        floatingLabelBehavior: FloatingLabelBehavior.auto,
+        filled: true,
+        fillColor: theme.surfaceContainerLowest,
+        isDense: true, // <<< membuat tinggi lebih kecil
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: theme.outline.withOpacity(0.18)),
         ),
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 12, // <<< tinggi field
+        ),
       ),
+      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
     );
   }
+
   // -------------------------------------
 
   // ----------------- Main build -----------------
@@ -272,14 +256,31 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                     ),
                     const SizedBox(height: 24),
 
-                    _input("BUDI SANTOSO"),
+                    // === INPUT NAMA PIHAK PERTAMA ===
+                    _buildModernInput(
+                      hint: "BUDI SANTOSO",
+                      controller: namaPihakPertamaController,
+                    ),
                     const SizedBox(height: 8),
-                    _input("Administrasi Pengembangan"),
+
+                    // === INPUT JABATAN PIHAK PERTAMA ===
+                    _buildModernInput(
+                      hint: "Administrasi Pengembangan",
+                      controller: jabatanController,
+                    ),
+
                     const SizedBox(height: 8),
                     const Text("Selanjutnya disebut PIHAK PERTAMA."),
                     const SizedBox(height: 24),
-                    _input("Nama Lengkap"),
+
+                    // === INPUT NAMA PIHAK KEDUA ===
+                    _buildModernInput(
+                      hint: "Nama Lengkap",
+                      controller: namaPihakKeduaController,
+                    ),
                     const SizedBox(height: 8),
+
+                    // === DROPDOWN JABATAN PIHAK KEDUA ===
                     _dropdown(
                       selectedJabatan,
                       (v) => setState(() => selectedJabatan = v),
@@ -287,17 +288,22 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                     const SizedBox(height: 12),
                     const Text("Selanjutnya disebut PIHAK KEDUA."),
                     const SizedBox(height: 24),
+
+                    // === PARAGRAF PERJANJIAN KINERJA ===
                     const Text(
                       "Pihak pertama berjanji akan mewujudkan target kinerja yang seharusnya sesuai lampiran perjanjian ini, dalam rangka mencapai target kinerja jangka menengah seperti yang telah ditetapkan dalam dokumen perencanaan. Keberhasilan dan kegagalan pencapaian target kinerja tersebut menjadi tanggung jawab kami. ",
                       textAlign: TextAlign.justify,
                       style: TextStyle(fontSize: 14),
                     ),
                     const SizedBox(height: 14),
+
+                    // === PARAGRAF EVALUASI KINERJA ===
                     const Text(
                       "Pihak kedua akan melakukan evaluasi terhadap capaian kinerja dari perjanjian ini dan mengambil tindakan yang diperlukan dalam rangka pemberian penghargaan dan sanksi. ",
                       textAlign: TextAlign.justify,
                       style: TextStyle(fontSize: 14),
                     ),
+
                     // === "INDIKATOR KINERJA INDIVIDU\nUOBK RSUD BANGIL TAHUN 2025" ===
                     const SizedBox(height: 40),
                     const Text(
