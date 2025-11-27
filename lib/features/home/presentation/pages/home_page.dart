@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:rsud_lapkin_mobile/core/services/auth_service.dart';
+import 'package:rsud_lapkin_mobile/features/home/presentation/widgets/premium_menu_card.dart';
+import 'package:rsud_lapkin_mobile/config/app_colors.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -30,7 +32,7 @@ class _HomePageState extends State<HomePage> {
             const Text(
               'LAPKIN',
               style: TextStyle(
-                color: Color(0xFF008037),
+                color: AppColors.primary,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -61,7 +63,9 @@ class _HomePageState extends State<HomePage> {
                       vertical: 30,
                     ),
                     child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         const Text(
                           'Selamat datang di Sistem\nLaporan Kinerja RSUD Bangil.',
@@ -79,20 +83,50 @@ class _HomePageState extends State<HomePage> {
                           style: TextStyle(color: Colors.black54),
                         ),
                         const SizedBox(height: 40),
-                        _buildMenuCard(
-                          icon: Icons.description_outlined,
-                          title: 'Perjanjian',
-                          onTap: () {
-                            Navigator.pushNamed(context, '/perjanjian');
-                          },
+                        // PremiumMenuCard(
+                        //   //icon: Icons.description_outlined,
+                        //   icon: Icons.article_rounded,
+                        //   title: 'Perjanjian',
+                        //   onTap: () {
+                        //     Navigator.pushNamed(context, '/perjanjian');
+                        //   },
+                        // ),
+                        // const SizedBox(height: 20),
+                        // PremiumMenuCard(
+                        //   //icon: Icons.show_chart_outlined,
+                        //   icon: Icons.show_chart_rounded,
+                        //   title: 'Laporan Kinerja',
+                        //   onTap: () {
+                        //     Navigator.pushNamed(context, '/laporanKinerja');
+                        //   },
+                        // ),
+                        /// Bungkus card dengan Center agar ukurannya proporsional
+                        Center(
+                          child: PremiumMenuCard(
+                            icon: Icons.description_outlined,
+                            title: "Perjanjian",
+                            heroTag: "menu-perjanjian",
+                            maxWidth: 250, // atur lebar card di sini
+                            maxHeight: 145, // atur tinggi card di sini
+                            onTap: () {
+                              Navigator.pushNamed(context, '/perjanjian');
+                            },
+                          ),
                         ),
+
                         const SizedBox(height: 20),
-                        _buildMenuCard(
-                          icon: Icons.show_chart_outlined,
-                          title: 'Laporan Kinerja',
-                          onTap: () {
-                            Navigator.pushNamed(context, '/laporanKinerja');
-                          },
+
+                        Center(
+                          child: PremiumMenuCard(
+                            icon: Icons.show_chart_outlined,
+                            title: "Laporan Kinerja",
+                            heroTag: "menu-kinerja",
+                            maxWidth: 250, // atur lebar card di sini
+                            maxHeight: 145, // atur tinggi card di sini
+                            onTap: () {
+                              Navigator.pushNamed(context, '/laporanKinerja');
+                            },
+                          ),
                         ),
                       ],
                     ),
@@ -262,72 +296,133 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ✅ Widget Menu Utama
-  Widget _buildMenuCard({
+  // ✅ Widget Menu Card dengan Center
+  Widget buildMenuCard({
     required IconData icon,
     required String title,
     required VoidCallback onTap,
   }) {
-    return Container(
-      width: 250, // 🔹 kontrol lebar agar tidak terlalu lebar
-      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-      margin: const EdgeInsets.symmetric(vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(2, 2)),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            mainAxisAlignment:
-                MainAxisAlignment.center, // 🔹 benar-benar tengah
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Icon(icon, color: Colors.blueAccent, size: 60),
-              const SizedBox(width: 12),
-              Flexible(
-                child: Text(
-                  title,
-                  textAlign: TextAlign.left,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: Colors.black87,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          /// 🔹 Tombol BUKA
-          SizedBox(
-            // width: 140,
-            // height: 40,
-            child: ElevatedButton(
-              onPressed: onTap,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 60,
-                  vertical: 14,
-                ),
-                backgroundColor: Colors.teal,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Text(
-                'BUKA',
-                style: TextStyle(fontSize: 16, color: Colors.white),
-              ),
-            ),
-          ),
-        ],
+    return Center(
+      // ⬅️ memastikan card selalu berada di tengah
+      child: PremiumMenuCard(
+        icon: icon,
+        title: title,
+        onTap: onTap,
+        maxWidth: 250, // ⬅️ ukuran ideal (tidak terlalu lebar)
       ),
     );
   }
+
+  // ✅ Widget Menu Utama
+  // Widget _buildMenuCard({
+  //   required IconData icon,
+  //   required String title,
+  //   required VoidCallback onTap,
+  // }) {
+  //   return LayoutBuilder(
+  //     builder: (context, constraints) {
+  //       return MouseRegion(
+  //         onEnter: (_) => setState(() => _hovered = true),
+  //         onExit: (_) => setState(() => _hovered = false),
+
+  //         child: AnimatedScale(
+  //           duration: const Duration(milliseconds: 150),
+  //           scale: _pressed ? 0.97 : (_hovered ? 1.03 : 1.00),
+  //           curve: Curves.easeOut,
+
+  //           child: AnimatedOpacity(
+  //             duration: const Duration(milliseconds: 250),
+  //             opacity: _hovered ? 0.95 : 1,
+
+  //             child: GestureDetector(
+  //               onTapDown: (_) => setState(() => _pressed = true),
+  //               onTapCancel: () => setState(() => _pressed = false),
+  //               onTapUp: (_) => setState(() => _pressed = false),
+  //               onTap: onTap,
+
+  //               child: Container(
+  //                 width: 280,
+  //                 padding: const EdgeInsets.symmetric(
+  //                   vertical: 22,
+  //                   horizontal: 18,
+  //                 ),
+  //                 decoration: BoxDecoration(
+  //                   color: Colors.white.withOpacity(0.85),
+  //                   borderRadius: BorderRadius.circular(22),
+  //                   boxShadow: [
+  //                     BoxShadow(
+  //                       color: Colors.black.withOpacity(_hovered ? 0.12 : 0.06),
+  //                       blurRadius: _hovered ? 26 : 12,
+  //                       offset: const Offset(0, 6),
+  //                     ),
+  //                     if (_hovered)
+  //                       BoxShadow(
+  //                         color: Colors.blue.withOpacity(0.07),
+  //                         blurRadius: 40,
+  //                         spreadRadius: 1,
+  //                       ),
+  //                   ],
+
+  //                   // premium glassmorphism effect
+  //                   border: Border.all(color: Colors.white.withOpacity(0.4)),
+  //                 ),
+
+  //                 child: Column(
+  //                   mainAxisSize: MainAxisSize.min,
+  //                   children: [
+  //                     Row(
+  //                       mainAxisAlignment: MainAxisAlignment.center,
+  //                       children: [
+  //                         Icon(icon, size: 55, color: Colors.blueAccent),
+  //                         const SizedBox(width: 12),
+  //                         Flexible(
+  //                           child: Text(
+  //                             title,
+  //                             style: const TextStyle(
+  //                               fontSize: 16,
+  //                               fontWeight: FontWeight.w700,
+  //                               color: Colors.black87,
+  //                             ),
+  //                           ),
+  //                         ),
+  //                       ],
+  //                     ),
+
+  //                     const SizedBox(height: 20),
+
+  //                     // INK RIPPLE BUTTON
+  //                     InkWell(
+  //                       borderRadius: BorderRadius.circular(12),
+  //                       onTap: onTap,
+  //                       splashColor: Colors.green.withOpacity(0.25),
+  //                       highlightColor: Colors.transparent,
+  //                       child: Ink(
+  //                         padding: const EdgeInsets.symmetric(
+  //                           vertical: 10,
+  //                           horizontal: 32,
+  //                         ),
+  //                         decoration: BoxDecoration(
+  //                           color: Colors.teal,
+  //                           borderRadius: BorderRadius.circular(12),
+  //                         ),
+  //                         child: const Text(
+  //                           "BUKA",
+  //                           style: TextStyle(
+  //                             fontWeight: FontWeight.w700,
+  //                             color: Colors.white,
+  //                             fontSize: 14,
+  //                           ),
+  //                         ),
+  //                       ),
+  //                     ),
+  //                   ],
+  //                 ),
+  //               ),
+  //             ),
+  //           ),
+  //         ),
+  //       );
+  //     },
+  //   );
+  // }
 }
