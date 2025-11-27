@@ -115,9 +115,16 @@ class _CardTable1WidgetState extends State<CardTable1Widget>
 
   // SUMMARY TEXT
   String _summary(List<TextEditingController> row) {
-    final s = row[0].text.trim();
-    if (s.isEmpty) return '— kosong —';
-    return s.length > 30 ? '${s.substring(0, 30)}…' : s;
+    // Cari kolom pertama yang tidak kosong
+    for (final c in row) {
+      final text = c.text.trim();
+      if (text.isNotEmpty) {
+        // Batasi 30 karakter
+        return text.length > 30 ? '${text.substring(0, 30)}…' : text;
+      }
+    }
+
+    return '— kosong —';
   }
 
   // TOGGLE CARD
