@@ -20,6 +20,15 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
   final TextEditingController namaPihakKeduaController =
       TextEditingController();
 
+  final TextEditingController jabatanPihakPertamaController =
+      TextEditingController();
+
+  final TextEditingController jabatanController = TextEditingController();
+  final TextEditingController tugasController = TextEditingController();
+
+  List<TextEditingController> fungsiControllers =
+      []; // untuk fungsi a-seterusnya
+
   String? selectedJabatan;
 
   final List<String> jabatanList = [
@@ -44,6 +53,13 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
   @override
   void initState() {
     super.initState();
+    //fungsiControllers.add(TextEditingController()); // fungsi pertama (a)
+    // Pastikan list tidak kosong
+    if (fungsiControllers.isEmpty) {
+      _addFungsiField();
+    } else {
+      _attachListener(0);
+    }
   }
 
   @override
@@ -156,14 +172,14 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     );
   }
 
-  // Modern input field with label
-  final jabatanController = TextEditingController();
-  final tugasController = TextEditingController();
-  final fungsiAController = TextEditingController();
-  final fungsiBController = TextEditingController();
-  final fungsiCController = TextEditingController();
-  final fungsiDController = TextEditingController();
-  final fungsiEController = TextEditingController();
+  // // Modern input field with label
+  // final jabatanController = TextEditingController();
+  // final tugasController = TextEditingController();
+  // final fungsiAController = TextEditingController();
+  // final fungsiBController = TextEditingController();
+  // final fungsiCController = TextEditingController();
+  // final fungsiDController = TextEditingController();
+  // final fungsiEController = TextEditingController();
 
   Widget _buildModernInput({
     required String hint,
@@ -197,6 +213,84 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
   }
 
   // -------------------------------------
+
+  // ============ Fungsi management ===========
+  void _addFungsiField() {
+    setState(() {
+      fungsiControllers.add(TextEditingController());
+      _attachListener(fungsiControllers.length - 1);
+    });
+  }
+
+  void _removeFungsi(int index) {
+    setState(() {
+      fungsiControllers[index].dispose();
+      fungsiControllers.removeAt(index);
+
+      if (fungsiControllers.isEmpty) {
+        _addFungsiField();
+      }
+    });
+  }
+
+  void _attachListener(int index) {
+    fungsiControllers[index].addListener(() {
+      final isLast = index == fungsiControllers.length - 1;
+      final hasText = fungsiControllers[index].text.trim().isNotEmpty;
+
+      // Jika mengetik di field terakhir → auto tambah
+      if (isLast && hasText) {
+        _addFungsiField();
+      }
+
+      setState(() {}); // refresh UI
+    });
+  }
+
+  Widget _buildFungsiList() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (int i = 0; i < fungsiControllers.length; i++) ...[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: _buildModernInput(
+                  hint: "Fungsi ${String.fromCharCode(97 + i)}...",
+                  controller: fungsiControllers[i],
+                ),
+              ),
+
+              const SizedBox(width: 8),
+
+              // tombol delete
+              IconButton(
+                icon: const Icon(Icons.delete, color: Colors.red),
+                onPressed: () => _removeFungsi(i),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+        ],
+
+        // === BUTTON TAMBAH FUNGSI (model baru, kiri) ===
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: _addFungsiField,
+            icon: const Icon(Icons.add, size: 18),
+            label: const Text("Tambah Fungsi"),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 20),
+      ],
+    );
+  }
 
   // ----------------- Main build -----------------
   @override
@@ -266,7 +360,7 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                     // === INPUT JABATAN PIHAK PERTAMA ===
                     _buildModernInput(
                       hint: "Administrasi Pengembangan",
-                      controller: jabatanController,
+                      controller: jabatanPihakPertamaController,
                     ),
 
                     const SizedBox(height: 8),
@@ -365,41 +459,10 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
 
                     const SizedBox(height: 12),
 
-                    _buildModernInput(
-                      // label: "a.",
-                      hint: "Fungsi a...",
-                      controller: fungsiAController,
-                    ),
-                    const SizedBox(height: 12),
+                    // pemanggilan fungsi list
+                    _buildFungsiList(),
 
-                    _buildModernInput(
-                      // label: "b.",
-                      hint: "Fungsi b...",
-                      controller: fungsiBController,
-                    ),
-                    const SizedBox(height: 12),
-
-                    _buildModernInput(
-                      // label: "c.",
-                      hint: "Fungsi c...",
-                      controller: fungsiCController,
-                    ),
-                    const SizedBox(height: 12),
-
-                    _buildModernInput(
-                      // label: "d.",
-                      hint: "Fungsi d...",
-                      controller: fungsiDController,
-                    ),
-                    const SizedBox(height: 12),
-
-                    _buildModernInput(
-                      // label: "e.",
-                      hint: "Fungsi e...",
-                      controller: fungsiEController,
-                    ),
-
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 20),
 
                     // === Card-based Table 1 ===
                     CardTable1Widget(key: table1Key),
