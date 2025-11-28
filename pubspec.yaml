@@ -47,6 +47,9 @@ dependencies:
   flutter_svg: ^2.0.9
   shimmer: ^3.0.0
 
+  printing: ^5.14.2 # preview + share/print
+  pdf: ^3.11.3 # generator pdf (dart library)
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -7,6 +7,9 @@ import '../../presentation/widgets/card_table2.dart';
 import '../../presentation/widgets/card_table3.dart';
 import 'package:rsud_lapkin_mobile/core/widgets/ui_helpers/app_snackbar.dart';
 
+import 'package:rsud_lapkin_mobile/features/perjanjian/presentation/pdf/perjanjian_pdf_generator.dart';
+import 'package:rsud_lapkin_mobile/features/perjanjian/presentation/pdf/pdf_preview_page.dart';
+
 class FormPerjanjianPage extends StatefulWidget {
   const FormPerjanjianPage({Key? key}) : super(key: key);
 
@@ -75,69 +78,113 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
   Map<String, dynamic> _collectAllData() {
     final result = <String, dynamic>{};
 
+    // --- TABEL 1 ---
     try {
       final t1State = table1Key.currentState;
-      if (t1State != null) {
-        // widget Table1 harus expose method getRowsAsStrings() atau serupa
+      if (t1State != null && (t1State as dynamic).getRowsAsStrings != null) {
         result['table1'] = (t1State as dynamic).getRowsAsStrings();
       } else {
-        result['table1'] = [];
+        result['table1'] = <List<String>>[];
       }
     } catch (e) {
+      result['table1'] = <List<String>>[];
       result['table1_error'] = e.toString();
     }
 
+    // --- TABEL 2 ---
     try {
       final t2State = table2Key.currentState;
-      if (t2State != null) {
+      if (t2State != null && (t2State as dynamic).getRowsAsStrings != null) {
         result['table2'] = (t2State as dynamic).getRowsAsStrings();
       } else {
-        result['table2'] = [];
+        result['table2'] = <List<String>>[];
       }
     } catch (e) {
+      result['table2'] = <List<String>>[];
       result['table2_error'] = e.toString();
     }
 
+    // --- TABEL 3 ---
     try {
       final t3State = table3Key.currentState;
-      if (t3State != null) {
+      if (t3State != null && (t3State as dynamic).getRowsAsStrings != null) {
         result['table3'] = (t3State as dynamic).getRowsAsStrings();
       } else {
-        result['table3'] = [];
+        result['table3'] = <List<String>>[];
       }
     } catch (e) {
+      result['table3'] = <List<String>>[];
       result['table3_error'] = e.toString();
     }
 
-    // tambah data form lain
-    result['namaPihakPertama'] = namaPihakPertamaController.text;
-    result['namaPihakKedua'] = namaPihakKeduaController.text;
+    // --- FORM NORMAL ---
+    result['namaPihakPertama'] = namaPihakPertamaController.text.trim();
+    result['jabatanPihakPertama'] = jabatanPihakPertamaController.text.trim();
 
-    result['jabatan'] = selectedJabatan;
+    result['namaPihakKedua'] = namaPihakKeduaController.text.trim();
+    result['jabatan'] = selectedJabatan ?? "";
+
+    result['jabatanUser'] = jabatanController.text.trim();
+    result['tugas'] = tugasController.text.trim();
+
+    // FUNGSI (list aman selalu ada)
+    result['fungsi'] = fungsiControllers
+        .map((c) => c.text.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
 
     return result;
   }
 
-  void _onSavePressed() {
-    final all = _collectAllData();
-    // untuk demo: tampilkan di dialog; di implementasi nyata: kirim ke API / simpan lokal
+  void _onPreviewPdfPressed() async {
+    final data = _collectAllData();
+    data['fungsi'] = fungsiControllers.map((c) => c.text).toList();
+
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Collected data (preview)'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: SingleChildScrollView(child: Text(all.toString())),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
+      builder: (_) => const Center(child: CircularProgressIndicator()),
     );
+
+    try {
+      final pdf = await PerjanjianPdfGenerator.generate(
+        data: data,
+        isTriwulan: false,
+      );
+
+      final bytes = await pdf.save();
+
+      Navigator.pop(context);
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => PdfPreviewPage(bytes: bytes)),
+      );
+    } catch (e) {
+      Navigator.pop(context);
+      _showDeleteError("Gagal membuat PDF: $e");
+      debugPrint("❌ PDF GENERATION ERROR: $e");
+    }
   }
+
+  // void _onSavePressed() {
+  //   final all = _collectAllData();
+  //   // untuk demo: tampilkan di dialog; di implementasi nyata: kirim ke API / simpan lokal
+  //   showDialog(
+  //     context: context,
+  //     builder: (_) => AlertDialog(
+  //       title: const Text('Collected data (preview)'),
+  //       content: SizedBox(
+  //         width: double.maxFinite,
+  //         child: SingleChildScrollView(child: Text(all.toString())),
+  //       ),
+  //       actions: [
+  //         TextButton(
+  //           onPressed: () => Navigator.pop(context),
+  //           child: const Text('OK'),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   // Dropdown jabatan
   Widget _dropdown(String? value, void Function(String?) onChanged) {
@@ -610,7 +657,7 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                       width: 150,
                       child: ElevatedButton(
                         onPressed: () {
-                          _onSavePressed();
+                          _onPreviewPdfPressed();
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.teal.shade600,

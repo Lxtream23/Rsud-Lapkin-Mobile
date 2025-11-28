@@ -22,6 +22,20 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
     _addRow();
   }
 
+  List<List<String>> getRowsAsStrings() {
+    final result = <List<String>>[];
+
+    for (final row in _rows) {
+      final cells = <String>[];
+      for (final ctrl in row) {
+        cells.add(ctrl.text.trim());
+      }
+      result.add(cells);
+    }
+
+    return result;
+  }
+
   @override
   void dispose() {
     for (final r in _rows) {
