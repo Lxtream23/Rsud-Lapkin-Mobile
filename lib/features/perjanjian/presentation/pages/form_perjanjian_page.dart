@@ -255,7 +255,7 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
       fungsiControllers.first.clear();
 
       setState(() {});
-      _showDeleteSuccess("Fungsi dikosongkan");
+      _showDeleteSuccess("Kolom fungsi baris ke 1 dikosongkan");
       return;
     }
 
@@ -270,7 +270,7 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     debugPrint("✅ DELETE SUCCESS [FUNGSI] → removed index: $index");
 
     _showDeleteSuccess(
-      'Fungsi baris ke ${index + 1} berisi "${summary}" dihapus',
+      'Kolom fungsi baris ke ${index + 1} berisi "${summary}" dihapus',
     );
   }
 
