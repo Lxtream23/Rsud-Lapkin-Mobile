@@ -5,6 +5,7 @@ import '../../../../config/app_text_style.dart';
 import '../../presentation/widgets/card_table1.dart';
 import '../../presentation/widgets/card_table2.dart';
 import '../../presentation/widgets/card_table3.dart';
+import 'package:rsud_lapkin_mobile/core/widgets/ui_helpers/app_snackbar.dart';
 
 class FormPerjanjianPage extends StatefulWidget {
   const FormPerjanjianPage({Key? key}) : super(key: key);
@@ -216,21 +217,61 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
 
   // ============ Fungsi management ===========
   void _addFungsiField() {
+    final ctrl = TextEditingController();
+
+    ctrl.addListener(() {
+      final isLast = ctrl == fungsiControllers.last;
+
+      if (isLast && ctrl.text.trim().isNotEmpty) {
+        _addFungsiField(); // auto append
+        setState(() {});
+      }
+    });
+
     setState(() {
-      fungsiControllers.add(TextEditingController());
-      _attachListener(fungsiControllers.length - 1);
+      fungsiControllers.add(ctrl);
     });
   }
 
   void _removeFungsi(int index) {
-    setState(() {
-      fungsiControllers[index].dispose();
-      fungsiControllers.removeAt(index);
+    debugPrint(
+      "🗑 DELETE REQUEST [FUNGSI] → index: $index, total: ${fungsiControllers.length}",
+    );
 
-      if (fungsiControllers.isEmpty) {
-        _addFungsiField();
-      }
+    // --- Validasi Index ---
+    if (index < 0 || index >= fungsiControllers.length) {
+      debugPrint("❌ DELETE FAILED [FUNGSI] → index tidak valid");
+      _showDeleteError("Gagal menghapus: index tidak valid");
+      return;
+    }
+
+    final summary = fungsiControllers[index].text.trim().isEmpty
+        ? "— kosong —"
+        : fungsiControllers[index].text.trim();
+
+    // --- Jika hanya ada 1 fungsi, hanya clear, tidak hapus ---
+    if (fungsiControllers.length == 1) {
+      debugPrint("🗑 DELETE [FUNGSI] → hanya satu, clear saja");
+      fungsiControllers.first.clear();
+
+      setState(() {});
+      _showDeleteSuccess("Fungsi dikosongkan");
+      return;
+    }
+
+    // --- Dispose controller ---
+    fungsiControllers[index].dispose();
+
+    // --- Hapus dari list ---
+    setState(() {
+      fungsiControllers.removeAt(index);
     });
+
+    debugPrint("✅ DELETE SUCCESS [FUNGSI] → removed index: $index");
+
+    _showDeleteSuccess(
+      'Fungsi baris ke ${index + 1} berisi "${summary}" dihapus',
+    );
   }
 
   void _attachListener(int index) {
@@ -266,8 +307,15 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
 
               // tombol delete
               IconButton(
-                icon: const Icon(Icons.delete, color: Colors.red),
-                onPressed: () => _removeFungsi(i),
+                icon: Icon(Icons.delete_outline, color: Color(0xFFE74C3C)),
+                splashRadius: 20,
+                //onPressed: () => _removeFungsi(i),
+                onPressed: () async {
+                  final confirm = await showConfirmDeleteDialog(context);
+                  if (confirm) {
+                    _removeFungsi(i);
+                  }
+                },
               ),
             ],
           ),
@@ -290,6 +338,86 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
         const SizedBox(height: 20),
       ],
     );
+  }
+
+  // ========================================
+  // CONFIRM DELETE DIALOG
+  Future<bool> showConfirmDeleteDialog(BuildContext context) async {
+    final theme = Theme.of(context);
+
+    return await showDialog<bool>(
+          context: context,
+          barrierDismissible: true,
+          builder: (context) {
+            return AlertDialog(
+              backgroundColor: theme.colorScheme.surface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+              title: Text(
+                "Hapus Fungsi?",
+                style: TextStyle(color: theme.colorScheme.onSurface),
+              ),
+              content: Text(
+                "Apakah Anda yakin ingin menghapus baris fungsi ini?",
+                style: TextStyle(
+                  color: theme.colorScheme.onSurface.withOpacity(0.8),
+                ),
+              ),
+              actionsPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
+              ),
+              actions: [
+                TextButton(
+                  child: Text(
+                    "Batal",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                  onPressed: () => Navigator.pop(context, false),
+                ),
+
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: theme.colorScheme.error,
+                    foregroundColor: theme.colorScheme.onError,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text(
+                    "Hapus",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+  }
+
+  // SHOW DELETE SUCCESS SNACKBAR
+  void _showDeleteSuccess(String msg) {
+    final ctx = overlaySnackbarKey.currentContext;
+    if (ctx == null) {
+      debugPrint("Overlay NULL → Snackbar gagal ditampilkan");
+      return;
+    }
+
+    AppSnackbar.success(ctx, msg);
+  }
+
+  // SHOW DELETE ERROR SNACKBAR
+  void _showDeleteError(String msg) {
+    final ctx = overlaySnackbarKey.currentContext;
+    if (ctx == null) return;
+
+    AppSnackbar.error(ctx, msg);
   }
 
   // ----------------- Main build -----------------
@@ -517,5 +645,17 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
         ],
       ),
     );
+  }
+}
+
+extension SafeController on TextEditingController {
+  bool get isDisposed {
+    try {
+      // akses cursor position (akan error kalau sudah dispose)
+      value;
+      return false;
+    } catch (_) {
+      return true;
+    }
   }
 }
