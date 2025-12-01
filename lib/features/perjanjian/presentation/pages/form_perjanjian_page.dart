@@ -137,15 +137,36 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
   }
 
   void _onPreviewPdfPressed() async {
+    // --- KUMPULKAN DATA ---
     final data = _collectAllData();
-    data['fungsi'] = fungsiControllers.map((c) => c.text).toList();
 
+    // Pastikan fungsi TIDAK null
+    data['fungsi'] =
+        (fungsiControllers
+                .map((c) => c.text.trim())
+                .where((e) => e.isNotEmpty)
+                .toList())
+            .cast<String>();
+
+    // Pastikan tugas hanya 1 baris (sesuai format PDF asli)
+    if (data['tugas'] is String) {
+      data['tugas'] = data['tugas'].toString().replaceAll("\n", " ");
+    }
+
+    // Pastikan table selalu terisi list kosong, bukan null
+    data['table1'] = (data['table1'] ?? []).cast<List<String>>();
+    data['table2'] = (data['table2'] ?? []).cast<List<String>>();
+    data['table3'] = (data['table3'] ?? []).cast<List<String>>();
+
+    // Tampilkan Loading
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (_) => const Center(child: CircularProgressIndicator()),
     );
 
     try {
+      // --- GENERATE PDF ---
       final pdf = await PerjanjianPdfGenerator.generate(
         data: data,
         isTriwulan: false,
@@ -153,7 +174,9 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
 
       final bytes = await pdf.save();
 
-      Navigator.pop(context);
+      if (mounted) Navigator.pop(context); // tutup loader
+
+      // --- BUKA PREVIEW ---
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => PdfPreviewPage(bytes: bytes)),
