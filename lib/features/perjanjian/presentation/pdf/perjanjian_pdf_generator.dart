@@ -265,8 +265,8 @@ class PerjanjianPdfGenerator {
     pw.Font regular,
     pw.Font bold,
   ) {
-    // Jika tidak ada data, jangan tampilkan tabel
-    if (rows.isEmpty) return pw.SizedBox();
+    // Header tetap fixed (sesuai format PDF)
+    final headers = ["NO", "SASARAN", "INDIKATOR KINERJA", "SATUAN", "TARGET"];
 
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -276,41 +276,87 @@ class PerjanjianPdfGenerator {
 
         pw.Table(
           border: pw.TableBorder.all(width: 0.8),
-          columnWidths: const {
-            0: pw.FixedColumnWidth(30), // NO
-            1: pw.FlexColumnWidth(), // SASARAN
-            2: pw.FlexColumnWidth(), // INDIKATOR KINERJA
-            3: pw.FlexColumnWidth(), // SATUAN
-            4: pw.FlexColumnWidth(), // TARGET
+
+          columnWidths: {
+            0: const pw.FlexColumnWidth(1), // NO (kecil)
+            1: const pw.FlexColumnWidth(4), // SASARAN (lebar)
+            2: const pw.FlexColumnWidth(4), // INDIKATOR KINERJA (lebar)
+            3: const pw.FlexColumnWidth(2), // SATUAN (kecil)
+            4: const pw.FlexColumnWidth(2), // TARGET (kecil)
           },
 
           children: [
-            // ====================================
-            // HEADER TABEL (FIXED)
-            // ====================================
+            // ======================
+            //          HEADER
+            // ======================
             pw.TableRow(
-              decoration: const pw.BoxDecoration(color: PdfColors.grey300),
+              //decoration: const pw.BoxDecoration(color: PdfColors.grey300),
               children: [
-                _headerCell("NO", bold),
-                _headerCell("SASARAN", bold),
-                _headerCell("INDIKATOR KINERJA", bold),
-                _headerCell("SATUAN", bold),
-                _headerCell("TARGET", bold),
+                for (final h in headers)
+                  pw.Padding(
+                    padding: const pw.EdgeInsets.all(6),
+                    child: pw.Text(
+                      h,
+                      style: pw.TextStyle(font: bold, fontSize: 11),
+                      textAlign: pw.TextAlign.center, // <<< CENTER HEADER
+                    ),
+                  ),
               ],
             ),
 
-            // ====================================
-            // ISI TABEL
-            // rows[i] = [sasaran, indikator, satuan, target]
-            // ====================================
+            // =======================
+            //         ROW DATA
+            // =======================
             for (int i = 0; i < rows.length; i++)
               pw.TableRow(
                 children: [
-                  _cell((i + 1).toString(), regular),
-                  _cell(rows[i].length > 0 ? rows[i][0] : "", regular),
-                  _cell(rows[i].length > 1 ? rows[i][1] : "", regular),
-                  _cell(rows[i].length > 2 ? rows[i][2] : "", regular),
-                  _cell(rows[i].length > 3 ? rows[i][3] : "", regular),
+                  // AUTO NUMBER (NO)
+                  pw.Padding(
+                    padding: const pw.EdgeInsets.all(6),
+                    child: pw.Text(
+                      "${i + 1}",
+                      textAlign: pw.TextAlign.center,
+                      style: pw.TextStyle(font: regular, fontSize: 11),
+                    ),
+                  ),
+
+                  // SASARAN
+                  pw.Padding(
+                    padding: const pw.EdgeInsets.all(6),
+                    child: pw.Text(
+                      rows[i][0],
+                      style: pw.TextStyle(font: regular, fontSize: 11),
+                    ),
+                  ),
+
+                  // INDIKATOR KINERJA
+                  pw.Padding(
+                    padding: const pw.EdgeInsets.all(6),
+                    child: pw.Text(
+                      rows[i][1],
+                      style: pw.TextStyle(font: regular, fontSize: 11),
+                    ),
+                  ),
+
+                  // SATUAN
+                  pw.Padding(
+                    padding: const pw.EdgeInsets.all(6),
+                    child: pw.Text(
+                      rows[i][2],
+                      textAlign: pw.TextAlign.center,
+                      style: pw.TextStyle(font: regular, fontSize: 11),
+                    ),
+                  ),
+
+                  // TARGET
+                  pw.Padding(
+                    padding: const pw.EdgeInsets.all(6),
+                    child: pw.Text(
+                      rows[i][3],
+                      textAlign: pw.TextAlign.center,
+                      style: pw.TextStyle(font: regular, fontSize: 11),
+                    ),
+                  ),
                 ],
               ),
           ],
