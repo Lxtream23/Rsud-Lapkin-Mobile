@@ -240,7 +240,7 @@ class PerjanjianPdfGenerator {
           //              TABEL TAMBAHAN (opsional)
           // ============================================================
           if (table1.isNotEmpty)
-            _buildTable("TABEL 1", table1, poppinsRegular, poppinsBold),
+            _buildTable1("TABEL 1", table1, poppinsRegular, poppinsBold),
 
           if (table2.isNotEmpty) pw.SizedBox(height: 20),
           if (table2.isNotEmpty)
@@ -259,25 +259,133 @@ class PerjanjianPdfGenerator {
   // =============================================================
   //                    TABLE GENERATOR
   // =============================================================
+  static pw.Widget _buildTable1(
+    String title,
+    List<List<String>> rows,
+    pw.Font regular,
+    pw.Font bold,
+  ) {
+    // Jika tidak ada data, jangan tampilkan tabel
+    if (rows.isEmpty) return pw.SizedBox();
+
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text(title, style: pw.TextStyle(font: bold, fontSize: 13)),
+        pw.SizedBox(height: 8),
+
+        pw.Table(
+          border: pw.TableBorder.all(width: 0.8),
+          columnWidths: const {
+            0: pw.FixedColumnWidth(30), // NO
+            1: pw.FlexColumnWidth(), // SASARAN
+            2: pw.FlexColumnWidth(), // INDIKATOR KINERJA
+            3: pw.FlexColumnWidth(), // SATUAN
+            4: pw.FlexColumnWidth(), // TARGET
+          },
+
+          children: [
+            // ====================================
+            // HEADER TABEL (FIXED)
+            // ====================================
+            pw.TableRow(
+              decoration: const pw.BoxDecoration(color: PdfColors.grey300),
+              children: [
+                _headerCell("NO", bold),
+                _headerCell("SASARAN", bold),
+                _headerCell("INDIKATOR KINERJA", bold),
+                _headerCell("SATUAN", bold),
+                _headerCell("TARGET", bold),
+              ],
+            ),
+
+            // ====================================
+            // ISI TABEL
+            // rows[i] = [sasaran, indikator, satuan, target]
+            // ====================================
+            for (int i = 0; i < rows.length; i++)
+              pw.TableRow(
+                children: [
+                  _cell((i + 1).toString(), regular),
+                  _cell(rows[i].length > 0 ? rows[i][0] : "", regular),
+                  _cell(rows[i].length > 1 ? rows[i][1] : "", regular),
+                  _cell(rows[i].length > 2 ? rows[i][2] : "", regular),
+                  _cell(rows[i].length > 3 ? rows[i][3] : "", regular),
+                ],
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// ========== Helper cell untuk header ==========
+  static pw.Widget _headerCell(String text, pw.Font bold) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.all(6),
+      child: pw.Text(
+        text,
+        style: pw.TextStyle(font: bold, fontSize: 11),
+        textAlign: pw.TextAlign.center,
+      ),
+    );
+  }
+
+  /// ========== Helper cell untuk body ==========
+  static pw.Widget _cell(String text, pw.Font regular) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.all(6),
+      child: pw.Text(text, style: pw.TextStyle(font: regular, fontSize: 11)),
+    );
+  }
+
   static pw.Widget _buildTable(
     String title,
     List<List<String>> rows,
     pw.Font regular,
     pw.Font bold,
   ) {
+    if (rows.isEmpty) return pw.SizedBox();
+
+    final header = rows.first; // <- baris pertama = header
+    final dataRows = rows.skip(1).toList(); // <- sisanya = data
+
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
         pw.Text(title, style: pw.TextStyle(font: bold, fontSize: 13)),
         pw.SizedBox(height: 8),
+
         pw.Table(
           border: pw.TableBorder.all(width: 0.8),
           columnWidths: {
-            for (int i = 0; i < rows[0].length; i++)
+            for (int i = 0; i < header.length; i++)
               i: const pw.FlexColumnWidth(),
           },
           children: [
-            for (final row in rows)
+            // =======================
+            //      HEADER TABLE
+            // =======================
+            pw.TableRow(
+              decoration: pw.BoxDecoration(
+                color: PdfColor.fromInt(0xFFE0E0E0), // abu-abu header
+              ),
+              children: [
+                for (final h in header)
+                  pw.Padding(
+                    padding: const pw.EdgeInsets.all(6),
+                    child: pw.Text(
+                      h,
+                      style: pw.TextStyle(font: bold, fontSize: 11),
+                    ),
+                  ),
+              ],
+            ),
+
+            // =======================
+            //      DATA TABLE
+            // =======================
+            for (final row in dataRows)
               pw.TableRow(
                 children: [
                   for (final cell in row)
