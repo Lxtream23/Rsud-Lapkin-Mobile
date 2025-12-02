@@ -269,7 +269,7 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
         Row(
           children: [
             const Text(
-              "TABEL 3 — PROGRAM & ANGGARAN",
+              "TABEL PROGRAM & ANGGARAN",
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
             ),
             const Spacer(),

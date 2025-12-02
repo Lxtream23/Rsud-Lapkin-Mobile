@@ -270,7 +270,7 @@ class _CardTable2WidgetState extends State<CardTable2Widget>
         Row(
           children: [
             const Text(
-              "TABEL 2 — TARGET TRIWULAN",
+              "TABEL TARGET TRIWULAN",
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
             ),
             const Spacer(),

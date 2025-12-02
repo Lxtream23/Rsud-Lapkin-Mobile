@@ -59,11 +59,11 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     super.initState();
     //fungsiControllers.add(TextEditingController()); // fungsi pertama (a)
     // Pastikan list tidak kosong
-    if (fungsiControllers.isEmpty) {
-      _addFungsiField();
-    } else {
-      _attachListener(0);
-    }
+    // if (fungsiControllers.isEmpty) {
+    //   _addFungsiField();
+    // } else {
+    //   _attachListener(0);
+    // }
   }
 
   @override
@@ -124,14 +124,14 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     result['namaPihakKedua'] = namaPihakKeduaController.text.trim();
     result['jabatan'] = selectedJabatan ?? "";
 
-    result['jabatanUser'] = jabatanController.text.trim();
-    result['tugas'] = tugasController.text.trim();
+    //result['jabatanUser'] = jabatanController.text.trim();
+    //result['tugas'] = tugasController.text.trim();
 
-    // FUNGSI (list aman selalu ada)
-    result['fungsi'] = fungsiControllers
-        .map((c) => c.text.trim())
-        .where((e) => e.isNotEmpty)
-        .toList();
+    // // FUNGSI (list aman selalu ada)
+    // result['fungsi'] = fungsiControllers
+    //     .map((c) => c.text.trim())
+    //     .where((e) => e.isNotEmpty)
+    //     .toList();
 
     return result;
   }
@@ -141,17 +141,17 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     final data = _collectAllData();
 
     // Pastikan fungsi TIDAK null
-    data['fungsi'] =
-        (fungsiControllers
-                .map((c) => c.text.trim())
-                .where((e) => e.isNotEmpty)
-                .toList())
-            .cast<String>();
+    // data['fungsi'] =
+    //     (fungsiControllers
+    //             .map((c) => c.text.trim())
+    //             .where((e) => e.isNotEmpty)
+    //             .toList())
+    //         .cast<String>();
 
-    // Pastikan tugas hanya 1 baris (sesuai format PDF asli)
-    if (data['tugas'] is String) {
-      data['tugas'] = data['tugas'].toString().replaceAll("\n", " ");
-    }
+    // // Pastikan tugas hanya 1 baris (sesuai format PDF asli)
+    // if (data['tugas'] is String) {
+    //   data['tugas'] = data['tugas'].toString().replaceAll("\n", " ");
+    // }
 
     // Pastikan table selalu terisi list kosong, bukan null
     data['table1'] = (data['table1'] ?? []).cast<List<String>>();
@@ -286,129 +286,129 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
   // -------------------------------------
 
   // ============ Fungsi management ===========
-  void _addFungsiField() {
-    final ctrl = TextEditingController();
+  // void _addFungsiField() {
+  //   final ctrl = TextEditingController();
 
-    ctrl.addListener(() {
-      final isLast = ctrl == fungsiControllers.last;
+  //   ctrl.addListener(() {
+  //     final isLast = ctrl == fungsiControllers.last;
 
-      if (isLast && ctrl.text.trim().isNotEmpty) {
-        _addFungsiField(); // auto append
-        setState(() {});
-      }
-    });
+  //     if (isLast && ctrl.text.trim().isNotEmpty) {
+  //       _addFungsiField(); // auto append
+  //       setState(() {});
+  //     }
+  //   });
 
-    setState(() {
-      fungsiControllers.add(ctrl);
-    });
-  }
+  //   setState(() {
+  //     fungsiControllers.add(ctrl);
+  //   });
+  // }
 
-  void _removeFungsi(int index) {
-    debugPrint(
-      "🗑 DELETE REQUEST [FUNGSI] → index: $index, total: ${fungsiControllers.length}",
-    );
+  // void _removeFungsi(int index) {
+  //   debugPrint(
+  //     "🗑 DELETE REQUEST [FUNGSI] → index: $index, total: ${fungsiControllers.length}",
+  //   );
 
-    // --- Validasi Index ---
-    if (index < 0 || index >= fungsiControllers.length) {
-      debugPrint("❌ DELETE FAILED [FUNGSI] → index tidak valid");
-      _showDeleteError("Gagal menghapus: index tidak valid");
-      return;
-    }
+  //   // --- Validasi Index ---
+  //   if (index < 0 || index >= fungsiControllers.length) {
+  //     debugPrint("❌ DELETE FAILED [FUNGSI] → index tidak valid");
+  //     _showDeleteError("Gagal menghapus: index tidak valid");
+  //     return;
+  //   }
 
-    final summary = fungsiControllers[index].text.trim().isEmpty
-        ? "— kosong —"
-        : fungsiControllers[index].text.trim();
+  //   final summary = fungsiControllers[index].text.trim().isEmpty
+  //       ? "— kosong —"
+  //       : fungsiControllers[index].text.trim();
 
-    // --- Jika hanya ada 1 fungsi, hanya clear, tidak hapus ---
-    if (fungsiControllers.length == 1) {
-      debugPrint("🗑 DELETE [FUNGSI] → hanya satu, clear saja");
-      fungsiControllers.first.clear();
+  //   // --- Jika hanya ada 1 fungsi, hanya clear, tidak hapus ---
+  //   if (fungsiControllers.length == 1) {
+  //     debugPrint("🗑 DELETE [FUNGSI] → hanya satu, clear saja");
+  //     fungsiControllers.first.clear();
 
-      setState(() {});
-      _showDeleteSuccess("Kolom fungsi baris ke 1 dikosongkan");
-      return;
-    }
+  //     setState(() {});
+  //     _showDeleteSuccess("Kolom fungsi baris ke 1 dikosongkan");
+  //     return;
+  //   }
 
-    // --- Dispose controller ---
-    fungsiControllers[index].dispose();
+  //   // --- Dispose controller ---
+  //   fungsiControllers[index].dispose();
 
-    // --- Hapus dari list ---
-    setState(() {
-      fungsiControllers.removeAt(index);
-    });
+  //   // --- Hapus dari list ---
+  //   setState(() {
+  //     fungsiControllers.removeAt(index);
+  //   });
 
-    debugPrint("✅ DELETE SUCCESS [FUNGSI] → removed index: $index");
+  //   debugPrint("✅ DELETE SUCCESS [FUNGSI] → removed index: $index");
 
-    _showDeleteSuccess(
-      'Kolom fungsi baris ke ${index + 1} berisi "${summary}" dihapus',
-    );
-  }
+  //   _showDeleteSuccess(
+  //     'Kolom fungsi baris ke ${index + 1} berisi "${summary}" dihapus',
+  //   );
+  // }
 
-  void _attachListener(int index) {
-    fungsiControllers[index].addListener(() {
-      final isLast = index == fungsiControllers.length - 1;
-      final hasText = fungsiControllers[index].text.trim().isNotEmpty;
+  // void _attachListener(int index) {
+  //   fungsiControllers[index].addListener(() {
+  //     final isLast = index == fungsiControllers.length - 1;
+  //     final hasText = fungsiControllers[index].text.trim().isNotEmpty;
 
-      // Jika mengetik di field terakhir → auto tambah
-      if (isLast && hasText) {
-        _addFungsiField();
-      }
+  //     // Jika mengetik di field terakhir → auto tambah
+  //     if (isLast && hasText) {
+  //       _addFungsiField();
+  //     }
 
-      setState(() {}); // refresh UI
-    });
-  }
+  //     setState(() {}); // refresh UI
+  //   });
+  // }
 
-  Widget _buildFungsiList() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (int i = 0; i < fungsiControllers.length; i++) ...[
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: _buildModernInput(
-                  hint: "Fungsi ${String.fromCharCode(97 + i)}...",
-                  controller: fungsiControllers[i],
-                ),
-              ),
+  // Widget _buildFungsiList() {
+  //   return Column(
+  //     crossAxisAlignment: CrossAxisAlignment.start,
+  //     children: [
+  //       for (int i = 0; i < fungsiControllers.length; i++) ...[
+  //         Row(
+  //           crossAxisAlignment: CrossAxisAlignment.center,
+  //           children: [
+  //             Expanded(
+  //               child: _buildModernInput(
+  //                 hint: "Fungsi ${String.fromCharCode(97 + i)}...",
+  //                 controller: fungsiControllers[i],
+  //               ),
+  //             ),
 
-              const SizedBox(width: 8),
+  //             const SizedBox(width: 8),
 
-              // tombol delete
-              IconButton(
-                icon: Icon(Icons.delete_outline, color: Color(0xFFE74C3C)),
-                splashRadius: 20,
-                //onPressed: () => _removeFungsi(i),
-                onPressed: () async {
-                  final confirm = await showConfirmDeleteDialog(context);
-                  if (confirm) {
-                    _removeFungsi(i);
-                  }
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-        ],
+  //             // tombol delete
+  //             IconButton(
+  //               icon: Icon(Icons.delete_outline, color: Color(0xFFE74C3C)),
+  //               splashRadius: 20,
+  //               //onPressed: () => _removeFungsi(i),
+  //               onPressed: () async {
+  //                 final confirm = await showConfirmDeleteDialog(context);
+  //                 if (confirm) {
+  //                   _removeFungsi(i);
+  //                 }
+  //               },
+  //             ),
+  //           ],
+  //         ),
+  //         const SizedBox(height: 12),
+  //       ],
 
-        // === BUTTON TAMBAH FUNGSI (model baru, kiri) ===
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            onPressed: _addFungsiField,
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text("Tambah Fungsi"),
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            ),
-          ),
-        ),
+  //       // === BUTTON TAMBAH FUNGSI (model baru, kiri) ===
+  //       Align(
+  //         alignment: Alignment.centerLeft,
+  //         child: TextButton.icon(
+  //           onPressed: _addFungsiField,
+  //           icon: const Icon(Icons.add, size: 18),
+  //           label: const Text("Tambah Fungsi"),
+  //           style: TextButton.styleFrom(
+  //             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+  //           ),
+  //         ),
+  //       ),
 
-        const SizedBox(height: 20),
-      ],
-    );
-  }
+  //       const SizedBox(height: 20),
+  //     ],
+  //   );
+  // }
 
   // ========================================
   // CONFIRM DELETE DIALOG
@@ -599,7 +599,7 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                     // === "INDIKATOR KINERJA INDIVIDU\nUOBK RSUD BANGIL TAHUN 2025" ===
                     const SizedBox(height: 40),
                     const Text(
-                      "INDIKATOR KINERJA INDIVIDU\nUOBK RSUD BANGIL TAHUN 2025",
+                      "PERJANJIAN KINERJA TAHUN 2025 WAKIL\nDIREKTUR PELAYANAN UOBK RSUD BANGIL\nKABUPATEN PASURUAN",
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 16,
@@ -609,71 +609,71 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                     const SizedBox(height: 20),
 
                     //
-                    // === INPUT MODERN (Jabatan, Tugas, Fungsi) ===
-                    const SizedBox(height: 30),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        "Jabatan & Tugas",
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
+                    // // === INPUT MODERN (Jabatan, Tugas, Fungsi) ===
+                    // const SizedBox(height: 30),
+                    // Align(
+                    //   alignment: Alignment.centerLeft,
+                    //   child: Text(
+                    //     "Jabatan & Tugas",
+                    //     style: TextStyle(
+                    //       fontSize: 14,
+                    //       fontWeight: FontWeight.bold,
+                    //       color: Colors.black87,
+                    //     ),
+                    //   ),
+                    // ),
+                    // const SizedBox(height: 16),
 
-                    // JABATAN
-                    _buildModernInput(
-                      // label: "Jabatan",
-                      hint: "Masukkan jabatan...",
-                      controller: jabatanController,
-                    ),
+                    // // JABATAN
+                    // _buildModernInput(
+                    //   // label: "Jabatan",
+                    //   hint: "Masukkan jabatan...",
+                    //   controller: jabatanController,
+                    // ),
 
-                    const SizedBox(height: 12),
+                    // const SizedBox(height: 12),
 
-                    // TUGAS
-                    _buildModernInput(
-                      // label: "Tugas",
-                      hint: "Masukkan tugas...",
-                      controller: tugasController,
-                    ),
+                    // // TUGAS
+                    // _buildModernInput(
+                    //   // label: "Tugas",
+                    //   hint: "Masukkan tugas...",
+                    //   controller: tugasController,
+                    // ),
 
-                    const SizedBox(height: 20),
+                    // const SizedBox(height: 20),
 
-                    // FUNGSI A – E
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        "Fungsi",
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ),
+                    // // FUNGSI A – E
+                    // Align(
+                    //   alignment: Alignment.centerLeft,
+                    //   child: Text(
+                    //     "Fungsi",
+                    //     style: TextStyle(
+                    //       fontSize: 14,
+                    //       fontWeight: FontWeight.bold,
+                    //       color: Colors.black87,
+                    //     ),
+                    //   ),
+                    // ),
 
-                    const SizedBox(height: 12),
+                    // const SizedBox(height: 12),
 
-                    // pemanggilan fungsi list
-                    _buildFungsiList(),
+                    // // pemanggilan fungsi list
+                    // _buildFungsiList(),
 
-                    const SizedBox(height: 20),
+                    // const SizedBox(height: 20),
 
-                    // === Card-based Table 1 ===
+                    // === Card-based Table SASARAN & INDIKATOR ===
                     CardTable1Widget(key: table1Key),
 
                     const SizedBox(height: 12),
 
-                    // === Card-based Table 2 ===
-                    CardTable2Widget(key: table2Key),
+                    // === Card-based Table PROGRAM & ANGGARAN ===
+                    CardTable3Widget(key: table3Key),
 
                     const SizedBox(height: 12),
 
-                    // === Card-based Table 3 ===
-                    CardTable3Widget(key: table3Key),
+                    // === Card-based Table TARGET TRIWULAN ===
+                    CardTable2Widget(key: table2Key),
 
                     const SizedBox(height: 18),
                     SizedBox(

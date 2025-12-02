@@ -29,11 +29,16 @@ class PerjanjianPdfGenerator {
 
     final pdf = pw.Document();
 
-    final pageFormat = isTriwulan
-        ? PdfPageFormat.a4.landscape
-        : PdfPageFormat.a4;
+    final f4 = PdfPageFormat(210 * PdfPageFormat.mm, 330 * PdfPageFormat.mm);
 
-    final fungsiList = (data["fungsi"] as List).cast<String>();
+    final pageFormat = isTriwulan
+        ? PdfPageFormat(
+            330 * PdfPageFormat.mm,
+            210 * PdfPageFormat.mm,
+          ) // F4 landscape
+        : f4; // F4 portrait
+
+    //final fungsiList = (data["fungsi"] as List).cast<String>();
     final table1 = (data["table1"] as List).cast<List<String>>();
     final table2 = (data["table2"] as List).cast<List<String>>();
     final table3 = (data["table3"] as List).cast<List<String>>();
@@ -49,7 +54,7 @@ class PerjanjianPdfGenerator {
           // ===========================
           // LOGO
           // ===========================
-          pw.Center(child: pw.Image(logo, width: 120)),
+          pw.Center(child: pw.Image(logo, width: 80)),
 
           pw.SizedBox(height: 12),
 
@@ -59,7 +64,7 @@ class PerjanjianPdfGenerator {
           pw.Center(
             child: pw.Text(
               "PERJANJIAN KINERJA TAHUN 2025\n"
-              "${data["jabatan"]?.toUpperCase() ?? ""}\n"
+              "${data["jabatanPihakPertama"]?.toUpperCase() ?? ""}\n"
               "UOBK RSUD BANGIL\n"
               "KABUPATEN PASURUAN",
               textAlign: pw.TextAlign.center,
@@ -200,7 +205,7 @@ class PerjanjianPdfGenerator {
                 children: [
                   pw.SizedBox(height: 15),
                   pw.Text(
-                    "Wadir Pelayanan",
+                    data["jabatan"] ?? "",
                     style: pw.TextStyle(font: poppinsRegular, fontSize: 11),
                   ),
 
@@ -224,7 +229,7 @@ class PerjanjianPdfGenerator {
                   pw.SizedBox(height: 6),
 
                   pw.Text(
-                    data["namaPihakPertama"] ?? "",
+                    data["namaPihakKedua"] ?? "",
                     style: pw.TextStyle(font: poppinsBold, fontSize: 11),
                   ),
 
@@ -234,7 +239,7 @@ class PerjanjianPdfGenerator {
                   ),
 
                   pw.Text(
-                    "NIP. ${data["nipPihakPertama"] ?? ""}",
+                    "NIP. ${data["nipPihakKedua"] ?? ""}",
                     style: pw.TextStyle(font: poppinsRegular, fontSize: 11),
                   ),
                 ],
@@ -251,7 +256,7 @@ class PerjanjianPdfGenerator {
                     style: pw.TextStyle(font: poppinsRegular, fontSize: 11),
                   ),
                   pw.Text(
-                    "Kabid Pelayanan Medik",
+                    data["jabatanPihakPertama"] ?? "",
                     style: pw.TextStyle(font: poppinsRegular, fontSize: 11),
                   ),
 
@@ -275,7 +280,7 @@ class PerjanjianPdfGenerator {
                   pw.SizedBox(height: 6),
 
                   pw.Text(
-                    data["namaPihakKedua"] ?? "",
+                    data["namaPihakPertama"] ?? "",
                     style: pw.TextStyle(font: poppinsBold, fontSize: 11),
                   ),
 
@@ -285,7 +290,7 @@ class PerjanjianPdfGenerator {
                   ),
 
                   pw.Text(
-                    "NIP. ${data["nipPihakKedua"] ?? ""}",
+                    "NIP. ${data["nipPihakPertama"] ?? ""}",
                     style: pw.TextStyle(font: poppinsRegular, fontSize: 11),
                   ),
                 ],
@@ -313,7 +318,7 @@ class PerjanjianPdfGenerator {
     );
 
     // =============================================================
-    //               HALAMAN KHUSUS TABEL 1
+    //               HALAMAN KEDUA
     // =============================================================
 
     pdf.addPage(
@@ -327,6 +332,7 @@ class PerjanjianPdfGenerator {
           pw.Center(
             child: pw.Text(
               "INDIKATOR KINERJA INDIVIDU\n"
+              "${data["jabatanPihakPertama"]?.toUpperCase() ?? ""}\n"
               "UOBK RSUD BANGIL\n"
               "TAHUN 2025",
               textAlign: pw.TextAlign.center,
@@ -335,52 +341,52 @@ class PerjanjianPdfGenerator {
           ),
 
           pw.SizedBox(height: 24),
-          // ============================
-          //   JABATAN, TUGAS, FUNGSI
-          // ============================
-          pw.Text(
-            "Jabatan:",
-            style: pw.TextStyle(font: poppinsBold, fontSize: 12),
-          ),
-          pw.Text(
-            data["jabatanPihakPertama"] ?? "",
-            style: pw.TextStyle(font: poppinsRegular, fontSize: 12),
-          ),
+          // // ============================
+          // //   JABATAN, TUGAS, FUNGSI
+          // // ============================
+          // pw.Text(
+          //   "Jabatan:",
+          //   style: pw.TextStyle(font: poppinsBold, fontSize: 12),
+          // ),
+          // pw.Text(
+          //   data["jabatanPihakPertama"] ?? "",
+          //   style: pw.TextStyle(font: poppinsRegular, fontSize: 12),
+          // ),
 
-          pw.SizedBox(height: 12),
+          // pw.SizedBox(height: 12),
 
-          pw.Text(
-            "Tugas:",
-            style: pw.TextStyle(font: poppinsBold, fontSize: 12),
-          ),
-          pw.Text(
-            data["tugas"] ?? "",
-            style: pw.TextStyle(font: poppinsRegular, fontSize: 12),
-          ),
+          // pw.Text(
+          //   "Tugas:",
+          //   style: pw.TextStyle(font: poppinsBold, fontSize: 12),
+          // ),
+          // pw.Text(
+          //   data["tugas"] ?? "",
+          //   style: pw.TextStyle(font: poppinsRegular, fontSize: 12),
+          // ),
 
-          pw.SizedBox(height: 12),
+          // pw.SizedBox(height: 12),
 
-          // ======= FUNGSI (A, B, C...) =======
-          pw.Text(
-            "Fungsi:",
-            style: pw.TextStyle(font: poppinsBold, fontSize: 12),
-          ),
+          // // ======= FUNGSI (A, B, C...) =======
+          // pw.Text(
+          //   "Fungsi:",
+          //   style: pw.TextStyle(font: poppinsBold, fontSize: 12),
+          // ),
 
-          pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              for (int i = 0; i < fungsiList.length; i++)
-                pw.Padding(
-                  padding: const pw.EdgeInsets.only(bottom: 4),
-                  child: pw.Text(
-                    "${String.fromCharCode(97 + i)}. ${fungsiList[i]}",
-                    style: pw.TextStyle(font: poppinsRegular, fontSize: 12),
-                  ),
-                ),
-            ],
-          ),
+          // pw.Column(
+          //   crossAxisAlignment: pw.CrossAxisAlignment.start,
+          //   children: [
+          //     for (int i = 0; i < fungsiList.length; i++)
+          //       pw.Padding(
+          //         padding: const pw.EdgeInsets.only(bottom: 4),
+          //         child: pw.Text(
+          //           "${String.fromCharCode(97 + i)}. ${fungsiList[i]}",
+          //           style: pw.TextStyle(font: poppinsRegular, fontSize: 12),
+          //         ),
+          //       ),
+          //   ],
+          // ),
 
-          pw.SizedBox(height: 20),
+          // pw.SizedBox(height: 20),
 
           // === TABEL 1 ===
           if (table1.isNotEmpty)
@@ -405,7 +411,7 @@ class PerjanjianPdfGenerator {
                 children: [
                   pw.SizedBox(height: 15),
                   pw.Text(
-                    "Wadir Pelayanan",
+                    data["jabatan"] ?? "",
                     style: pw.TextStyle(font: poppinsRegular, fontSize: 11),
                   ),
 
@@ -429,7 +435,7 @@ class PerjanjianPdfGenerator {
                   pw.SizedBox(height: 6),
 
                   pw.Text(
-                    data["namaPihakPertama"] ?? "",
+                    data["namaPihakKedua"] ?? "",
                     style: pw.TextStyle(font: poppinsBold, fontSize: 11),
                   ),
 
@@ -439,7 +445,7 @@ class PerjanjianPdfGenerator {
                   ),
 
                   pw.Text(
-                    "NIP. ${data["nipPihakPertama"] ?? ""}",
+                    "NIP. ${data["nipPihakKedua"] ?? ""}",
                     style: pw.TextStyle(font: poppinsRegular, fontSize: 11),
                   ),
                 ],
@@ -456,7 +462,7 @@ class PerjanjianPdfGenerator {
                     style: pw.TextStyle(font: poppinsRegular, fontSize: 11),
                   ),
                   pw.Text(
-                    "Kabid Pelayanan Medik",
+                    data["jabatanPihakPertama"] ?? "",
                     style: pw.TextStyle(font: poppinsRegular, fontSize: 11),
                   ),
 
@@ -480,7 +486,7 @@ class PerjanjianPdfGenerator {
                   pw.SizedBox(height: 6),
 
                   pw.Text(
-                    data["namaPihakKedua"] ?? "",
+                    data["namaPihakPertama"] ?? "",
                     style: pw.TextStyle(font: poppinsBold, fontSize: 11),
                   ),
 
@@ -490,7 +496,7 @@ class PerjanjianPdfGenerator {
                   ),
 
                   pw.Text(
-                    "NIP. ${data["nipPihakKedua"] ?? ""}",
+                    "NIP. ${data["nipPihakPertama"] ?? ""}",
                     style: pw.TextStyle(font: poppinsRegular, fontSize: 11),
                   ),
                 ],
