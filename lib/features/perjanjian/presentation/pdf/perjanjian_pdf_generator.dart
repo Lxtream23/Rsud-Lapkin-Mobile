@@ -22,7 +22,9 @@ class PerjanjianPdfGenerator {
     // LOGO
     // ===========================
     final logo = pw.MemoryImage(
-      (await rootBundle.load("assets/images/logo1.png")).buffer.asUint8List(),
+      (await rootBundle.load(
+        "assets/images/logo_pemda.png",
+      )).buffer.asUint8List(),
     );
 
     final pdf = pw.Document();
@@ -47,7 +49,7 @@ class PerjanjianPdfGenerator {
           // ===========================
           // LOGO
           // ===========================
-          pw.Center(child: pw.Image(logo, width: 90)),
+          pw.Center(child: pw.Image(logo, width: 120)),
 
           pw.SizedBox(height: 12),
 
@@ -190,44 +192,101 @@ class PerjanjianPdfGenerator {
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              // ======= KIRI =========
+              // =======================================================
+              //                     KOLOM KIRI
+              // =======================================================
               pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.center,
                 children: [
+                  pw.SizedBox(height: 15),
                   pw.Text(
-                    "Direktur",
-                    style: pw.TextStyle(font: poppinsRegular, fontSize: 12),
+                    "Wadir Pelayanan",
+                    style: pw.TextStyle(font: poppinsRegular, fontSize: 11),
                   ),
-                  pw.SizedBox(height: 70),
-                  pw.Text(
-                    data["namaPihakKedua"] ?? "",
-                    style: pw.TextStyle(font: poppinsBold, fontSize: 12),
+
+                  pw.SizedBox(height: 8),
+
+                  /// === TANDA TANGAN KIRI ===
+                  pw.Container(
+                    height: 90,
+                    width: 160,
+                    alignment: pw.Alignment.center,
+                    // child: pw.Image(
+                    //   pw.MemoryImage(
+                    //     (await rootBundle.load("assets/images/ttd_kiri.png"))
+                    //         .buffer
+                    //         .asUint8List(),
+                    //   ),
+                    //   fit: pw.BoxFit.contain,
+                    // ),
                   ),
+
+                  pw.SizedBox(height: 6),
+
                   pw.Text(
-                    "NIP. ${data["nipPihakKedua"] ?? ""}",
-                    style: pw.TextStyle(font: poppinsRegular, fontSize: 12),
+                    data["namaPihakPertama"] ?? "",
+                    style: pw.TextStyle(font: poppinsBold, fontSize: 11),
+                  ),
+
+                  pw.Text(
+                    "Pembina",
+                    style: pw.TextStyle(font: poppinsRegular, fontSize: 11),
+                  ),
+
+                  pw.Text(
+                    "NIP. ${data["nipPihakPertama"] ?? ""}",
+                    style: pw.TextStyle(font: poppinsRegular, fontSize: 11),
                   ),
                 ],
               ),
 
-              // ======= KANAN =========
+              // =======================================================
+              //                     KOLOM KANAN
+              // =======================================================
               pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.center,
                 children: [
                   pw.Text(
                     "Pasuruan, 2 Januari 2025",
-                    style: pw.TextStyle(font: poppinsRegular, fontSize: 12),
+                    style: pw.TextStyle(font: poppinsRegular, fontSize: 11),
                   ),
                   pw.Text(
-                    "Wadir Pelayanan",
-                    style: pw.TextStyle(font: poppinsRegular, fontSize: 12),
+                    "Kabid Pelayanan Medik",
+                    style: pw.TextStyle(font: poppinsRegular, fontSize: 11),
                   ),
-                  pw.SizedBox(height: 70),
-                  pw.Text(
-                    data["namaPihakPertama"] ?? "",
-                    style: pw.TextStyle(font: poppinsBold, fontSize: 12),
+
+                  pw.SizedBox(height: 8),
+
+                  /// === TANDA TANGAN KANAN ===
+                  pw.Container(
+                    height: 90,
+                    width: 160,
+                    alignment: pw.Alignment.center,
+                    // child: pw.Image(
+                    //   pw.MemoryImage(
+                    //     (await rootBundle.load("assets/images/ttd_kanan.png"))
+                    //         .buffer
+                    //         .asUint8List(),
+                    //   ),
+                    //   fit: pw.BoxFit.contain,
+                    // ),
                   ),
+
+                  pw.SizedBox(height: 6),
+
                   pw.Text(
-                    "NIP. ${data["nipPihakPertama"] ?? ""}",
-                    style: pw.TextStyle(font: poppinsRegular, fontSize: 12),
+                    data["namaPihakKedua"] ?? "",
+                    style: pw.TextStyle(font: poppinsBold, fontSize: 11),
+                  ),
+
+                  pw.Text(
+                    "Pembina",
+                    style: pw.TextStyle(font: poppinsRegular, fontSize: 11),
+                  ),
+
+                  pw.Text(
+                    "NIP. ${data["nipPihakKedua"] ?? ""}",
+                    style: pw.TextStyle(font: poppinsRegular, fontSize: 11),
                   ),
                 ],
               ),
@@ -239,16 +298,205 @@ class PerjanjianPdfGenerator {
           // ============================================================
           //              TABEL TAMBAHAN (opsional)
           // ============================================================
+          // if (table1.isNotEmpty)
+          //   _buildTable1("TABEL 1", table1, poppinsRegular, poppinsBold),
+
+          // if (table2.isNotEmpty) pw.SizedBox(height: 20),
+          // if (table2.isNotEmpty)
+          //   _buildTable("TABEL 2", table2, poppinsRegular, poppinsBold),
+
+          // if (table3.isNotEmpty) pw.SizedBox(height: 20),
+          // if (table3.isNotEmpty)
+          //   _buildTable("TABEL 3", table3, poppinsRegular, poppinsBold),
+        ],
+      ),
+    );
+
+    // =============================================================
+    //               HALAMAN KHUSUS TABEL 1
+    // =============================================================
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: pageFormat,
+        margin: const pw.EdgeInsets.all(32),
+        build: (context) => [
+          pw.SizedBox(height: 12),
+
+          // === TITLE DI TENGAH ===
+          pw.Center(
+            child: pw.Text(
+              "INDIKATOR KINERJA INDIVIDU\n"
+              "UOBK RSUD BANGIL\n"
+              "TAHUN 2025",
+              textAlign: pw.TextAlign.center,
+              style: pw.TextStyle(font: poppinsBold, fontSize: 15),
+            ),
+          ),
+
+          pw.SizedBox(height: 24),
+          // ============================
+          //   JABATAN, TUGAS, FUNGSI
+          // ============================
+          pw.Text(
+            "Jabatan:",
+            style: pw.TextStyle(font: poppinsBold, fontSize: 12),
+          ),
+          pw.Text(
+            data["jabatanPihakPertama"] ?? "",
+            style: pw.TextStyle(font: poppinsRegular, fontSize: 12),
+          ),
+
+          pw.SizedBox(height: 12),
+
+          pw.Text(
+            "Tugas:",
+            style: pw.TextStyle(font: poppinsBold, fontSize: 12),
+          ),
+          pw.Text(
+            data["tugas"] ?? "",
+            style: pw.TextStyle(font: poppinsRegular, fontSize: 12),
+          ),
+
+          pw.SizedBox(height: 12),
+
+          // ======= FUNGSI (A, B, C...) =======
+          pw.Text(
+            "Fungsi:",
+            style: pw.TextStyle(font: poppinsBold, fontSize: 12),
+          ),
+
+          pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              for (int i = 0; i < fungsiList.length; i++)
+                pw.Padding(
+                  padding: const pw.EdgeInsets.only(bottom: 4),
+                  child: pw.Text(
+                    "${String.fromCharCode(97 + i)}. ${fungsiList[i]}",
+                    style: pw.TextStyle(font: poppinsRegular, fontSize: 12),
+                  ),
+                ),
+            ],
+          ),
+
+          pw.SizedBox(height: 20),
+
+          // === TABEL 1 ===
           if (table1.isNotEmpty)
-            _buildTable1("TABEL 1", table1, poppinsRegular, poppinsBold),
+            _buildTable1(table1, poppinsRegular, poppinsBold),
 
-          if (table2.isNotEmpty) pw.SizedBox(height: 20),
-          if (table2.isNotEmpty)
-            _buildTable("TABEL 2", table2, poppinsRegular, poppinsBold),
+          pw.SizedBox(height: 40),
 
-          if (table3.isNotEmpty) pw.SizedBox(height: 20),
-          if (table3.isNotEmpty)
-            _buildTable("TABEL 3", table3, poppinsRegular, poppinsBold),
+          // ===========================
+          //     TANDA TANGAN
+          // ===========================
+          pw.SizedBox(height: 40),
+
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              // =======================================================
+              //                     KOLOM KIRI
+              // =======================================================
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.center,
+                children: [
+                  pw.SizedBox(height: 15),
+                  pw.Text(
+                    "Wadir Pelayanan",
+                    style: pw.TextStyle(font: poppinsRegular, fontSize: 11),
+                  ),
+
+                  pw.SizedBox(height: 8),
+
+                  /// === TANDA TANGAN KIRI ===
+                  pw.Container(
+                    height: 90,
+                    width: 160,
+                    alignment: pw.Alignment.center,
+                    // child: pw.Image(
+                    //   pw.MemoryImage(
+                    //     (await rootBundle.load("assets/images/ttd_kiri.png"))
+                    //         .buffer
+                    //         .asUint8List(),
+                    //   ),
+                    //   fit: pw.BoxFit.contain,
+                    // ),
+                  ),
+
+                  pw.SizedBox(height: 6),
+
+                  pw.Text(
+                    data["namaPihakPertama"] ?? "",
+                    style: pw.TextStyle(font: poppinsBold, fontSize: 11),
+                  ),
+
+                  pw.Text(
+                    "Pembina",
+                    style: pw.TextStyle(font: poppinsRegular, fontSize: 11),
+                  ),
+
+                  pw.Text(
+                    "NIP. ${data["nipPihakPertama"] ?? ""}",
+                    style: pw.TextStyle(font: poppinsRegular, fontSize: 11),
+                  ),
+                ],
+              ),
+
+              // =======================================================
+              //                     KOLOM KANAN
+              // =======================================================
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.center,
+                children: [
+                  pw.Text(
+                    "Pasuruan, 2 Januari 2025",
+                    style: pw.TextStyle(font: poppinsRegular, fontSize: 11),
+                  ),
+                  pw.Text(
+                    "Kabid Pelayanan Medik",
+                    style: pw.TextStyle(font: poppinsRegular, fontSize: 11),
+                  ),
+
+                  pw.SizedBox(height: 8),
+
+                  /// === TANDA TANGAN KANAN ===
+                  pw.Container(
+                    height: 90,
+                    width: 160,
+                    alignment: pw.Alignment.center,
+                    // child: pw.Image(
+                    //   pw.MemoryImage(
+                    //     (await rootBundle.load("assets/images/ttd_kanan.png"))
+                    //         .buffer
+                    //         .asUint8List(),
+                    //   ),
+                    //   fit: pw.BoxFit.contain,
+                    // ),
+                  ),
+
+                  pw.SizedBox(height: 6),
+
+                  pw.Text(
+                    data["namaPihakKedua"] ?? "",
+                    style: pw.TextStyle(font: poppinsBold, fontSize: 11),
+                  ),
+
+                  pw.Text(
+                    "Pembina",
+                    style: pw.TextStyle(font: poppinsRegular, fontSize: 11),
+                  ),
+
+                  pw.Text(
+                    "NIP. ${data["nipPihakKedua"] ?? ""}",
+                    style: pw.TextStyle(font: poppinsRegular, fontSize: 11),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -259,36 +507,36 @@ class PerjanjianPdfGenerator {
   // =============================================================
   //                    TABLE GENERATOR
   // =============================================================
+  /// ========== TABEL 1 KHUSUS INDIKATOR KINERJA ==========
   static pw.Widget _buildTable1(
-    String title,
+    //String title,
     List<List<String>> rows,
     pw.Font regular,
     pw.Font bold,
   ) {
-    // Header tetap fixed (sesuai format PDF)
     final headers = ["NO", "SASARAN", "INDIKATOR KINERJA", "SATUAN", "TARGET"];
 
     return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      crossAxisAlignment: pw.CrossAxisAlignment.stretch,
       children: [
-        pw.Text(title, style: pw.TextStyle(font: bold, fontSize: 13)),
-        pw.SizedBox(height: 8),
-
+        // ============================
+        //           TABEL
+        // ============================
         pw.Table(
           border: pw.TableBorder.all(width: 0.8),
 
           columnWidths: {
-            0: const pw.FlexColumnWidth(1), // NO (kecil)
-            1: const pw.FlexColumnWidth(4), // SASARAN (lebar)
-            2: const pw.FlexColumnWidth(4), // INDIKATOR KINERJA (lebar)
-            3: const pw.FlexColumnWidth(2), // SATUAN (kecil)
-            4: const pw.FlexColumnWidth(2), // TARGET (kecil)
+            0: const pw.FlexColumnWidth(1), // NO
+            1: const pw.FlexColumnWidth(4), // SASARAN
+            2: const pw.FlexColumnWidth(5), // INDIKATOR KINERJA (paling lebar)
+            3: const pw.FlexColumnWidth(2), // SATUAN
+            4: const pw.FlexColumnWidth(2), // TARGET
           },
 
           children: [
-            // ======================
-            //          HEADER
-            // ======================
+            // =======================
+            //        HEADER
+            // =======================
             pw.TableRow(
               //decoration: const pw.BoxDecoration(color: PdfColors.grey300),
               children: [
@@ -298,19 +546,19 @@ class PerjanjianPdfGenerator {
                     child: pw.Text(
                       h,
                       style: pw.TextStyle(font: bold, fontSize: 11),
-                      textAlign: pw.TextAlign.center, // <<< CENTER HEADER
+                      textAlign: pw.TextAlign.center,
                     ),
                   ),
               ],
             ),
 
             // =======================
-            //         ROW DATA
+            //         DATA
             // =======================
             for (int i = 0; i < rows.length; i++)
               pw.TableRow(
                 children: [
-                  // AUTO NUMBER (NO)
+                  // NO
                   pw.Padding(
                     padding: const pw.EdgeInsets.all(6),
                     child: pw.Text(
@@ -361,6 +609,8 @@ class PerjanjianPdfGenerator {
               ),
           ],
         ),
+
+        //pw.SizedBox(height: 40),
       ],
     );
   }
