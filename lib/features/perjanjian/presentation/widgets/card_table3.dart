@@ -1,6 +1,4 @@
-// lib/presentation/widgets/card_table3.dart
 import 'package:flutter/material.dart';
-import 'package:rsud_lapkin_mobile/core/widgets/ui_helpers/app_snackbar.dart';
 
 class CardTable3Widget extends StatefulWidget {
   const CardTable3Widget({super.key});
@@ -9,535 +7,267 @@ class CardTable3Widget extends StatefulWidget {
   State<CardTable3Widget> createState() => _CardTable3WidgetState();
 }
 
-class _CardTable3WidgetState extends State<CardTable3Widget>
-    with TickerProviderStateMixin {
-  final List<List<TextEditingController>> _rows = [];
+class RowItem {
+  String program = "";
+  String anggaran = "";
+  String keterangan = "";
+  int level = 0; // 0 = induk, 1 = sublevel
+  String nomor = ""; // auto generated
+}
 
-  /// index card yang terbuka (accordion mode)
-  int? _openIndex;
+class _CardTable3WidgetState extends State<CardTable3Widget> {
+  final List<RowItem> items = [];
 
   @override
   void initState() {
     super.initState();
-    _addRow();
+    items.add(RowItem());
   }
 
-  List<List<String>> getRowsAsStrings() {
-    final result = <List<String>>[];
+  // ============================================================
+  // AUTO NUMBERING MODEL C
+  // ============================================================
+  void generateNumbers() {
+    int mainIndex = 0;
+    int subIndex = 0;
 
-    for (final row in _rows) {
-      final cells = <String>[];
-      for (final ctrl in row) {
-        cells.add(ctrl.text.trim());
+    for (int i = 0; i < items.length; i++) {
+      final item = items[i];
+
+      if (item.level == 0) {
+        mainIndex++;
+        subIndex = 0;
+        item.nomor = "$mainIndex";
+      } else {
+        subIndex++;
+        item.nomor = "$mainIndex.$subIndex";
       }
-      result.add(cells);
     }
-
-    return result;
   }
 
-  @override
-  void dispose() {
-    for (final r in _rows) {
-      for (final c in r) c.dispose();
+  // ============================================================
+  // EXPORT KE PDF
+  // ============================================================
+  List<Map<String, dynamic>> getRowsForPdf() {
+    generateNumbers();
+
+    final list = <Map<String, dynamic>>[];
+    double total = 0;
+
+    for (final item in items) {
+      final angka =
+          double.tryParse(
+            item.anggaran.replaceAll(".", "").replaceAll(",", ""),
+          ) ??
+          0;
+      total += angka;
+
+      list.add({
+        "no": item.nomor,
+        "program": item.program,
+        "anggaran": item.anggaran,
+        "keterangan": item.keterangan,
+      });
     }
-    super.dispose();
+
+    list.add({
+      "no": "",
+      "program": "JUMLAH",
+      "anggaran": total.toStringAsFixed(2),
+      "keterangan": "",
+      "isTotal": true,
+    });
+
+    return list;
   }
 
-  // ===================================================================
-  // ROW MANAGEMENT
-  // ===================================================================
+  // ============================================================
   // ADD ROW
-  void _addRow() {
+  // ============================================================
+  void addRow({bool asSub = false}) {
     setState(() {
-      _rows.add(List.generate(3, (_) => TextEditingController()));
+      items.add(RowItem()..level = asSub ? 1 : 0);
+      generateNumbers();
     });
   }
 
-  // DELETE ROW
-  void _deleteRow(int index) {
-    debugPrint(
-      "🗑 DELETE REQUEST [TABEL3] → index: $index, total rows: ${_rows.length}",
-    );
-
-    // --- Validasi Index ---
-    if (index < 0 || index >= _rows.length) {
-      debugPrint(
-        "❌ DELETE FAILED [TABEL3] → index out of range. Tidak jadi hapus.",
-      );
-      _showDeleteError("Gagal menghapus: index tidak valid");
+  // DELETE
+  void deleteRow(int index) {
+    if (items.length == 1) {
+      setState(() {
+        items.first
+          ..program = ""
+          ..anggaran = ""
+          ..keterangan = ""
+          ..level = 0;
+      });
       return;
     }
 
-    // ---- Ambil summary row untuk pesan snackbar ----
-    final deletedSummary = _summary(_rows[index]);
-
-    // --- Kasus: hanya ada 1 baris, jangan hapus hanya kosongkan ---
-    if (_rows.length == 1) {
-      debugPrint("🗑 DELETE [TABEL3] → Hanya satu baris. Membersihkan saja...");
-      for (final c in _rows.first) {
-        if (!c.isClosed)
-          c.clear();
-        else {
-          debugPrint("⚠ Controller [TABEL3] sudah closed, skip clear");
-        }
-      }
-
-      setState(() {});
-
-      debugPrint(
-        "🗑 DELETE [TABEL3] → Menghapus row ke-$index "
-        "(kolom: ${_rows.first.length} controller).",
-      );
-
-      _showDeleteSuccess("Baris 1 telah dikosongkan");
-      return;
-    }
-
-    // ---- Hapus controller dengan aman ----
-    for (final c in _rows[index]) {
-      if (!c.isClosed) {
-        c.dispose();
-      } else {
-        debugPrint("⚠ [TABEL3]Controller sudah closed, skip dispose");
-      }
-    }
-
-    // ---- Update UI ----
     setState(() {
-      _rows.removeAt(index);
-
-      // Tutup accordion jika row yang dihapus adalah row terbuka
-      if (_openIndex == index) {
-        _openIndex = null;
-      }
-
-      // Jika openIndex melebihi panjang list setelah delete → geser
-      if (_openIndex != null && _openIndex! >= _rows.length) {
-        _openIndex = _rows.length - 1;
-      }
-    });
-
-    debugPrint("✅ DELETE SUCCESS [TABEL3] → removed row index: $index");
-
-    // ---- Snackbar sukses ----
-    _showDeleteSuccess("Baris ${index + 1} dihapus: \"$deletedSummary\"");
-  }
-
-  // CEK APAKAH ROW KOSONG
-  bool _rowIsEmpty(List<TextEditingController> row) =>
-      row.every((c) => c.text.trim().isEmpty);
-
-  // SUMMARY TEXT
-  String _summary(List<TextEditingController> row) {
-    // Cari kolom pertama yang tidak kosong
-    for (final c in row) {
-      final text = c.text.trim();
-      if (text.isNotEmpty) {
-        // Batasi 30 karakter
-        return text.length > 30 ? '${text.substring(0, 30)}…' : text;
-      }
-    }
-
-    return '— kosong —';
-  }
-
-  // TOGGLE CARD
-  void _toggleCard(int index) {
-    final current = _openIndex;
-
-    // Jika sedang buka card lain
-    if (current != null && current != index) {
-      final isOtherEmpty = _rowIsEmpty(_rows[current]);
-
-      if (isOtherEmpty) {
-        // tutup otomatis
-        setState(() => _openIndex = index);
-      } else {
-        // jangan tutup card berisi data
-        setState(() => _openIndex = index);
-      }
-      return;
-    }
-
-    // Jika buka/tutup card yang sama
-    setState(() {
-      _openIndex = (_openIndex == index) ? null : index;
+      items.removeAt(index);
+      generateNumbers();
     });
   }
 
-  // LABEL CHIP
-  Widget _labelChip(String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: Color(0xFFBEF8FF),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(text, style: const TextStyle(fontWeight: FontWeight.w600)),
-    );
-  }
-
-  // CONFIRM DELETE DIALOG
-  Future<bool> showConfirmDeleteDialog(BuildContext context) async {
-    final theme = Theme.of(context);
-
-    return await showDialog<bool>(
-          context: context,
-          barrierDismissible: true,
-          builder: (context) {
-            return AlertDialog(
-              backgroundColor: theme.colorScheme.surface,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
-              ),
-              title: Text(
-                "Hapus Baris?",
-                style: TextStyle(color: theme.colorScheme.onSurface),
-              ),
-              content: Text(
-                "Apakah Anda yakin ingin menghapus baris ini?",
-                style: TextStyle(
-                  color: theme.colorScheme.onSurface.withOpacity(0.8),
-                ),
-              ),
-              actionsPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 8,
-              ),
-              actions: [
-                TextButton(
-                  child: Text(
-                    "Batal",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.primary,
-                    ),
-                  ),
-                  onPressed: () => Navigator.pop(context, false),
-                ),
-
-                FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: theme.colorScheme.error,
-                    foregroundColor: theme.colorScheme.onError,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  onPressed: () => Navigator.pop(context, true),
-                  child: const Text(
-                    "Hapus",
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
-            );
-          },
-        ) ??
-        false;
-  }
-
-  // SHOW DELETE SUCCESS SNACKBAR
-  void _showDeleteSuccess(String msg) {
-    final ctx = overlaySnackbarKey.currentContext;
-    if (ctx == null) {
-      debugPrint("Overlay NULL → Snackbar gagal ditampilkan");
-      return;
-    }
-
-    AppSnackbar.success(ctx, msg);
-  }
-
-  // SHOW DELETE ERROR SNACKBAR
-  void _showDeleteError(String msg) {
-    final ctx = overlaySnackbarKey.currentContext;
-    if (ctx == null) return;
-
-    AppSnackbar.error(ctx, msg);
-  }
-
-  // ===================================================================
+  // ============================================================
+  // BUILD UI
+  // ============================================================
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context).colorScheme;
-    // LABEL CHIP
+
+    generateNumbers();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // HEADER
-        Row(
-          children: [
-            const Text(
-              "TABEL PROGRAM & ANGGARAN",
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-            ),
-            const Spacer(),
-            _labelChip("${_rows.length} baris"),
-          ],
+        const Text(
+          "TABEL PROGRAM & ANGGARAN",
+          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
         ),
-
         const SizedBox(height: 12),
 
-        // LIST OF CARDS
-        ListView.builder(
+        // ============================================================
+        // REORDERABLE LIST (drag & sort)
+        // ============================================================
+        ReorderableListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          itemCount: _rows.length,
+          itemCount: items.length,
+          onReorder: (oldIndex, newIndex) {
+            setState(() {
+              if (newIndex > oldIndex) newIndex--;
+              final item = items.removeAt(oldIndex);
+              items.insert(newIndex, item);
+              generateNumbers();
+            });
+          },
           itemBuilder: (context, i) {
-            final row = _rows[i];
-            final ctrl = row[0];
+            final item = items[i];
 
-            // AUTO ADD ROW WHEN LAST ROW TYPED
-            for (final ctrl in row) {
-              ctrl.addListener(() {
-                final isLastRow = i == _rows.length - 1;
-                final rowData = _rows[i];
+            return Card(
+              key: ValueKey(i),
+              color: item.level == 0
+                  ? const Color(0xFFBEF8FF)
+                  : const Color(0xFFDDF7FF),
+              margin: const EdgeInsets.only(bottom: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  children: [
+                    // HEADER
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            item.nomor,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
 
-                // Jika baris terakhir dan ADA kolom yg terisi → auto-add-row
-                if (isLastRow && rowData.any((c) => c.text.trim().isNotEmpty)) {
-                  // Cek row terakhir yg asli juga ada isi → baru tambah row
-                  if (_rows.last.any((c) => c.text.trim().isNotEmpty)) {
-                    _addRow();
-                  }
-                }
+                        Expanded(
+                          child: Text(
+                            item.program.isEmpty ? "— kosong —" : item.program,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
 
-                setState(() {}); // refresh UI & summary
-              });
-            }
+                        IconButton(
+                          onPressed: () => deleteRow(i),
+                          icon: const Icon(
+                            Icons.delete_outline,
+                            color: Color(0xFFE74C3C),
+                          ),
+                        ),
+                      ],
+                    ),
 
-            // TOGGLE CARD
-            return _CardSmallAccordion(
-              index: i,
-              isOpen: _openIndex == i,
-              isEmpty: _rowIsEmpty(row),
-              headerSummary: _summary(row),
-              onToggle: () => _toggleCard(i),
-              onDelete: () => _deleteRow(i),
-              child: Column(
-                children: [
-                  _input("Program", row[0]), // Program
-                  const SizedBox(height: 10),
-                  _input("Anggaran", row[1]), // Anggaran
-                  const SizedBox(height: 10),
-                  _input("Keterangan", row[2]), // Keterangan
-                  const SizedBox(height: 10),
-                ],
+                    const SizedBox(height: 14),
+
+                    // INPUT
+                    inputField("Program", item.program, (v) {
+                      setState(() => item.program = v);
+                    }),
+                    const SizedBox(height: 10),
+
+                    inputField("Anggaran", item.anggaran, (v) {
+                      setState(() => item.anggaran = v);
+                    }),
+                    const SizedBox(height: 10),
+
+                    inputField("Keterangan", item.keterangan, (v) {
+                      setState(() => item.keterangan = v);
+                    }),
+
+                    const SizedBox(height: 10),
+
+                    // BUTTONS SUBLEVEL
+                    Row(
+                      children: [
+                        TextButton.icon(
+                          onPressed: () => addRow(asSub: true),
+                          icon: const Icon(Icons.subdirectory_arrow_right),
+                          label: const Text("Tambah Sub"),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             );
           },
         ),
 
-        const SizedBox(height: 6),
+        const SizedBox(height: 14),
 
+        // ADD MAIN ROW
         TextButton.icon(
-          onPressed: _addRow,
+          onPressed: () => addRow(asSub: false),
           icon: Icon(Icons.add, color: theme.primary),
           label: Text(
-            "Tambah Baris",
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: theme.primary,
-            ),
+            "Tambah Baris Utama",
+            style: TextStyle(color: theme.primary, fontWeight: FontWeight.bold),
           ),
         ),
       ],
     );
   }
 
-  // modern input style
-  Widget _input(String label, TextEditingController ctrl) {
+  Widget inputField(String label, String value, Function(String) onChanged) {
     final theme = Theme.of(context).colorScheme;
-    return AnimatedSize(
-      duration: const Duration(milliseconds: 150),
-      curve: Curves.easeInOut,
-      child: TextField(
-        controller: ctrl,
-        minLines: 1,
-        maxLines: null,
-        keyboardType: TextInputType.multiline,
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: TextStyle(fontSize: 14),
-          filled: true,
-          fillColor: theme.surfaceContainerLowest,
-          isDense: true, // <<< membuat tinggi lebih kecil
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: theme.outline.withOpacity(0.18)),
-          ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 12,
-          ),
-        ),
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-      ),
-    );
-  }
-}
-
-extension ControllerSafeDispose on TextEditingController {
-  bool get isClosed {
-    try {
-      // akses apapun yang memerlukan controller hidup
-      text;
-      return false; // tidak error → belum disposed
-    } catch (_) {
-      return true; // error → sudah disposed
-    }
-  }
-}
-
-// ===================================================================
-// CARD WIDGET
-// ===================================================================
-class _CardSmallAccordion extends StatefulWidget {
-  final int index;
-  final String headerSummary;
-  final bool isEmpty;
-  final bool isOpen;
-  final VoidCallback onDelete;
-  final VoidCallback onToggle;
-  final Widget child;
-
-  const _CardSmallAccordion({
-    required this.index,
-    required this.headerSummary,
-    required this.isEmpty,
-    required this.isOpen,
-    required this.onDelete,
-    required this.onToggle,
-    required this.child,
-  });
-
-  @override
-  State<_CardSmallAccordion> createState() => _CardSmallAccordionState();
-}
-
-class _CardSmallAccordionState extends State<_CardSmallAccordion>
-    with TickerProviderStateMixin {
-  late final AnimationController _rotation;
-
-  @override
-  void initState() {
-    super.initState();
-    _rotation = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 260),
-      value: widget.isOpen ? 0.0 : 0.5,
-    );
-  }
-
-  @override
-  void didUpdateWidget(covariant _CardSmallAccordion oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.isOpen != oldWidget.isOpen) {
-      widget.isOpen ? _rotation.reverse() : _rotation.forward();
-    }
-  }
-
-  @override
-  void dispose() {
-    _rotation.dispose();
-    super.dispose();
-  }
-
-  // ===================================================================
-  @override
-  Widget build(BuildContext context) {
-    // CARD
-    return Card(
-      color: Color(0xFFBEF8FF),
-      elevation: 2,
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: AnimatedSize(
-        duration: const Duration(milliseconds: 260),
-        curve: Curves.easeInOut,
-        child: Column(
-          children: [
-            // HEADER & CHILDREN
-            InkWell(
-              onTap: widget.onToggle,
-              customBorder: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
-                ),
-                child: Row(
-                  children: [
-                    // NUMBER CHIP
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        "${widget.index + 1}",
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-
-                    const SizedBox(width: 12),
-
-                    Expanded(
-                      child: Text(
-                        widget.headerSummary,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-
-                    // DELETE BUTTON
-                    // if (widget.isEmpty)
-                    IconButton(
-                      onPressed: () async {
-                        final ok =
-                            await (context
-                                    .findAncestorStateOfType<
-                                      _CardTable3WidgetState
-                                    >()
-                                    ?.showConfirmDeleteDialog(context) ??
-                                Future.value(false));
-
-                        if (ok) widget.onDelete();
-                      },
-                      icon: Icon(
-                        Icons.delete_outline,
-                        color: Color(0xFFE74C3C),
-                      ),
-                      splashRadius: 20,
-                    ),
-                    // Arrow icon
-                    RotationTransition(
-                      turns: Tween(begin: 0.0, end: 0.5).animate(_rotation),
-                      child: const Icon(Icons.keyboard_arrow_down),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // CHILD CONTENT
-            if (widget.isOpen)
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
-                ),
-                child: widget.child,
-              ),
-          ],
+    return TextField(
+      controller: TextEditingController(text: value)
+        ..selection = TextSelection.collapsed(offset: value.length),
+      minLines: 1,
+      maxLines: null,
+      decoration: InputDecoration(
+        labelText: label,
+        filled: true,
+        fillColor: theme.surfaceContainerLowest,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 12,
         ),
       ),
+      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+      onChanged: onChanged,
     );
   }
 }

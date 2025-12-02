@@ -621,6 +621,82 @@ class PerjanjianPdfGenerator {
     );
   }
 
+  static pw.Widget buildTable3Fixed(
+    List<List<String>> rows,
+    pw.Font regular,
+    pw.Font bold,
+  ) {
+    return pw.Table(
+      border: pw.TableBorder.all(width: 0.8),
+      columnWidths: {
+        0: const pw.FlexColumnWidth(1), // NO
+        1: const pw.FlexColumnWidth(5), // PROGRAM (lebar)
+        2: const pw.FlexColumnWidth(3), // ANGGARAN
+        3: const pw.FlexColumnWidth(3), // KETERANGAN
+      },
+      children: [
+        // ==============================
+        //            HEADER
+        // ==============================
+        pw.TableRow(
+          decoration: const pw.BoxDecoration(color: PdfColors.grey300),
+          children: [
+            _tblHeader("NO", bold),
+            _tblHeader("PROGRAM", bold),
+            _tblHeader("ANGGARAN", bold),
+            _tblHeader("KETERANGAN", bold),
+          ],
+        ),
+
+        // =================================
+        //             ISI DATA
+        // =================================
+        for (int i = 0; i < rows.length; i++)
+          pw.TableRow(
+            children: [
+              // NO
+              _tblCell("${i + 1}", regular, align: pw.TextAlign.center),
+
+              // PROGRAM (boleh multi-line)
+              _tblCell(rows[i][0], regular),
+
+              // ANGGARAN
+              _tblCell(rows[i][1], regular, align: pw.TextAlign.center),
+
+              // KETERANGAN
+              _tblCell(rows[i][2], regular, align: pw.TextAlign.center),
+            ],
+          ),
+      ],
+    );
+  }
+
+  static pw.Widget _tblHeader(String text, pw.Font bold) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.all(6),
+      child: pw.Text(
+        text,
+        textAlign: pw.TextAlign.center,
+        style: pw.TextStyle(font: bold, fontSize: 11),
+      ),
+    );
+  }
+
+  static pw.Widget _tblCell(
+    String text,
+    pw.Font font, {
+    pw.TextAlign align = pw.TextAlign.left,
+  }) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.all(6),
+      child: pw.Text(
+        text,
+        textAlign: align,
+        style: pw.TextStyle(font: font, fontSize: 11),
+      ),
+    );
+  }
+
   /// ========== Helper cell untuk header ==========
   static pw.Widget _headerCell(String text, pw.Font bold) {
     return pw.Padding(
@@ -634,12 +710,12 @@ class PerjanjianPdfGenerator {
   }
 
   /// ========== Helper cell untuk body ==========
-  static pw.Widget _cell(String text, pw.Font regular) {
-    return pw.Padding(
-      padding: const pw.EdgeInsets.all(6),
-      child: pw.Text(text, style: pw.TextStyle(font: regular, fontSize: 11)),
-    );
-  }
+  // static pw.Widget _cell(String text, pw.Font regular) {
+  //   return pw.Padding(
+  //     padding: const pw.EdgeInsets.all(6),
+  //     child: pw.Text(text, style: pw.TextStyle(font: regular, fontSize: 11)),
+  //   );
+  // }
 
   static pw.Widget _buildTable(
     String title,
@@ -647,47 +723,21 @@ class PerjanjianPdfGenerator {
     pw.Font regular,
     pw.Font bold,
   ) {
-    if (rows.isEmpty) return pw.SizedBox();
-
-    final header = rows.first; // <- baris pertama = header
-    final dataRows = rows.skip(1).toList(); // <- sisanya = data
-
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
         pw.Text(title, style: pw.TextStyle(font: bold, fontSize: 13)),
         pw.SizedBox(height: 8),
-
         pw.Table(
           border: pw.TableBorder.all(width: 0.8),
           columnWidths: {
-            for (int i = 0; i < header.length; i++)
+            for (int i = 0; i < (rows.isNotEmpty ? rows[0].length : 1); i++)
               i: const pw.FlexColumnWidth(),
           },
           children: [
-            // =======================
-            //      HEADER TABLE
-            // =======================
-            pw.TableRow(
-              decoration: pw.BoxDecoration(
-                color: PdfColor.fromInt(0xFFE0E0E0), // abu-abu header
-              ),
-              children: [
-                for (final h in header)
-                  pw.Padding(
-                    padding: const pw.EdgeInsets.all(6),
-                    child: pw.Text(
-                      h,
-                      style: pw.TextStyle(font: bold, fontSize: 11),
-                    ),
-                  ),
-              ],
-            ),
-
-            // =======================
-            //      DATA TABLE
-            // =======================
-            for (final row in dataRows)
+            // Header row (optional) — contoh bila you want header dynamic:
+            // pw.TableRow(children: [ pw.TableCell(...), ... ]),
+            for (final row in rows)
               pw.TableRow(
                 children: [
                   for (final cell in row)
