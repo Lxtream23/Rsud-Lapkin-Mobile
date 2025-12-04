@@ -265,6 +265,28 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
     AppSnackbar.error(ctx, msg);
   }
 
+  /// Ambil teks ringkas untuk header.
+  String getHeaderSummary(Map<String, dynamic> row) {
+    String p = (row['program'] as TextEditingController).text.trim();
+    String a = (row['anggaran'] as TextEditingController).text.trim();
+    String k = (row['keterangan'] as TextEditingController).text.trim();
+
+    String text = p.isNotEmpty
+        ? p
+        : a.isNotEmpty
+        ? a
+        : k.isNotEmpty
+        ? k
+        : "— kosong —";
+
+    // batas maksimal 30 karakter
+    if (text.length > 30) {
+      return text.substring(0, 30) + "…";
+    }
+
+    return text;
+  }
+
   // -------------------------
   // BUILD
   // -------------------------
@@ -277,19 +299,25 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
       children: [
         // header + count
         Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Text(
               "TABEL PROGRAM & ANGGARAN",
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
             ),
-            const Spacer(),
+            //const Spacer(),
             // show total program & sub
-            _labelChip("${_rows.length} baris"),
+
             //const SizedBox(width: 8),
             //if (totalSubCount > 0) _labelChip("$totalSubCount sub"),
           ],
         ),
+        const SizedBox(height: 8),
 
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [_labelChip("${_rows.length} baris")],
+        ),
         const SizedBox(height: 8),
 
         // list program cards
@@ -420,9 +448,7 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
                     // Program title
                     Expanded(
                       child: Text(
-                        programCtrl.text.trim().isEmpty
-                            ? "— kosong —"
-                            : programCtrl.text.trim(),
+                        getHeaderSummary(_rows[i]),
                         style: const TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 14,
