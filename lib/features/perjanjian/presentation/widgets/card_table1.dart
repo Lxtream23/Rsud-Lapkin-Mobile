@@ -333,7 +333,7 @@ class _CardTable1WidgetState extends State<CardTable1Widget>
         // ADD ROW BUTTON
         TextButton.icon(
           onPressed: _addRow,
-          icon: Icon(Icons.add, color: theme.primary),
+          icon: Icon(Icons.add_circle, color: theme.primary),
           label: Text(
             "Tambah Baris",
             style: TextStyle(

@@ -23,13 +23,17 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
   /// index panel yang terbuka (expand/collapse)
   int? openIndex;
 
+  /// threshold untuk "daftar panjang" — saat list melebihi ini,
+  /// membuka panel akan memastikan hanya satu panel terbuka.
+  final int _longListThreshold = 8;
+
   @override
   void initState() {
     super.initState();
     _addRow(); // minimal 1 program baris
   }
 
-  /// Convert ke List<List<String>> (dipakai PDF collector)
+  /// Convert ke List<List<String>> (dipakai PDF collector jika perlu)
   List<List<String>> getRowsAsStrings() {
     final result = <List<String>>[];
     for (final r in _rows) {
@@ -140,59 +144,35 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
     });
   }
 
-  void _deleteSubRow(int parent, int index) async {
+  void _deleteSubRow(int parent, int index) {
     if (parent < 0 || parent >= _rows.length) return;
-
     final subList = _rows[parent]['sub'] as List<TextEditingController>;
     if (index < 0 || index >= subList.length) return;
 
+    // Jika sub ini kosong -> langsung hapus dan kembalikan tampilan default
     final text = subList[index].text.trim();
-
-    // -----------------------------------------------------
-    // CASE 1 — Jika SUB masih kosong → langsung hapus
-    // -----------------------------------------------------
     if (text.isEmpty) {
-      // Jika hanya 1 sub, hapus semua agar kembali default
-      if (subList.length == 1) {
-        try {
-          subList.first.dispose();
-        } catch (_) {}
-        subList.clear();
-      } else {
-        // hapus item
-        try {
-          subList[index].dispose();
-        } catch (_) {}
-        subList.removeAt(index);
-      }
-
-      setState(() {});
-      _showDeleteSuccess("Sub-program dihapus (kosong)");
-      return;
-    }
-
-    // -----------------------------------------------------
-    // CASE 2 — Sub terisi → tampilkan dialog konfirmasi
-    // -----------------------------------------------------
-    final ok = await showConfirmDeleteDialog(context);
-
-    if (ok) {
-      // Jika hanya 1 sub → kosongkan
-      if (subList.length == 1) {
-        subList.first.clear();
-        setState(() {});
-        _showDeleteSuccess("Sub-program dikosongkan");
-        return;
-      }
-
+      // hapus controller
       try {
         subList[index].dispose();
       } catch (_) {}
       subList.removeAt(index);
-
       setState(() {});
       _showDeleteSuccess("Sub-program dihapus");
+      return;
     }
+
+    // jika tidak kosong, tanyakan konfirmasi dulu
+    showConfirmDeleteDialog(context).then((ok) {
+      if (ok) {
+        try {
+          subList[index].dispose();
+        } catch (_) {}
+        subList.removeAt(index);
+        setState(() {});
+        _showDeleteSuccess("Sub-program dihapus");
+      }
+    });
   }
 
   // -------------------------
@@ -233,32 +213,26 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
   }
 
   String formatCurrency(double v) {
+    // Simple Indonesian formatted currency: Rp 1.234.567 (no decimals if zeros)
     final isNegative = v < 0;
     v = v.abs();
-
-    final intPart = v.floor(); // angka tanpa desimal
-    final decimals = ((v - intPart) * 100).round(); // ambil 2 desimal
-
-    // format ribuan pakai titik
+    final intPart = v.floor();
+    final decimals = ((v - intPart) * 100).round();
     final intStr = intPart.toString();
     final buffer = StringBuffer();
-
     for (int i = 0; i < intStr.length; i++) {
       final pos = intStr.length - i;
       buffer.write(intStr[i]);
       if (pos > 1 && pos % 3 == 1) buffer.write('.');
     }
 
-    final formattedInt = buffer.toString();
-
-    // jika desimal 0 → hilangkan ",00"
-    if (decimals == 0) {
-      return "Rp ${isNegative ? '-' : ''}$formattedInt";
-    }
-
-    // tampilkan desimal jika tidak nol
-    final decimalStr = decimals.toString().padLeft(2, '0');
-    return "Rp ${isNegative ? '-' : ''}$formattedInt,$decimalStr";
+    // If decimals are zero, don't show ,00
+    final decimalPart = decimals == 0
+        ? ''
+        : ',${decimals.toString().padLeft(2, '0')}';
+    final result =
+        'Rp ${isNegative ? '-' : ''}${buffer.toString()}$decimalPart';
+    return result;
   }
 
   // -------------------------
@@ -304,20 +278,19 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
         // header + count
         Row(
           children: [
-            const Expanded(
-              child: Text(
-                "TABEL PROGRAM & SUB-PROGRAM",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
+            const Text(
+              "TABEL PROGRAM & ANGGARAN",
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
             ),
+            const Spacer(),
             // show total program & sub
-            _labelChip("${_rows.length} program"),
-            const SizedBox(width: 8),
-            if (totalSubCount > 0) _labelChip("$totalSubCount sub"),
+            _labelChip("${_rows.length} baris"),
+            //const SizedBox(width: 8),
+            //if (totalSubCount > 0) _labelChip("$totalSubCount sub"),
           ],
         ),
 
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
 
         // list program cards
         ListView.builder(
@@ -329,7 +302,7 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
           },
         ),
 
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
 
         // footer: add button (left) + totals (right)
         Row(
@@ -338,15 +311,21 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
               onPressed: _addRow,
               icon: Icon(Icons.add_circle, color: scheme.primary),
               label: Text(
-                "Tambah Program",
+                "Tambah Baris",
                 style: TextStyle(
                   color: scheme.primary,
                   fontWeight: FontWeight.bold,
-                  fontSize: 15,
+                  fontSize: 14,
                 ),
               ),
             ),
-            const Spacer(),
+          ],
+        ),
+        const SizedBox(height: 6),
+        // total anggaran preview
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -357,14 +336,27 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
                 const SizedBox(height: 4),
                 Text(
                   formatCurrency(totalAnggaran),
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),
           ],
         ),
-
         const SizedBox(height: 8),
+        // notes
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                "Catatan: Silakan tambahkan program dan sub-program sesuai kebutuhan. Anggaran total akan dihitung otomatis.",
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }
@@ -373,6 +365,8 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
   // Build Program Card
   // -------------------------
   Widget _buildProgramCard(BuildContext context, int i, ColorScheme scheme) {
+    final theme = Theme.of(context).colorScheme;
+
     final programCtrl = _rows[i]['program'] as TextEditingController;
     final anggaranCtrl = _rows[i]['anggaran'] as TextEditingController;
     final ketCtrl = _rows[i]['keterangan'] as TextEditingController;
@@ -380,184 +374,209 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
 
     return Card(
       color: const Color(0xFFBEF8FF),
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: 3,
+      elevation: 2,
+      margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: AnimatedSize(
-        duration: const Duration(milliseconds: 200),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // header row: number, title, sub-chip, expand, delete
-              Row(
-                children: [
-                  // number circle
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      "${i + 1}",
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(width: 12),
-
-                  // title preview
-                  Expanded(
-                    child: Text(
-                      programCtrl.text.trim().isEmpty
-                          ? "— kosong —"
-                          : programCtrl.text.trim(),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                      ),
-                    ),
-                  ),
-
-                  // sub-count chip (only show when sub exists)
-                  if (subList.isNotEmpty) ...[
-                    const SizedBox(width: 8),
-                    _labelChip("${subList.length} sub"),
-                  ],
-
-                  const SizedBox(width: 8),
-
-                  // expand / collapse
-                  IconButton(
-                    icon: Icon(
-                      openIndex == i
-                          ? Icons.keyboard_arrow_up
-                          : Icons.keyboard_arrow_down,
-                      color: Colors.black87,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        openIndex = (openIndex == i) ? null : i;
-                      });
-                    },
-                  ),
-
-                  // delete program
-                  IconButton(
-                    icon: const Icon(
-                      Icons.delete_outline,
-                      color: Color(0xFFE74C3C),
-                    ),
-                    onPressed: () async {
-                      final ok = await showConfirmDeleteDialog(context);
-                      if (ok) _deleteRow(i);
-                    },
-                  ),
-                ],
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeInOut,
+        child: Column(
+          children: [
+            // ======= HEADER (InkWell clickable seluruh card header) =======
+            InkWell(
+              onTap: () {
+                setState(() {
+                  openIndex = (openIndex == i) ? null : i;
+                });
+              },
+              customBorder: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
               ),
-
-              // expanded content
-              if (openIndex == i) ...[
-                const SizedBox(height: 12),
-                _input("Program", programCtrl),
-                const SizedBox(height: 10),
-                _input("Anggaran", anggaranCtrl),
-                const SizedBox(height: 10),
-                _input("Keterangan", ketCtrl),
-                const SizedBox(height: 12),
-
-                Divider(color: Colors.grey.shade300),
-
-                // subprogram list (each has only text field + delete)
-                const SizedBox(height: 8),
-                Column(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
+                child: Row(
                   children: [
-                    for (int si = 0; si < subList.length; si++)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8.0),
-                        child: Row(
-                          children: [
-                            SizedBox(
-                              width: 40,
-                              child: Text(
-                                "${i + 1}.${si + 1}",
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(child: _input("Sub Program", subList[si])),
-                            const SizedBox(width: 8),
-                            IconButton(
-                              icon: const Icon(
-                                Icons.delete_outline,
-                                color: Colors.red,
-                              ),
-                              onPressed: () async {
-                                final ok = await showConfirmDeleteDialog(
-                                  context,
-                                );
-                                if (ok) _deleteSubRow(i, si);
-                              },
-                            ),
-                          ],
+                    // Number chip
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        "${i + 1}",
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
                         ),
                       ),
+                    ),
+
+                    const SizedBox(width: 12),
+
+                    // Program title
+                    Expanded(
+                      child: Text(
+                        programCtrl.text.trim().isEmpty
+                            ? "— kosong —"
+                            : programCtrl.text.trim(),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+
+                    if (subList.isNotEmpty) ...[
+                      _labelChip("${subList.length} sub"),
+                      const SizedBox(width: 8),
+                    ],
+
+                    // Delete program
+                    IconButton(
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        color: Color(0xFFE74C3C),
+                      ),
+                      splashRadius: 20,
+                      onPressed: () async {
+                        final ok = await showConfirmDeleteDialog(context);
+                        if (ok) _deleteRow(i);
+                      },
+                    ),
+
+                    // Expand arrow
+                    AnimatedRotation(
+                      turns: openIndex == i ? 0.0 : 0.5,
+                      duration: const Duration(milliseconds: 260),
+                      child: const Icon(Icons.keyboard_arrow_down),
+                    ),
                   ],
                 ),
+              ),
+            ),
 
-                const SizedBox(height: 6),
-                // add sub button
-                Row(
+            // ======= EXPANDED CONTENT =======
+            if (openIndex == i)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    _input("Program", programCtrl),
+                    const SizedBox(height: 10),
+
+                    _input("Anggaran", anggaranCtrl),
+                    const SizedBox(height: 10),
+
+                    _input("Keterangan", ketCtrl),
+                    const SizedBox(height: 12),
+
+                    Divider(color: Colors.grey.shade300),
+                    const SizedBox(height: 8),
+
+                    // ==== SUB PROGRAM LIST ====
+                    Column(
+                      children: [
+                        for (int si = 0; si < subList.length; si++)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade100,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    "${i + 1}.${si + 1}",
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+
+                                Expanded(
+                                  child: _input("Sub Program", subList[si]),
+                                ),
+
+                                const SizedBox(width: 8),
+
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.delete_outline,
+                                    color: Colors.red,
+                                  ),
+                                  onPressed: () {
+                                    final txt = subList[si].text.trim();
+                                    if (txt.isEmpty) {
+                                      _deleteSubRow(i, si);
+                                    } else {
+                                      showConfirmDeleteDialog(context).then((
+                                        ok,
+                                      ) {
+                                        if (ok) _deleteSubRow(i, si);
+                                      });
+                                    }
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 6),
+
+                    // Add sub program
                     TextButton.icon(
                       onPressed: () => _addSubRow(i),
-                      icon: Icon(Icons.add, color: scheme.primary),
+                      icon: Icon(Icons.add_circle, color: scheme.primary),
                       label: Text(
-                        "Tambah Sub Program",
+                        "Tambah Sub Baris",
                         style: TextStyle(
-                          color: scheme.primary,
+                          fontSize: 13,
                           fontWeight: FontWeight.bold,
+                          color: theme.primary,
                         ),
                       ),
                     ),
-                    const Spacer(),
-                    // quick total for this program
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
+
+                    const SizedBox(height: 6),
+
+                    // Anggaran preview
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         Text(
-                          "Sub: ${subList.length}",
-                          style: TextStyle(color: Colors.grey[700]),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
                           formatCurrency(_parseCurrencySafe(anggaranCtrl.text)),
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: theme.primary,
+                          ),
                         ),
                       ],
                     ),
+
+                    const SizedBox(height: 6),
+                    Text(
+                      "Isi detail program, anggaran, dan keterangan. Tambahkan sub-program jika diperlukan.",
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    ),
                   ],
                 ),
-
-                const SizedBox(height: 6),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () => setState(() => openIndex = null),
-                    child: const Text("Tutup"),
-                  ),
-                ),
-              ],
-            ],
-          ),
+              ),
+          ],
         ),
       ),
     );
@@ -580,21 +599,33 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
 
   // Input widget reused
   Widget _input(String label, TextEditingController ctrl) {
-    final scheme = Theme.of(context).colorScheme;
-    return TextField(
-      controller: ctrl,
-      decoration: InputDecoration(
-        labelText: label,
-        filled: true,
-        fillColor: scheme.surfaceVariant.withOpacity(.12),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 12,
+    final theme = Theme.of(context).colorScheme;
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 150),
+      curve: Curves.easeInOut,
+      child: TextField(
+        controller: ctrl,
+        minLines: 1,
+        maxLines: null,
+        keyboardType: TextInputType.multiline,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(fontSize: 14),
+          filled: true,
+          fillColor: theme.surfaceContainerLowest,
+          isDense: true,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: theme.outline.withOpacity(0.18)),
+          ),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 12,
+          ),
         ),
+        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        onChanged: (_) => setState(() {}),
       ),
-      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-      onChanged: (_) => setState(() {}),
     );
   }
 
@@ -608,7 +639,7 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
             return AlertDialog(
               backgroundColor: theme.colorScheme.surface,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(18),
               ),
               title: Text(
                 "Hapus?",
@@ -631,9 +662,16 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
                 FilledButton(
                   style: FilledButton.styleFrom(
                     backgroundColor: theme.colorScheme.error,
+                    foregroundColor: theme.colorScheme.onError,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  child: const Text("Hapus"),
                   onPressed: () => Navigator.pop(context, true),
+                  child: const Text(
+                    "Hapus",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
               ],
             );

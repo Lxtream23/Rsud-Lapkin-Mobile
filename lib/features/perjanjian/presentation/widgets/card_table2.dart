@@ -342,7 +342,7 @@ class _CardTable2WidgetState extends State<CardTable2Widget>
         // ADD ROW BUTTON
         TextButton.icon(
           onPressed: _addRow,
-          icon: Icon(Icons.add, color: theme.primary),
+          icon: Icon(Icons.add_circle, color: theme.primary),
           label: Text(
             "Tambah Baris",
             style: TextStyle(
@@ -491,7 +491,10 @@ class _TriwulanCardItemState extends State<_TriwulanCardItem>
                       ),
                       child: Text(
                         "${widget.index + 1}",
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
 
