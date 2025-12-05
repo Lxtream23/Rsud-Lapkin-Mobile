@@ -305,15 +305,10 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
               "TABEL PROGRAM & ANGGARAN",
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
             ),
-            //const Spacer(),
-            // show total program & sub
-
-            //const SizedBox(width: 8),
-            //if (totalSubCount > 0) _labelChip("$totalSubCount sub"),
           ],
         ),
         const SizedBox(height: 8),
-
+        // Baris count chip
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [_labelChip("${_rows.length} baris")],
@@ -380,7 +375,11 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
             Expanded(
               child: Text(
                 "Catatan: Silakan tambahkan program dan sub-program sesuai kebutuhan. Anggaran total akan dihitung otomatis.",
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                  fontStyle: FontStyle.italic,
+                ),
               ),
             ),
           ],
@@ -476,7 +475,9 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
 
                     // Expand arrow
                     AnimatedRotation(
-                      turns: openIndex == i ? 0.0 : 0.5,
+                      // default: arrow miring ke kiri (−90°) → turns = -0.25
+                      // expanded: arrow menghadap bawah (0°)
+                      turns: openIndex == i ? 0.0 : 0.25,
                       duration: const Duration(milliseconds: 260),
                       child: const Icon(Icons.keyboard_arrow_down),
                     ),
@@ -596,8 +597,12 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
 
                     const SizedBox(height: 6),
                     Text(
-                      "Isi detail program, anggaran, dan keterangan. Tambahkan sub-program jika diperlukan.",
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      "Tambahkan sub-baris jika diperlukan.",
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                        fontStyle: FontStyle.italic,
+                      ),
                     ),
                   ],
                 ),

@@ -268,17 +268,22 @@ class _CardTable2WidgetState extends State<CardTable2Widget>
       children: [
         // HEADER
         Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Text(
               "TABEL TARGET TRIWULAN",
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
             ),
-            const Spacer(),
-            _labelChip("${_rows.length} baris"),
           ],
         ),
 
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
+        // BARIS COUNT CHIP
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [_labelChip("${_rows.length} baris")],
+        ),
+        const SizedBox(height: 8),
 
         // LIST OF CARDS
         ListView.builder(
@@ -351,6 +356,21 @@ class _CardTable2WidgetState extends State<CardTable2Widget>
               color: theme.primary,
             ),
           ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                "Catatan: Isi tabel sesuai dengan sasaran, indikator, target dan target triwulan yang telah ditetapkan dalam perjanjian.",
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -437,7 +457,7 @@ class _TriwulanCardItemState extends State<_TriwulanCardItem>
     _rotation = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 260),
-      value: widget.isOpen ? 0.0 : 0.5,
+      value: widget.isOpen ? 0.0 : 25,
     );
   }
 
@@ -533,7 +553,7 @@ class _TriwulanCardItemState extends State<_TriwulanCardItem>
 
                     // ARROW ICON
                     RotationTransition(
-                      turns: Tween(begin: 0.0, end: 0.5).animate(_rotation),
+                      turns: Tween(begin: 0.0, end: 0.25).animate(_rotation),
                       child: Icon(Icons.keyboard_arrow_down),
                     ),
                   ],

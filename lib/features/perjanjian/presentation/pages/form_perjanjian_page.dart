@@ -665,17 +665,17 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                     // === Card-based Table SASARAN & INDIKATOR ===
                     CardTable1Widget(key: table1Key),
 
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 20),
 
                     // === Card-based Table PROGRAM & ANGGARAN ===
                     CardTable3Widget(key: table3Key),
 
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 20),
 
                     // === Card-based Table TARGET TRIWULAN ===
                     CardTable2Widget(key: table2Key),
 
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 20),
                     SizedBox(
                       width: 150,
                       child: ElevatedButton(
