@@ -392,7 +392,13 @@ class PerjanjianPdfGenerator {
           if (table1.isNotEmpty)
             _buildTable1(table1, poppinsRegular, poppinsBold),
 
-          pw.SizedBox(height: 40),
+          pw.SizedBox(height: 20),
+
+          // === TABEL 3 ===
+          if (table3.isNotEmpty)
+            _buildTable3(table3, poppinsRegular, poppinsBold),
+
+          pw.SizedBox(height: 20),
 
           // ===========================
           //     TANDA TANGAN
@@ -503,6 +509,10 @@ class PerjanjianPdfGenerator {
               ),
             ],
           ),
+
+          // === TABEL 2 ===
+          if (table2.isNotEmpty)
+            _buildTable2(table2, poppinsRegular, poppinsBold),
         ],
       ),
     );
@@ -621,7 +631,163 @@ class PerjanjianPdfGenerator {
     );
   }
 
-  static pw.Widget buildTable3Fixed(
+  /// ========== TABEL 2 KHUSUS INDIKATOR KINERJA ==========
+  static pw.Widget _buildTable2(
+    List<List<String>> rows,
+    pw.Font regular,
+    pw.Font bold,
+  ) {
+    return pw.Container(
+      decoration: pw.BoxDecoration(border: pw.Border.all(width: 1)),
+      child: pw.Column(
+        children: [
+          // =========================
+          // ROW HEADER UTAMA
+          // =========================
+          pw.Container(
+            child: pw.Row(
+              children: [
+                // SASARAN
+                _cellHeader("Sasaran", flex: 3, bold: bold),
+                // INDIKATOR KINERJA
+                _cellHeader("Indikator Kinerja", flex: 3, bold: bold),
+                // TARGET
+                _cellHeader("Target", flex: 2, bold: bold),
+                // TARGET TRIWULANAN (colspan 4)
+                pw.Expanded(
+                  flex: 4,
+                  child: pw.Container(
+                    height: 25,
+                    alignment: pw.Alignment.center,
+                    decoration: pw.BoxDecoration(
+                      border: pw.Border(
+                        right: pw.BorderSide(width: 1),
+                        bottom: pw.BorderSide(width: 1),
+                      ),
+                    ),
+                    child: pw.Text(
+                      "Target Triwulanan",
+                      style: pw.TextStyle(font: bold, fontSize: 11),
+                      textAlign: pw.TextAlign.center,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // =========================
+          // SUB HEADER (I, II, III, IV)
+          // =========================
+          pw.Row(
+            children: [
+              _subHeaderEmpty(flex: 3),
+              _subHeaderEmpty(flex: 3),
+              _subHeaderEmpty(flex: 2),
+
+              _cellHeaderSmall("I"),
+              _cellHeaderSmall("II"),
+              _cellHeaderSmall("III"),
+              _cellHeaderSmall("IV"),
+            ],
+          ),
+
+          // =========================
+          // ISI DATA
+          // =========================
+          for (final row in rows)
+            pw.Row(
+              children: [
+                _cellBody(row[0], flex: 3, font: regular),
+                _cellBody(row[1], flex: 3, font: regular),
+                _cellBody(row[2], flex: 2, font: regular),
+                _cellBody(row[3], flex: 1, font: regular),
+                _cellBody(row[4], flex: 1, font: regular),
+                _cellBody(row[5], flex: 1, font: regular),
+                _cellBody(row[6], flex: 1, font: regular),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _cellHeader(
+    String text, {
+    required int flex,
+    required pw.Font bold,
+  }) {
+    return pw.Expanded(
+      flex: flex,
+      child: pw.Container(
+        height: 25,
+        alignment: pw.Alignment.center,
+        decoration: pw.BoxDecoration(
+          border: pw.Border(
+            right: pw.BorderSide(width: 1),
+            bottom: pw.BorderSide(width: 1),
+          ),
+        ),
+        child: pw.Text(
+          text,
+          style: pw.TextStyle(font: bold, fontSize: 11),
+          textAlign: pw.TextAlign.center,
+        ),
+      ),
+    );
+  }
+
+  static pw.Widget _cellHeaderSmall(String text) {
+    return pw.Expanded(
+      flex: 1,
+      child: pw.Container(
+        height: 30,
+        alignment: pw.Alignment.center,
+        decoration: pw.BoxDecoration(
+          border: pw.Border(
+            right: pw.BorderSide(width: 1),
+            bottom: pw.BorderSide(width: 1),
+          ),
+        ),
+        child: pw.Text(text, style: pw.TextStyle(fontSize: 11)),
+      ),
+    );
+  }
+
+  static pw.Widget _subHeaderEmpty({required int flex}) {
+    return pw.Expanded(
+      flex: flex,
+      child: pw.Container(
+        height: 30,
+        decoration: pw.BoxDecoration(
+          border: pw.Border(
+            right: pw.BorderSide(width: 1),
+            bottom: pw.BorderSide(width: 1),
+          ),
+        ),
+      ),
+    );
+  }
+
+  static pw.Widget _cellBody(
+    String text, {
+    required int flex,
+    required pw.Font font,
+  }) {
+    return pw.Expanded(
+      flex: flex,
+      child: pw.Container(
+        padding: const pw.EdgeInsets.all(6),
+        decoration: pw.BoxDecoration(
+          border: pw.Border(right: pw.BorderSide(width: 1)),
+        ),
+        child: pw.Text(text, style: pw.TextStyle(font: font, fontSize: 11)),
+      ),
+    );
+  }
+
+  /// ========== TABEL 3 KHUSUS PROGRAM ANGGARAN KETERANGAN ==========
+  static pw.Widget _buildTable3(
     List<List<String>> rows,
     pw.Font regular,
     pw.Font bold,
@@ -698,16 +864,16 @@ class PerjanjianPdfGenerator {
   }
 
   /// ========== Helper cell untuk header ==========
-  static pw.Widget _headerCell(String text, pw.Font bold) {
-    return pw.Padding(
-      padding: const pw.EdgeInsets.all(6),
-      child: pw.Text(
-        text,
-        style: pw.TextStyle(font: bold, fontSize: 11),
-        textAlign: pw.TextAlign.center,
-      ),
-    );
-  }
+  // static pw.Widget _headerCell(String text, pw.Font bold) {
+  //   return pw.Padding(
+  //     padding: const pw.EdgeInsets.all(6),
+  //     child: pw.Text(
+  //       text,
+  //       style: pw.TextStyle(font: bold, fontSize: 11),
+  //       textAlign: pw.TextAlign.center,
+  //     ),
+  //   );
+  // }
 
   /// ========== Helper cell untuk body ==========
   // static pw.Widget _cell(String text, pw.Font regular) {
