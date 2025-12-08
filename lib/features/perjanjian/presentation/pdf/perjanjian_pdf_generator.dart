@@ -87,6 +87,67 @@ Future<Uint8List> generatePerjanjianPdf({
     );
   }
 
+  // Helper cell builder
+  pw.Widget buildCenteredCell(String text, pw.TextStyle style) {
+    return pw.Container(
+      alignment: pw.Alignment.center,
+      padding: const pw.EdgeInsets.all(4),
+      child: pw.Text(text, style: style, textAlign: pw.TextAlign.center),
+    );
+  }
+
+  // ===========================
+  // TABEL 1
+  // ===========================
+  pw.Widget buildTable1(List<List<String>> rows) {
+    pw.TextStyle headerStyle = pw.TextStyle(
+      fontSize: 12,
+      fontWeight: pw.FontWeight.bold,
+      font: poppinsBold,
+    );
+
+    pw.TextStyle cellStyle = pw.TextStyle(fontSize: 12, font: poppinsRegular);
+
+    return pw.Table(
+      border: pw.TableBorder.all(width: 1),
+      columnWidths: {
+        0: const pw.FixedColumnWidth(30), // NO
+        1: const pw.FlexColumnWidth(), // SASARAN
+        2: const pw.FlexColumnWidth(), // INDIKATOR
+        3: const pw.FixedColumnWidth(60), // SATUAN
+        4: const pw.FixedColumnWidth(60), // TARGET
+      },
+      children: [
+        // ---------- HEADER ----------
+        pw.TableRow(
+          decoration: const pw.BoxDecoration(color: PdfColors.white),
+          children: [
+            buildCenteredCell("NO", headerStyle),
+            buildCenteredCell("SASARAN", headerStyle),
+            buildCenteredCell("INDIKATOR KINERJA", headerStyle),
+            buildCenteredCell("SATUAN", headerStyle),
+            buildCenteredCell("TARGET", headerStyle),
+          ],
+        ),
+
+        // ---------- DATA ROWS ----------
+        ...List.generate(rows.length, (i) {
+          final r = rows[i];
+
+          return pw.TableRow(
+            children: [
+              buildCenteredCell("${i + 1}", cellStyle),
+              buildCenteredCell(r[0], cellStyle),
+              buildCenteredCell(r[1], cellStyle),
+              buildCenteredCell(r[2], cellStyle),
+              buildCenteredCell(r[3], cellStyle),
+            ],
+          );
+        }),
+      ],
+    );
+  }
+
   // ============================================================
   //                      PAGE CONTENT
   // ============================================================
@@ -113,7 +174,7 @@ Future<Uint8List> generatePerjanjianPdf({
             "UOBK RSUD BANGIL\n"
             "KABUPATEN PASURUAN",
             textAlign: pw.TextAlign.center,
-            style: pw.TextStyle(font: poppinsBold, fontSize: 15),
+            style: pw.TextStyle(font: poppinsBold, fontSize: 14),
           ),
         ),
 
@@ -364,7 +425,7 @@ Future<Uint8List> generatePerjanjianPdf({
         // ===========================
         pw.Text("TABEL SASARAN", style: pw.TextStyle(fontSize: 12)),
         pw.SizedBox(height: 8),
-        buildTable(tabel1),
+        buildTable1(tabel1),
         pw.SizedBox(height: 20),
 
         // ===========================
