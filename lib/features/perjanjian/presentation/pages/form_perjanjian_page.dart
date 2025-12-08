@@ -10,6 +10,10 @@ import 'package:rsud_lapkin_mobile/core/widgets/ui_helpers/app_snackbar.dart';
 import 'package:rsud_lapkin_mobile/features/perjanjian/presentation/pdf/perjanjian_pdf_generator.dart';
 import 'package:rsud_lapkin_mobile/features/perjanjian/presentation/pdf/pdf_preview_page.dart';
 
+import 'package:rsud_lapkin_mobile/features/perjanjian/presentation/pdf/perjanjian_pdf_generator.dart';
+
+import 'package:printing/printing.dart';
+
 class FormPerjanjianPage extends StatefulWidget {
   const FormPerjanjianPage({Key? key}) : super(key: key);
 
@@ -105,10 +109,11 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     }
 
     // --- TABEL 3 ---
+    // --- TABEL 3 ---
     try {
       final t3State = table3Key.currentState;
-      if (t3State != null && (t3State as dynamic).getRowsForPdf != null) {
-        result['table3'] = (t3State as dynamic).getRowsForPdf();
+      if (t3State != null && (t3State as dynamic).getRowsAsStrings != null) {
+        result['table3'] = (t3State as dynamic).getRowsAsStrings();
       } else {
         result['table3'] = <List<String>>[];
       }
@@ -124,41 +129,18 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     result['namaPihakKedua'] = namaPihakKeduaController.text.trim();
     result['jabatan'] = selectedJabatan ?? "";
 
-    //result['jabatanUser'] = jabatanController.text.trim();
-    //result['tugas'] = tugasController.text.trim();
-
-    // // FUNGSI (list aman selalu ada)
-    // result['fungsi'] = fungsiControllers
-    //     .map((c) => c.text.trim())
-    //     .where((e) => e.isNotEmpty)
-    //     .toList();
-
     return result;
   }
 
   void _onPreviewPdfPressed() async {
-    // --- KUMPULKAN DATA ---
     final data = _collectAllData();
 
-    // Pastikan fungsi TIDAK null
-    // data['fungsi'] =
-    //     (fungsiControllers
-    //             .map((c) => c.text.trim())
-    //             .where((e) => e.isNotEmpty)
-    //             .toList())
-    //         .cast<String>();
-
-    // // Pastikan tugas hanya 1 baris (sesuai format PDF asli)
-    // if (data['tugas'] is String) {
-    //   data['tugas'] = data['tugas'].toString().replaceAll("\n", " ");
-    // }
-
-    // Pastikan table selalu terisi list kosong, bukan null
     data['table1'] = (data['table1'] ?? []).cast<List<String>>();
     data['table2'] = (data['table2'] ?? []).cast<List<String>>();
-    data['table3'] = (data['table3'] ?? []).cast<List<String>>();
+    final tabel3 = (data['table3'] as List)
+        .map<List<String>>((e) => List<String>.from(e))
+        .toList();
 
-    // Tampilkan Loading
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -166,21 +148,20 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     );
 
     try {
-      // --- GENERATE PDF ---
-      final pdf = await PerjanjianPdfGenerator.generate(
-        data: data,
-        isTriwulan: false,
+      /// --- GENERATE PDF ---
+      /// COCOK untuk 99% implementasi:
+      final result = await generatePerjanjianPdf(
+        namaPihak1: data['namaPihakPertama'],
+        jabatanPihak1: data['jabatanPihakPertama'],
+        namaPihak2: data['namaPihakKedua'],
+        jabatanPihak2: data['jabatan'],
+        tabel1: data['table1'],
+        tabel2: data['table2'],
+        tabel3: data['table3'],
       );
 
-      final bytes = await pdf.save();
-
-      if (mounted) Navigator.pop(context); // tutup loader
-
-      // --- BUKA PREVIEW ---
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => PdfPreviewPage(bytes: bytes)),
-      );
+      // misal untuk preview / download
+      await Printing.layoutPdf(onLayout: (format) async => result);
     } catch (e) {
       Navigator.pop(context);
       _showDeleteError("Gagal membuat PDF: $e");
