@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:intl/intl.dart';
 
 Future<Uint8List> generatePerjanjianPdf({
   required String namaPihak1,
@@ -107,7 +108,7 @@ Future<Uint8List> generatePerjanjianPdf({
   pw.Widget buildTable1(List<List<String>> rows) {
     pw.TextStyle headerStyle = pw.TextStyle(
       fontSize: 12,
-      fontWeight: pw.FontWeight.bold,
+      //fontWeight: pw.FontWeight.bold,
       font: poppinsBold,
     );
 
@@ -160,128 +161,171 @@ Future<Uint8List> generatePerjanjianPdf({
   // --------------------------------------------------------
   // Helper Cells
   // --------------------------------------------------------
-
-  // --------------------------------------------------------
-  // Hitung total anggaran
-  // --------------------------------------------------------
-  String _formatInt(int value) {
-    final s = value.abs().toString();
-    final buffer = StringBuffer();
-    for (int i = 0; i < s.length; i++) {
-      final pos = s.length - i;
-      buffer.write(s[i]);
-      if (pos > 1 && pos % 3 == 1) buffer.write('.');
-    }
-    final prefix = value < 0 ? '-' : '';
-    return '$prefix${buffer.toString()}';
+  pw.Widget cellTextTabel3(
+    String text, {
+    bool bold = false,
+    pw.TextAlign align = pw.TextAlign.left,
+  }) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.all(4),
+      child: pw.Align(
+        alignment: align == pw.TextAlign.left
+            ? pw.Alignment.centerLeft
+            : align == pw.TextAlign.right
+            ? pw.Alignment.centerRight
+            : pw.Alignment.center,
+        child: pw.Text(
+          text,
+          style: pw.TextStyle(
+            fontSize: 12,
+            //fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
+            font: bold ? poppinsBold : poppinsRegular,
+          ),
+        ),
+      ),
+    );
   }
 
-  String _formatNumberString(String raw) {
-    final cleaned = raw.replaceAll(RegExp(r'[^0-9\-]'), '');
-    if (cleaned.isEmpty) return '';
-    final numVal = double.tryParse(cleaned) ?? 0;
-    return _formatInt(numVal.round());
+  pw.Widget cellTextSubTabel3(
+    String text, {
+    bool bold = false,
+    pw.TextAlign align = pw.TextAlign.left,
+  }) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.all(4),
+      child: pw.Align(
+        alignment: align == pw.TextAlign.left
+            ? pw.Alignment.centerLeft
+            : align == pw.TextAlign.right
+            ? pw.Alignment.centerRight
+            : pw.Alignment.center,
+        child: pw.Text(
+          text,
+          style: pw.TextStyle(
+            fontSize: 12,
+            //fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
+            font: poppinsRegular,
+          ),
+        ),
+      ),
+    );
   }
 
-  // ---------------------------
-  // Utility: kalkulasi total dan format
-  // ---------------------------
-  // ---------------------------
-  // Utility: kalkulasi total HANYA dari program utama (tidak termasuk sub)
-  // ---------------------------
-  String _calcTotalFormatted(List<Map<String, dynamic>> tabel3) {
-    double total = 0;
+  pw.Widget cellHeaderTabel3(
+    String text, {
+    pw.TextAlign align = pw.TextAlign.center,
+  }) {
+    return pw.Container(
+      //color: PdfColor.fromInt(0xFFE0E0E0),
+      padding: const pw.EdgeInsets.all(4),
+      child: pw.Align(
+        alignment: align == pw.TextAlign.left
+            ? pw.Alignment.centerLeft
+            : align == pw.TextAlign.right
+            ? pw.Alignment.centerRight
+            : pw.Alignment.center,
+        child: pw.Text(
+          text,
+          style: pw.TextStyle(
+            fontSize: 12,
+            //fontWeight: pw.FontWeight.bold,
+            font: poppinsBold,
+          ),
+        ),
+      ),
+    );
+  }
 
-    for (var p in tabel3) {
-      final raw = (p['anggaran'] ?? "").toString();
-      final digits = raw.replaceAll(RegExp(r'[^0-9\-]'), '');
-
-      if (digits.isEmpty) continue;
-
-      final v = double.tryParse(digits) ?? 0;
-
-      // Tambah hanya anggaran program utama
-      total += v;
-    }
-
-    return _formatInt(total.round());
+  // Formatter Rupiah
+  String formatRupiah(String value) {
+    final n =
+        double.tryParse(value.replaceAll('.', '').replaceAll(',', '')) ?? 0;
+    final formatter = NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: '',
+      decimalDigits: 0,
+    );
+    return formatter.format(n);
   }
 
   // --------------------------------------------------------
   // BUILD TABEL 3
   // --------------------------------------------------------
-  pw.Widget buildTable3(List<Map<String, dynamic>> rows) {
-    pw.TextStyle headerStyle = pw.TextStyle(
-      fontSize: 11,
-      fontWeight: pw.FontWeight.bold,
+  pw.Table buildTable3(List<Map<String, dynamic>> data) {
+    final List<pw.TableRow> rows = [];
+    double total = 0;
+
+    // ===== HEADER =====
+    rows.add(
+      pw.TableRow(
+        children: [
+          cellHeaderTabel3("NO", align: pw.TextAlign.center),
+          cellHeaderTabel3("PROGRAM", align: pw.TextAlign.center),
+          cellHeaderTabel3("ANGGARAN", align: pw.TextAlign.center),
+          cellHeaderTabel3("KETERANGAN", align: pw.TextAlign.center),
+        ],
+      ),
     );
-    pw.TextStyle cellStyle = pw.TextStyle(fontSize: 10);
 
-    pw.Widget cellHeader(String text) {
-      return pw.Padding(
-        padding: const pw.EdgeInsets.all(6),
-        child: pw.Text(
-          text,
-          textAlign: pw.TextAlign.center,
-          style: headerStyle,
-        ),
-      );
-    }
+    // ===== DATA =====
+    for (int i = 0; i < data.length; i++) {
+      final item = data[i];
+      final no = (i + 1).toString();
+      final program = item["program"] ?? "";
+      final anggaranRaw = item["anggaran"] ?? "0";
+      final keterangan = item["keterangan"] ?? "";
+      final subs = (item["sub"] as List).cast<String>();
 
-    pw.Widget cell(String text) {
-      return pw.Padding(
-        padding: const pw.EdgeInsets.all(6),
-        child: pw.Text(text, textAlign: pw.TextAlign.center, style: cellStyle),
-      );
-    }
+      final anggaran = formatRupiah(anggaranRaw);
+      total += (double.tryParse(anggaranRaw) ?? 0);
 
-    return pw.Table(
-      border: pw.TableBorder.all(width: 1, color: PdfColors.black),
-      columnWidths: {
-        0: const pw.FixedColumnWidth(40), // No
-        1: const pw.FlexColumnWidth(), // Program / Sub program
-        2: const pw.FixedColumnWidth(120), // Anggaran
-        3: const pw.FixedColumnWidth(120), // Keterangan
-      },
-      children: [
-        // HEADER
+      // --- Row utama ---
+      rows.add(
         pw.TableRow(
-          decoration: const pw.BoxDecoration(
-            color: PdfColor.fromInt(0xFFD0E9FF),
-          ),
           children: [
-            cellHeader("NO"),
-            cellHeader("PROGRAM / SUB PROGRAM"),
-            cellHeader("ANGGARAN"),
-            cellHeader("KETERANGAN"),
+            cellTextTabel3(no, bold: true, align: pw.TextAlign.center),
+            cellTextTabel3(program, bold: true, align: pw.TextAlign.left),
+            cellTextTabel3(anggaran, bold: true, align: pw.TextAlign.right),
+            cellTextTabel3(keterangan, bold: true, align: pw.TextAlign.center),
           ],
         ),
+      );
 
-        // ISI TABEL
-        for (int i = 0; i < rows.length; i++) ...[
-          // ROW PROGRAM UTAMA
+      // --- Sub-program ---
+      for (int s = 0; s < subs.length; s++) {
+        final subNo = "$no.${s + 1}";
+        final subName = subs[s];
+
+        rows.add(
           pw.TableRow(
             children: [
-              cell("${i + 1}"),
-              cell(rows[i]["program"]),
-              cell(rows[i]["anggaran"]),
-              cell(rows[i]["keterangan"]),
+              cellTextSubTabel3(subNo, align: pw.TextAlign.center),
+              cellTextSubTabel3("    $subName", align: pw.TextAlign.left),
+              cellTextSubTabel3(anggaran, align: pw.TextAlign.right),
+              cellTextSubTabel3("", align: pw.TextAlign.left),
             ],
           ),
+        );
+      }
+    }
 
-          // SUB PROGRAM (1.1, 1.2, dst)
-          for (int s = 0; s < rows[i]["sub"].length; s++)
-            pw.TableRow(
-              children: [
-                cell(""), // nomor kosong utk sub
-                cell("  ${i + 1}.${s + 1}   ${rows[i]["sub"][s]}"),
-                cell(rows[i]["anggaran"]), // mengikuti induk
-                cell(""), // kosong
-              ],
-            ),
+    // ===== TOTAL =====
+    rows.add(
+      pw.TableRow(
+        children: [
+          cellTextTabel3("", align: pw.TextAlign.center),
+          cellTextTabel3("JUMLAH", bold: true, align: pw.TextAlign.center),
+          cellTextTabel3(
+            formatRupiah(total.toString()),
+            bold: true,
+            align: pw.TextAlign.right,
+          ),
+          cellTextTabel3("", align: pw.TextAlign.left),
         ],
-      ],
+      ),
     );
+
+    return pw.Table(border: pw.TableBorder.all(), children: rows);
   }
 
   // ============================================================
