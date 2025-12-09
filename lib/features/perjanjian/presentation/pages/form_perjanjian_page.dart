@@ -109,16 +109,16 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     }
 
     // --- TABEL 3 ---
-    // --- TABEL 3 ---
     try {
       final t3State = table3Key.currentState;
-      if (t3State != null && (t3State as dynamic).getRowsAsStrings != null) {
-        result['table3'] = (t3State as dynamic).getRowsAsStrings();
+
+      if (t3State != null && (t3State as dynamic).getRowsForPdf != null) {
+        result['table3'] = (t3State as dynamic).getRowsForPdf();
       } else {
-        result['table3'] = <List<String>>[];
+        result['table3'] = <Map<String, dynamic>>[];
       }
     } catch (e) {
-      result['table3'] = <List<String>>[];
+      result['table3'] = <Map<String, dynamic>>[];
       result['table3_error'] = e.toString();
     }
 
@@ -137,9 +137,14 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
 
     data['table1'] = (data['table1'] ?? []).cast<List<String>>();
     data['table2'] = (data['table2'] ?? []).cast<List<String>>();
-    final tabel3 = (data['table3'] as List)
-        .map<List<String>>((e) => List<String>.from(e))
-        .toList();
+
+    final tabel3 = (data['table3'] as List).cast<Map<String, dynamic>>();
+    data['table3'] = tabel3;
+
+    // debugPrint("📝 Collected Data for PDF: $data['table1']");
+    // debugPrint("📝 Collected Data for PDF: $data['table2']");
+    debugPrint("📝 Collected Data for PDF: $data['table3']");
+    print("RAW table3: ${data['table3']}");
 
     showDialog(
       context: context,
@@ -148,8 +153,6 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     );
 
     try {
-      /// --- GENERATE PDF ---
-      /// COCOK untuk 99% implementasi:
       final result = await generatePerjanjianPdf(
         namaPihak1: data['namaPihakPertama'],
         jabatanPihak1: data['jabatanPihakPertama'],
@@ -157,10 +160,10 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
         jabatanPihak2: data['jabatan'],
         tabel1: data['table1'],
         tabel2: data['table2'],
-        tabel3: data['table3'],
+        tabel3: data['table3'], // sekarang BENAR
       );
+      debugPrint("✅ PDF GENERATED successfully, opening preview...");
 
-      // misal untuk preview / download
       await Printing.layoutPdf(onLayout: (format) async => result);
     } catch (e) {
       Navigator.pop(context);

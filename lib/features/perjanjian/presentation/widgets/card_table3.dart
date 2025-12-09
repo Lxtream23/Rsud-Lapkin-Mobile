@@ -34,15 +34,36 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
   }
 
   /// Convert ke List<List<String>> (dipakai PDF collector jika perlu)
-  List<List<String>> getRowsAsStrings() {
-    final result = <List<String>>[];
+  // List<List<String>> getRowsAsStrings() {
+  //   final result = <List<String>>[];
+  //   for (final r in _rows) {
+  //     final p = (r['program'] as TextEditingController).text.trim();
+  //     final a = (r['anggaran'] as TextEditingController).text.trim();
+  //     final k = (r['keterangan'] as TextEditingController).text.trim();
+  //     result.add([p, a, k]);
+  //     // NOTE: sub-programs tidak dimasukkan ke tabel 3 biasa; kalau perlu tambahkan sesuai kebutuhan
+  //   }
+  //   return result;
+  // }
+
+  /// Dipakai untuk PDF — termasuk sub program
+  List<Map<String, dynamic>> getRowsForPdf() {
+    final result = <Map<String, dynamic>>[];
+
     for (final r in _rows) {
-      final p = (r['program'] as TextEditingController).text.trim();
-      final a = (r['anggaran'] as TextEditingController).text.trim();
-      final k = (r['keterangan'] as TextEditingController).text.trim();
-      result.add([p, a, k]);
-      // NOTE: sub-programs tidak dimasukkan ke tabel 3 biasa; kalau perlu tambahkan sesuai kebutuhan
+      result.add({
+        "program": (r['program'] as TextEditingController).text.trim(),
+        "anggaran": (r['anggaran'] as TextEditingController).text.trim(),
+        "keterangan": (r['keterangan'] as TextEditingController).text.trim(),
+
+        // sub-program dikirim ke PDF
+        "sub": (r['sub'] as List<TextEditingController>)
+            .map((c) => c.text.trim())
+            .where((t) => t.isNotEmpty)
+            .toList(),
+      });
     }
+
     return result;
   }
 

@@ -11,7 +11,6 @@ class PdfPreviewPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey.shade300,
-
       appBar: AppBar(
         title: const Text(
           "Preview PDF",
@@ -20,23 +19,25 @@ class PdfPreviewPage extends StatelessWidget {
         centerTitle: true,
         elevation: 1,
       ),
-
       body: Container(
-        color: Colors.grey.shade300, // background luar
+        color: Colors.grey.shade300,
         child: PdfPreview(
-          build: (format) => bytes,
-
-          // --- Setting rekomendasi preview modern ---
+          pdfFileName:
+              "perjanjian_kinerja.pdf", // nama default saat share/print
+          build: (_) async => bytes, // return langsung tanpa proses tambahan
+          // Disable features yang tidak digunakan
           canChangeOrientation: false,
           canChangePageFormat: false,
+
+          // Enable fitur sharing & printing
           allowPrinting: true,
           allowSharing: true,
           useActions: true,
 
-          // --- Background area preview ---
+          // Background area scroll preview
           scrollViewDecoration: BoxDecoration(color: Colors.grey.shade300),
 
-          // --- Background kertas PDF ---
+          // Dekorasi area kertas PDF
           pdfPreviewPageDecoration: BoxDecoration(
             color: Colors.white,
             boxShadow: [
