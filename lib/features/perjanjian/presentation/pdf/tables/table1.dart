@@ -1,0 +1,86 @@
+// lib/pdf_builder/table1.dart
+import 'package:syncfusion_flutter_pdf/pdf.dart';
+import '../utils/pdf_fonts.dart';
+
+Future<PdfGrid> buildTable1(List<List<String>> table1) async {
+  PdfFont poppins = await getPoppinsFont(size: 12);
+  PdfFont poppinsBold = await getPoppinsFont(size: 12, bold: true);
+
+  final grid = PdfGrid();
+  grid.columns.add(count: 4);
+
+  // Lebar kolom
+  grid.columns[0].width = 30; // NO
+  grid.columns[1].width = 145; // SASARAN
+  grid.columns[2].width = 145; // INDIKATOR KINERJA
+  grid.columns[3].width = 80; // SATUAN
+  grid.columns[4].width = 80; // TARGET
+  // === HEADER ===
+  grid.headers.add(1);
+  final header = grid.headers[0];
+
+  header.cells[0].value = 'NO';
+  header.cells[1].value = 'SASARAN';
+  header.cells[2].value = 'INDIKATOR KINERJA';
+  header.cells[3].value = 'SATUAN';
+  header.cells[4].value = 'TARGET';
+
+  final headerStyle = PdfGridCellStyle()
+    ..font = poppinsBold
+    ..stringFormat = PdfStringFormat(
+      alignment: PdfTextAlignment.center,
+      lineAlignment: PdfVerticalAlignment.middle,
+    )
+    ..borders = PdfBorders(
+      left: PdfPen(PdfColor(0, 0, 0), width: 1),
+      right: PdfPen(PdfColor(0, 0, 0), width: 1),
+      top: PdfPen(PdfColor(0, 0, 0), width: 1),
+      bottom: PdfPen(PdfColor(0, 0, 0), width: 1),
+    );
+
+  for (int i = 0; i < header.cells.count; i++) {
+    header.cells[i].style = headerStyle;
+  }
+
+  // === ROWS ===
+  for (int i = 0; i < table1.length; i++) {
+    final row = table1[i];
+    final r = grid.rows.add();
+
+    r.cells[0].value = '${i + 1}';
+    r.cells[1].value = row.isNotEmpty ? (row[0] ?? '') : '';
+    r.cells[2].value = row.length > 1 ? (row[1] ?? '') : '';
+    r.cells[3].value = row.length > 3
+        ? (row[3] ?? '')
+        : row.length > 2
+        ? (row[2] ?? '')
+        : '';
+
+    // style body
+    for (int c = 0; c < r.cells.count; c++) {
+      r.cells[c].style = PdfGridCellStyle()
+        ..font = poppinsBold
+        ..borders = PdfBorders(
+          left: PdfPen(PdfColor(0, 0, 0), width: 1),
+          right: PdfPen(PdfColor(0, 0, 0), width: 1),
+          top: PdfPen(PdfColor(0, 0, 0), width: 1),
+          bottom: PdfPen(PdfColor(0, 0, 0), width: 1),
+        );
+    }
+
+    // Cell alignment
+    r.cells[0].stringFormat = PdfStringFormat(
+      alignment: PdfTextAlignment.center,
+    );
+    r.cells[1].stringFormat = PdfStringFormat(alignment: PdfTextAlignment.left);
+    r.cells[2].stringFormat = PdfStringFormat(alignment: PdfTextAlignment.left);
+    r.cells[3].stringFormat = PdfStringFormat(
+      alignment: PdfTextAlignment.center,
+    );
+  }
+
+  // Cell padding
+  grid.style.cellPadding = PdfPaddings(left: 4, right: 4, top: 4, bottom: 4);
+
+  return grid;
+}

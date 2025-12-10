@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 // import 'package:auto_size_text/auto_size_text.dart';
+import 'dart:typed_data';
 import '../../../../config/app_colors.dart';
 import '../../../../config/app_text_style.dart';
 import '../../presentation/widgets/card_table1.dart';
@@ -8,11 +9,10 @@ import '../../presentation/widgets/card_table3.dart';
 import 'package:rsud_lapkin_mobile/core/widgets/ui_helpers/app_snackbar.dart';
 
 import 'package:rsud_lapkin_mobile/features/perjanjian/presentation/pdf/perjanjian_pdf_generator.dart';
-import 'package:rsud_lapkin_mobile/features/perjanjian/presentation/pdf/pdf_preview_page.dart';
-
-import 'package:rsud_lapkin_mobile/features/perjanjian/presentation/pdf/perjanjian_pdf_generator.dart';
 
 import 'package:printing/printing.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:http/http.dart' as http;
 
 class FormPerjanjianPage extends StatefulWidget {
   const FormPerjanjianPage({Key? key}) : super(key: key);
@@ -21,7 +21,12 @@ class FormPerjanjianPage extends StatefulWidget {
   State<FormPerjanjianPage> createState() => _FormPerjanjianPageState();
 }
 
+Map<String, dynamic>? userProfile;
+Uint8List? signatureRightBytes;
+
 class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
+  final supabase = Supabase.instance.client;
+
   final TextEditingController namaPihakPertamaController =
       TextEditingController();
 
@@ -37,7 +42,7 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
   List<TextEditingController> fungsiControllers =
       []; // untuk fungsi a-seterusnya
 
-  String? selectedJabatan;
+  String? selectedJabatanPihakKedua;
 
   final List<String> jabatanList = [
     'Direktur',
@@ -61,13 +66,7 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
   @override
   void initState() {
     super.initState();
-    //fungsiControllers.add(TextEditingController()); // fungsi pertama (a)
-    // Pastikan list tidak kosong
-    // if (fungsiControllers.isEmpty) {
-    //   _addFungsiField();
-    // } else {
-    //   _attachListener(0);
-    // }
+    loadUserSignature();
   }
 
   @override
@@ -75,6 +74,40 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     namaPihakPertamaController.dispose();
     namaPihakKeduaController.dispose();
     super.dispose();
+  }
+
+  Future<Uint8List?> loadUserSignature() async {
+    try {
+      final user = supabase.auth.currentUser;
+      if (user == null) return null;
+
+      // ambil URL dari tabel profiles
+      final profile = await supabase
+          .from('profiles')
+          .select('ttd')
+          .eq('id', user.id)
+          .single();
+
+      final url = profile['ttd']?.toString();
+
+      if (url == null || url.isEmpty) {
+        print("⚠ Tidak ada URL TTD di profile user");
+        return null;
+      }
+
+      // download langsung dari URL
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        return response.bodyBytes; // TTD valid
+      } else {
+        print("❌ Gagal download TTD dari URL");
+        return null;
+      }
+    } catch (e) {
+      print("❌ Error loadUserSignature: $e");
+      return null;
+    }
   }
 
   /// Ambil data dari setiap tabel dengan memanggil method yang tersedia di state widget.
@@ -127,24 +160,19 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     result['jabatanPihakPertama'] = jabatanPihakPertamaController.text.trim();
 
     result['namaPihakKedua'] = namaPihakKeduaController.text.trim();
-    result['jabatan'] = selectedJabatan ?? "";
+    result['jabatanPihakKedua'] = selectedJabatanPihakKedua ?? "";
 
     return result;
   }
 
   void _onPreviewPdfPressed() async {
+    if (!_validateInputs()) return;
+
     final data = _collectAllData();
 
     data['table1'] = (data['table1'] ?? []).cast<List<String>>();
     data['table2'] = (data['table2'] ?? []).cast<List<String>>();
-
-    final tabel3 = (data['table3'] as List).cast<Map<String, dynamic>>();
-    data['table3'] = tabel3;
-
-    // debugPrint("📝 Collected Data for PDF: $data['table1']");
-    // debugPrint("📝 Collected Data for PDF: $data['table2']");
-    debugPrint("📝 Collected Data for PDF: $data['table3']");
-    print("RAW table3: ${data['table3']}");
+    data['table3'] = (data['table3'] as List).cast<Map<String, dynamic>>();
 
     showDialog(
       context: context,
@@ -153,16 +181,24 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     );
 
     try {
+      // 🔥 AMBIL TTD USER DARI SUPABASE
+      final signatureRightBytes = await loadUserSignature();
+
+      // 🔥 GENERATE PDF
       final result = await generatePerjanjianPdf(
         namaPihak1: data['namaPihakPertama'],
         jabatanPihak1: data['jabatanPihakPertama'],
         namaPihak2: data['namaPihakKedua'],
-        jabatanPihak2: data['jabatan'],
+        jabatanPihak2: data['jabatanPihakKedua'],
         tabel1: data['table1'],
         tabel2: data['table2'],
-        tabel3: data['table3'], // sekarang BENAR
+        tabel3: data['table3'],
+
+        signatureRightBytes: signatureRightBytes, // ← BENAR
       );
-      debugPrint("✅ PDF GENERATED successfully, opening preview...");
+
+      Navigator.pop(context); // tutup loading
+      debugPrint("✅ PDF GENERATED successfully");
 
       await Printing.layoutPdf(onLayout: (format) async => result);
     } catch (e) {
@@ -170,6 +206,30 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
       _showDeleteError("Gagal membuat PDF: $e");
       debugPrint("❌ PDF GENERATION ERROR: $e");
     }
+  }
+
+  bool _validateInputs() {
+    if (namaPihakPertamaController.text.trim().isEmpty) {
+      _showDeleteError("Nama Pihak Pertama wajib diisi");
+      return false;
+    }
+
+    if (jabatanPihakPertamaController.text.trim().isEmpty) {
+      _showDeleteError("Jabatan Pihak Pertama wajib diisi");
+      return false;
+    }
+
+    if (namaPihakKeduaController.text.trim().isEmpty) {
+      _showDeleteError("Nama Pihak Kedua wajib diisi");
+      return false;
+    }
+
+    if (selectedJabatanPihakKedua == null) {
+      _showDeleteError("Jabatan Pihak Kedua wajib dipilih");
+      return false;
+    }
+
+    return true;
   }
 
   // void _onSavePressed() {
@@ -556,11 +616,13 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                     ),
                     const SizedBox(height: 8),
 
-                    // === DROPDOWN JABATAN PIHAK KEDUA ===
                     _dropdown(
-                      selectedJabatan,
-                      (v) => setState(() => selectedJabatan = v),
+                      selectedJabatanPihakKedua,
+                      (v) => setState(() {
+                        selectedJabatanPihakKedua = v;
+                      }),
                     ),
+
                     const SizedBox(height: 12),
                     const Text("Selanjutnya disebut PIHAK KEDUA."),
                     const SizedBox(height: 24),
