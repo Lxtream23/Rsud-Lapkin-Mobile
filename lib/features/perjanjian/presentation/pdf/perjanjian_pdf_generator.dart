@@ -1,12 +1,17 @@
+// lib/pdf_builder/generate_perjanjian_pdf.dart
 import 'dart:typed_data';
-import 'package:syncfusion_flutter_pdf/pdf.dart';
 import 'dart:ui';
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:syncfusion_flutter_pdf/pdf.dart';
 
+// Pastikan file ini bisa memanggil fungsi buildTable1/buildTable2/buildTable3
+// Jika Anda sudah modular: import tabel
 import 'tables/table1.dart';
 import 'tables/table2.dart';
 import 'tables/table3.dart';
 
+/// Generate PDF yang tahan terhadap layout dinamis.
+/// signatureRightBytes: nullable — jika null, tidak ada gambar (tetap gambar garis & teks)
 Future<Uint8List> generatePerjanjianPdf({
   required String namaPihak1,
   required String jabatanPihak1,
@@ -15,328 +20,422 @@ Future<Uint8List> generatePerjanjianPdf({
   required List<List<String>> tabel1,
   required List<List<String>> tabel2,
   required List<Map<String, dynamic>> tabel3,
-  required Uint8List? signatureRightBytes, // ← hanya tanda tangan kanan
-  bool isTriwulan = false,
+  required Uint8List? signatureRightBytes,
 }) async {
   final doc = PdfDocument();
 
-  // Load logo (optional)
-  PdfBitmap? logo;
+  // ---------------------------
+  // Load Poppins fonts (TTF) dari assets
+  // ---------------------------
+  PdfFont poppins11, poppins11Bold, poppins14Bold;
   try {
-    final bytes = (await rootBundle.load(
-      'assets/images/logo_pemda.png',
+    final reg = (await rootBundle.load(
+      'assets/fonts/Poppins-Regular.ttf',
     )).buffer.asUint8List();
-    logo = PdfBitmap(bytes);
-  } catch (_) {
-    logo = null;
+    final bold = (await rootBundle.load(
+      'assets/fonts/Poppins-Bold.ttf',
+    )).buffer.asUint8List();
+
+    poppins11 = PdfTrueTypeFont(reg, 11);
+    poppins11Bold = PdfTrueTypeFont(bold, 11);
+    poppins14Bold = PdfTrueTypeFont(bold, 14);
+  } catch (e) {
+    // fallback ke standard font kalau gagal load
+    poppins11 = PdfStandardFont(PdfFontFamily.helvetica, 11);
+    poppins11Bold = PdfStandardFont(
+      PdfFontFamily.helvetica,
+      11,
+      style: PdfFontStyle.bold,
+    );
+    poppins14Bold = PdfStandardFont(
+      PdfFontFamily.helvetica,
+      14,
+      style: PdfFontStyle.bold,
+    );
+    print('❌ Warning: gagal load Poppins font, memakai fallback: $e');
   }
 
-  final titleFont = PdfStandardFont(
-    PdfFontFamily.helvetica,
-    14,
-    style: PdfFontStyle.bold,
-  );
-  final normalFont = PdfStandardFont(PdfFontFamily.helvetica, 11);
-
-  PdfBitmap? safeBitmap(Uint8List? bytes) {
+  // ---------------------------
+  // Helper: buat PdfBitmap aman
+  // ---------------------------
+  PdfBitmap? _safeBitmap(Uint8List? bytes) {
     if (bytes == null || bytes.isEmpty) return null;
     try {
       return PdfBitmap(bytes);
     } catch (e) {
-      print("❌ Invalid signature image: $e");
+      print('❌ Invalid image bytes: $e');
       return null;
     }
   }
 
-  // ============================
-  // PAGE 1
-  // ============================
-  final page1 = doc.pages.add();
-  final pageBounds = page1.getClientSize();
-  double y = 0;
+  // ---------------------------
+  // Helper draw text yang mengembalikan page & y terbaru
+  // selalu gunakan bounds height = 0 sehingga layout engine melakukan paginate otomatis
+  // ---------------------------
+  Future<Map<String, dynamic>> _drawTextElement({
+    required PdfPage page,
+    required String text,
+    required PdfFont font,
+    double left = 16,
+    double top = 0,
+    double width = 0, // 0 berarti full page width - 2*left
+    PdfStringFormat? format,
+  }) async {
+    final pageWidth = page.getClientSize().width;
+    final drawWidth = (width == 0) ? (pageWidth - left * 2) : width;
+    final element = PdfTextElement(
+      text: text,
+      font: font,
+      format: format ?? PdfStringFormat(),
+    );
+    final PdfLayoutResult? res = element.draw(
+      page: page,
+      bounds: Rect.fromLTWH(left, top, drawWidth, 0),
+    );
+    if (res == null) {
+      // fallback: tidak terjadi draw (seharusnya jarang)
+      return {'page': page, 'y': top};
+    }
+    return {'page': res.page, 'y': res.bounds.bottom};
+  }
 
-  // Logo
-  if (logo != null) {
-    final logoWidth = 80.0;
-    page1.graphics.drawImage(
-      logo,
-      Rect.fromLTWH(
-        (pageBounds.width - logoWidth) / 2,
-        y + 8,
-        logoWidth,
-        logoWidth,
-      ),
+  // ---------------------------
+  // Create first page and variables
+  // ---------------------------
+  PdfPage currentPage = doc.pages.add();
+  double y = 20;
+  final pageSize = currentPage.getClientSize();
+
+  // Optional logo (cari di assets jika ada)
+  try {
+    final logoBytes = (await rootBundle.load(
+      'assets/images/logo_pemda.png',
+    )).buffer.asUint8List();
+    final logoBmp = PdfBitmap(logoBytes);
+    final logoW = 80.0;
+    currentPage.graphics.drawImage(
+      logoBmp,
+      Rect.fromLTWH((pageSize.width - logoW) / 2, y, logoW, logoW),
     );
     y += 90;
-  } else {
-    y += 20;
+  } catch (_) {
+    // ignore if no logo
   }
 
-  // Title
-  final title =
-      'PERJANJIAN KINERJA TAHUN 2025\n${jabatanPihak1.toUpperCase()}\nUOBK RSUD BANGIL\nKABUPATEN PASURUAN';
+  // ---------------------------
+  // HEADER / JUDUL (multi-line, tengah)
+  // gunakan drawTextElement dan perbarui page & y
+  // ---------------------------
+  final headerText =
+      'PERJANJIAN KINERJA TAHUN ${DateTime.now().year}\n${jabatanPihak1.toUpperCase()}\nUOBK RSUD BANGIL\nKABUPATEN PASURUAN';
 
-  PdfTextElement(
-    text: title,
-    font: titleFont,
-    format: PdfStringFormat(alignment: PdfTextAlignment.center),
-  ).draw(
-    page: page1,
-    bounds: Rect.fromLTWH(0, y, pageBounds.width, double.infinity),
+  final headerRes = await _drawTextElement(
+    page: currentPage,
+    text: headerText,
+    font: poppins14Bold,
+    top: y,
+    format: PdfStringFormat(
+      alignment: PdfTextAlignment.center,
+      lineAlignment: PdfVerticalAlignment.middle,
+    ),
   );
+  currentPage = headerRes['page'] as PdfPage;
+  y = headerRes['y'] as double;
+  y += 12;
 
-  y += 70;
-
-  // ========== PARAGRAF PEMBUKA ==========
-  y = _drawParagraph(
-    page: page1,
-    text:
-        'Dalam rangka mewujudkan manajemen pemerintahan yang efektif, transparan dan akuntabel serta berorientasi pada hasil, kami yang bertanda tangan dibawah ini:',
-    y: y,
-    font: normalFont,
-    width: pageBounds.width,
+  // ---------------------------
+  // PARAGRAF PEMBUKA (justify)
+  // ---------------------------
+  final pembuka =
+      'Dalam rangka mewujudkan manajemen pemerintahan yang efektif, transparan dan akuntabel serta berorientasi pada hasil, kami yang bertanda tangan dibawah ini:';
+  final p1 = await _drawTextElement(
+    page: currentPage,
+    text: pembuka,
+    font: poppins11,
+    top: y,
+    format: PdfStringFormat(alignment: PdfTextAlignment.justify),
   );
+  currentPage = p1['page'] as PdfPage;
+  y = p1['y'] as double;
+  y += 8;
 
-  // ========== PIHAK PERTAMA ==========
-  y = _drawLine(page1, 'Nama                :  $namaPihak1', y, normalFont);
-  y = _drawLine(page1, 'Jabatan             :  $jabatanPihak1', y, normalFont);
-  y = _drawLine(page1, 'Selanjutnya disebut pihak pertama.', y, normalFont) + 8;
-
-  // ========== PIHAK KEDUA ==========
-  y = _drawLine(page1, 'Nama                :  $namaPihak2', y, normalFont);
-  y = _drawLine(page1, 'Jabatan             :  $jabatanPihak2', y, normalFont);
-  y =
-      _drawLine(
-        page1,
-        'Selaku atasan pihak pertama, selanjutnya disebut pihak kedua.',
-        y,
-        normalFont,
-      ) +
-      20;
-
-  // ========== PARAGRAF 2 ==========
-  y = _drawParagraph(
-    page: page1,
-    text:
-        'Pihak pertama berjanji akan mewujudkan target kinerja yang seharusnya sesuai lampiran perjanjian ini, dalam rangka mencapai target kinerja jangka menengah seperti yang telah ditetapkan dalam dokumen perencanaan. Keberhasilan dan kegagalan pencapaian target kinerja tersebut menjadi tanggung jawab kami. ',
-    y: y,
-    font: normalFont,
-    width: pageBounds.width,
+  // ---------------------------
+  // PIHAK PERTAMA
+  // ---------------------------
+  final r1 = await _drawTextElement(
+    page: currentPage,
+    text: 'Nama    :  $namaPihak1',
+    font: poppins11,
+    top: y,
   );
-
-  // ========== PARAGRAF 3 ==========
-  y = _drawParagraph(
-    page: page1,
-    text:
-        'Pihak kedua akan melakukan evaluasi terhadap capaian kinerja dari perjanjian ini dan mengambil tindakan yang diperlukan dalam rangka pemberian penghargaan dan sanksi. ',
-    y: y,
-    font: normalFont,
-    width: pageBounds.width,
+  currentPage = r1['page'] as PdfPage;
+  y = r1['y'] as double;
+  final r2 = await _drawTextElement(
+    page: currentPage,
+    text: 'Jabatan :  $jabatanPihak1',
+    font: poppins11,
+    top: y,
   );
+  currentPage = r2['page'] as PdfPage;
+  y = r2['y'] as double;
+  final r3 = await _drawTextElement(
+    page: currentPage,
+    text: 'Selanjutnya disebut pihak pertama.',
+    font: poppins11,
+    top: y,
+  );
+  currentPage = r3['page'] as PdfPage;
+  y = (r3['y'] as double) + 8;
 
-  // ============================
-  // TANDA TANGAN
-  // ============================
-  final colWidth = (pageBounds.width - 40) / 2;
-  final leftX = 20.0;
-  final rightX = leftX + colWidth;
+  // ---------------------------
+  // PIHAK KEDUA
+  // ---------------------------
+  final r4 = await _drawTextElement(
+    page: currentPage,
+    text: 'Nama    :  $namaPihak2',
+    font: poppins11,
+    top: y,
+  );
+  currentPage = r4['page'] as PdfPage;
+  y = r4['y'] as double;
+  final r5 = await _drawTextElement(
+    page: currentPage,
+    text: 'Jabatan :  $jabatanPihak2',
+    font: poppins11,
+    top: y,
+  );
+  currentPage = r5['page'] as PdfPage;
+  y = r5['y'] as double;
+  final r6 = await _drawTextElement(
+    page: currentPage,
+    text: 'Selaku atasan pihak pertama, selanjutnya disebut pihak kedua.',
+    font: poppins11,
+    top: y,
+    format: PdfStringFormat(alignment: PdfTextAlignment.justify),
+  );
+  currentPage = r6['page'] as PdfPage;
+  y = (r6['y'] as double) + 8;
 
-  final signY = y + 20;
+  // ---------------------------
+  // Paragraf lanjutan
+  // ---------------------------
+  final par2 =
+      'Pihak pertama berjanji akan mewujudkan target kinerja yang seharusnya sesuai lampiran perjanjian ini, dalam rangka mencapai target kinerja jangka menengah seperti yang telah ditetapkan dalam dokumen perencanaan.';
+  final p2 = await _drawTextElement(
+    page: currentPage,
+    text: par2,
+    font: poppins11,
+    top: y,
+    format: PdfStringFormat(alignment: PdfTextAlignment.justify),
+  );
+  currentPage = p2['page'] as PdfPage;
+  y = (p2['y'] as double) + 8;
 
-  // ===============================
-  // KOLOM KIRI (PIHAK KEDUA)
-  // = TIDAK ADA GAMBAR (TTD KOSONG)
-  // ===============================
-  PdfTextElement(
+  final par3 =
+      'Pihak kedua akan melakukan evaluasi terhadap capaian kinerja dari perjanjian ini dan mengambil tindakan yang diperlukan dalam rangka pemberian penghargaan dan sanksi.';
+  final p3 = await _drawTextElement(
+    page: currentPage,
+    text: par3,
+    font: poppins11,
+    top: y,
+    format: PdfStringFormat(alignment: PdfTextAlignment.justify),
+  );
+  currentPage = p3['page'] as PdfPage;
+  y = (p3['y'] as double) + 18;
+
+  // ---------------------------
+  // TANDA TANGAN — dua kolom (kiri = kosong -> teks "TTD KOSONG", kanan = ttd dari supabase bila ada)
+  // ---------------------------
+  final pageWidth = currentPage.getClientSize().width;
+  final marginLeft = 16.0;
+  final colWidth = (pageWidth - marginLeft * 2) / 2;
+  final leftX = marginLeft;
+  final rightX = marginLeft + colWidth;
+
+  // KIRI: jabatan + TTD KOSONG + garis + nama
+  await _drawTextElement(
+    page: currentPage,
     text: jabatanPihak2,
-    font: normalFont,
+    font: poppins11,
+    top: y,
     format: PdfStringFormat(alignment: PdfTextAlignment.center),
-  ).draw(page: page1, bounds: Rect.fromLTWH(leftX, signY, colWidth, 20));
+  ).then((res) {
+    currentPage = res['page'] as PdfPage;
+    // don't update y here, we'll compute baseline for signature block
+  });
 
-  // TTD KOSONG
-  PdfTextElement(
-    text: "TTD KOSONG",
-    font: PdfStandardFont(
-      PdfFontFamily.helvetica,
-      10,
-      style: PdfFontStyle.italic,
-    ),
+  final sigBlockTop = y + 30;
+  // draw "TTD KOSONG"
+  final ttdKosongRes = await _drawTextElement(
+    page: currentPage,
+    text: 'TTD KOSONG',
+    font: poppins11,
+    top: sigBlockTop,
     format: PdfStringFormat(alignment: PdfTextAlignment.center),
-  ).draw(page: page1, bounds: Rect.fromLTWH(leftX, signY + 40, colWidth, 20));
+  );
+  currentPage = ttdKosongRes['page'] as PdfPage;
 
-  // Garis tanda tangan kiri
-  final lineYLeft = signY + 40 + 26;
-  page1.graphics.drawLine(
-    PdfPen(PdfColor(0, 0, 0)),
-    Offset(leftX + 20, lineYLeft),
-    Offset(leftX + colWidth - 20, lineYLeft),
+  final lineYLeft = sigBlockTop + 26;
+  currentPage.graphics.drawLine(
+    PdfPen(PdfColor(0, 0, 0), width: 0.8),
+    Offset(leftX + 12, lineYLeft),
+    Offset(leftX + colWidth - 12, lineYLeft),
   );
 
-  // Nama pejabat kiri
-  PdfTextElement(
+  // nama bawah garis kiri
+  final namaKiriRes = await _drawTextElement(
+    page: currentPage,
     text: namaPihak2,
-    font: PdfStandardFont(
-      PdfFontFamily.helvetica,
-      11,
-      style: PdfFontStyle.bold,
-    ),
+    font: poppins11Bold,
+    top: lineYLeft + 6,
     format: PdfStringFormat(alignment: PdfTextAlignment.center),
-  ).draw(
-    page: page1,
-    bounds: Rect.fromLTWH(leftX, lineYLeft + 6, colWidth, 20),
   );
+  currentPage = namaKiriRes['page'] as PdfPage;
 
-  PdfTextElement(
-    text: "Pembina",
-    font: normalFont,
+  // KANAN: tanggal, jabatan, (signature image jika tersedia), garis, nama
+  final tanggalRes = await _drawTextElement(
+    page: currentPage,
+    text: 'Pasuruan, ${_formatDateShort(DateTime.now())}',
+    font: poppins11,
+    top: y,
     format: PdfStringFormat(alignment: PdfTextAlignment.center),
-  ).draw(
-    page: page1,
-    bounds: Rect.fromLTWH(leftX, lineYLeft + 22, colWidth, 20),
   );
+  currentPage = tanggalRes['page'] as PdfPage;
 
-  // ===============================
-  // KOLOM KANAN (PIHAK PERTAMA)
-  // = AMBIL TTD SUPABASE
-  // ===============================
-
-  // Tanggal + jabatan
-  PdfTextElement(
-    text: "Pasuruan, 2 Januari 2025",
-    font: normalFont,
-    format: PdfStringFormat(alignment: PdfTextAlignment.center),
-  ).draw(page: page1, bounds: Rect.fromLTWH(rightX, signY, colWidth, 20));
-
-  PdfTextElement(
+  final jabatanKananRes = await _drawTextElement(
+    page: currentPage,
     text: jabatanPihak1,
-    font: normalFont,
+    font: poppins11,
+    top: tanggalRes['y'] as double,
     format: PdfStringFormat(alignment: PdfTextAlignment.center),
-  ).draw(page: page1, bounds: Rect.fromLTWH(rightX, signY + 18, colWidth, 20));
+  );
+  currentPage = jabatanKananRes['page'] as PdfPage;
+  double sigTopRight = (jabatanKananRes['y'] as double) + 16;
 
+  // gambar signature kanan jika ada & valid
+  final rightBmp = _safeBitmap(signatureRightBytes);
   final sigW = 140.0;
-  final sigH = 70.0;
-
-  // GAMBAR SUPABASE (AMAN)
-  final rightBmp = safeBitmap(signatureRightBytes);
-
-  // Jika tersedia, gambar
+  final sigH = 60.0;
   if (rightBmp != null) {
-    page1.graphics.drawImage(
+    currentPage.graphics.drawImage(
       rightBmp,
-      Rect.fromLTWH(rightX + (colWidth - sigW) / 2, signY + 44, sigW, sigH),
+      Rect.fromLTWH(
+        rightX + (colWidth - sigW) / 2,
+        sigTopRight + 6,
+        sigW,
+        sigH,
+      ),
     );
   }
 
-  // Garis tanda tangan kanan
-  final lineYRight = signY + 44 + sigH + 8;
-  page1.graphics.drawLine(
-    PdfPen(PdfColor(0, 0, 0)),
-    Offset(rightX + 20, lineYRight),
-    Offset(rightX + colWidth - 20, lineYRight),
+  final lineYRight = sigTopRight + 6 + sigH + 8;
+  currentPage.graphics.drawLine(
+    PdfPen(PdfColor(0, 0, 0), width: 0.8),
+    Offset(rightX + 12, lineYRight),
+    Offset(rightX + colWidth - 12, lineYRight),
   );
 
-  // Nama pejabat kanan
-  PdfTextElement(
+  final namaKananRes = await _drawTextElement(
+    page: currentPage,
     text: namaPihak1,
-    font: PdfStandardFont(
-      PdfFontFamily.helvetica,
-      11,
-      style: PdfFontStyle.bold,
-    ),
+    font: poppins11Bold,
+    top: lineYRight + 6,
     format: PdfStringFormat(alignment: PdfTextAlignment.center),
-  ).draw(
-    page: page1,
-    bounds: Rect.fromLTWH(rightX, lineYRight + 6, colWidth, 20),
   );
+  currentPage = namaKananRes['page'] as PdfPage;
 
-  PdfTextElement(
-    text: "Pembina",
-    font: normalFont,
-    format: PdfStringFormat(alignment: PdfTextAlignment.center),
-  ).draw(
-    page: page1,
-    bounds: Rect.fromLTWH(rightX, lineYRight + 22, colWidth, 20),
-  );
+  y = (namaKananRes['y'] as double) + 18;
 
-  // ============================
-  // PAGE 2 – TABLE 1 + TABLE 3
-  // ============================
-  final page2 = doc.pages.add();
-  final size2 = page2.getClientSize();
+  // ---------------------------
+  // HALAMAN BERIKUTNYA: gambar judul lagi lalu tabel (gunakan await buildTableX)
+  // Untuk tiap tabel: draw grid and update page & y berdasarkan result
+  // ---------------------------
+  // PAGE untuk lampiran tabel 1 + 3
+  PdfPage page2 = doc.pages.add();
   double yy = 16;
-
-  PdfTextElement(
-    text:
-        'PERJANJIAN KINERJA TAHUN 2025\n${jabatanPihak1.toUpperCase()}\nUOBK RSUD BANGIL\nKABUPATEN PASURUAN',
-    font: titleFont,
+  // header page 2
+  final h2res = await _drawTextElement(
+    page: page2,
+    text: headerText,
+    font: poppins14Bold,
+    top: yy,
     format: PdfStringFormat(alignment: PdfTextAlignment.center),
-  ).draw(page: page2, bounds: Rect.fromLTWH(0, yy, size2.width, 20));
-
-  yy += 30;
-
-  final g1 = await buildTable1(tabel1);
-  final r1 = g1.draw(
-    page: page2,
-    bounds: Rect.fromLTWH(16, yy, size2.width - 32, 0),
   );
-  yy += (r1?.bounds?.height ?? 0) + 16;
+  page2 = h2res['page'] as PdfPage;
+  yy = (h2res['y'] as double) + 8;
 
-  final g3 = await buildTable3(tabel3); // ✔ perlu await
-  final r3 = g3.draw(
+  // build tables (builders may be async)
+  final grid1 = await buildTable1(
+    tabel1,
+  ); // if your buildTable1 is synchronous, it's fine too
+  final layout1 = grid1.draw(
     page: page2,
-    bounds: Rect.fromLTWH(16, yy, size2.width - 32, 0),
+    bounds: Rect.fromLTWH(16, yy, page2.getClientSize().width - 32, 0),
   );
-  yy += (r3?.bounds?.height ?? 0) + 16;
+  if (layout1 != null) {
+    page2 = layout1.page!;
+    yy = layout1.bounds.bottom + 12;
+  } else {
+    yy += 12;
+  }
 
-  // ============================
-  // PAGE 3 – TABLE 2
-  // ============================
+  final grid3 = await buildTable3(tabel3);
+  final layout3 = grid3.draw(
+    page: page2,
+    bounds: Rect.fromLTWH(16, yy, page2.getClientSize().width - 32, 0),
+  );
+  if (layout3 != null) {
+    page2 = layout3.page!;
+    yy = layout3.bounds.bottom + 12;
+  }
+
+  // PAGE berikut: tabel 2 (rencana aksi / triwulan) — buat page baru
   final page3 = doc.pages.add();
-  final size3 = page3.getClientSize();
   double yy3 = 16;
-
-  PdfTextElement(
+  final h3res = await _drawTextElement(
+    page: page3,
     text:
-        'RENCANA AKSI \n${namaPihak1.toUpperCase()}\nUOBK RSUD BANGIL KABUPATEN PASURUAN \nTAHUN 2025',
-    font: titleFont,
+        'RENCANA AKSI\n${namaPihak1.toUpperCase()}\nUOBK RSUD BANGIL KABUPATEN PASURUAN\nTAHUN ${DateTime.now().year}',
+    font: poppins14Bold,
+    top: yy3,
     format: PdfStringFormat(alignment: PdfTextAlignment.center),
-  ).draw(page: page3, bounds: Rect.fromLTWH(0, yy3, size3.width, 20));
+  );
+  yy3 = (h3res['y'] as double) + 8;
 
-  yy3 += 30;
+  final grid2 = await buildTable2(tabel2);
+  final layout2 = grid2.draw(
+    page: page3,
+    bounds: Rect.fromLTWH(16, yy3, page3.getClientSize().width - 32, 0),
+  );
+  if (layout2 != null) {
+    yy3 = layout2.bounds.bottom + 12;
+  }
 
-  final g2 = await buildTable2(tabel2);
-  g2.draw(page: page3, bounds: Rect.fromLTWH(16, yy3, size3.width - 32, 0));
-
+  // ---------------------------
+  // Finish
+  // ---------------------------
   final bytes = await doc.save();
   doc.dispose();
   return Uint8List.fromList(bytes);
 }
 
-/// Helper untuk menggambar paragraf justify + auto height
-double _drawParagraph({
-  required PdfPage page,
-  required String text,
-  required double y,
-  required PdfFont font,
-  required double width,
-}) {
-  final element = PdfTextElement(
-    text: text,
-    font: font,
-    format: PdfStringFormat(alignment: PdfTextAlignment.justify),
-  );
-  final result = element.draw(
-    page: page,
-    bounds: Rect.fromLTWH(0, y, width, double.infinity),
-  );
-  return result!.bounds.bottom + 12;
-}
-
-/// Helper untuk menggambar single line teks
-double _drawLine(PdfPage page, String text, double y, PdfFont font) {
-  PdfTextElement(text: text, font: font).draw(
-    page: page,
-    bounds: Rect.fromLTWH(0, y, page.getClientSize().width, 20),
-  );
-  return y + 18;
+/// Simple helper format tanggal pendek
+String _formatDateShort(DateTime dt) {
+  // Format: 2 Januari 2025 (Indonesia)
+  final months = [
+    '',
+    'Januari',
+    'Februari',
+    'Maret',
+    'April',
+    'Mei',
+    'Juni',
+    'Juli',
+    'Agustus',
+    'September',
+    'Oktober',
+    'November',
+    'Desember',
+  ];
+  return '${dt.day} ${months[dt.month]} ${dt.year}';
 }
