@@ -252,9 +252,12 @@ Future<Uint8List> generatePerjanjianPdf({
 
   // ======= POSISI DASAR =======
   final pageWidth = currentPage.getClientSize().width;
-  final rightX = pageWidth / 2 + 16;
+  final marginLeft = 16.0;
+  final colWidth = (pageWidth - marginLeft * 2) / 2;
+  final rightX = marginLeft + colWidth;
 
   // ======= TANGGAL =======
+  // pastikan berada minimal di bawah area header
   if (y < 250) y = 250;
 
   final dateResult = await _drawTextElement(
@@ -264,7 +267,7 @@ Future<Uint8List> generatePerjanjianPdf({
     top: y,
     left: rightX,
   );
-
+  currentPage = dateResult['page'] as PdfPage;
   y = (dateResult['y'] as double) + 12;
 
   // Titik mulai TTD
@@ -280,9 +283,10 @@ Future<Uint8List> generatePerjanjianPdf({
     text: jabatanPihak2,
     font: poppins11Bold,
     top: yKiri,
-    left: 32,
+    left: marginLeft,
+    format: PdfStringFormat(alignment: PdfTextAlignment.center),
   );
-
+  currentPage = kiriJabatan['page'] as PdfPage;
   yKiri = (kiriJabatan['y'] as double) + 60;
 
   final kiriNama = await _drawTextElement(
@@ -290,9 +294,10 @@ Future<Uint8List> generatePerjanjianPdf({
     text: namaPihak2,
     font: poppins11Bold,
     top: yKiri,
-    left: 32,
+    left: marginLeft,
+    format: PdfStringFormat(alignment: PdfTextAlignment.center),
   );
-
+  currentPage = kiriNama['page'] as PdfPage;
   yKiri = (kiriNama['y'] as double) + 4;
 
   final kiriNip = await _drawTextElement(
@@ -300,9 +305,10 @@ Future<Uint8List> generatePerjanjianPdf({
     text: "NIP. -",
     font: poppins11,
     top: yKiri,
-    left: 32,
+    left: marginLeft,
+    format: PdfStringFormat(alignment: PdfTextAlignment.center),
   );
-
+  currentPage = kiriNip['page'] as PdfPage;
   yKiri = (kiriNip['y'] as double) + 16;
 
   // ======================================
@@ -314,14 +320,19 @@ Future<Uint8List> generatePerjanjianPdf({
     font: poppins11Bold,
     top: yKanan,
     left: rightX,
+    format: PdfStringFormat(alignment: PdfTextAlignment.center),
   );
-
+  currentPage = kananJabatan['page'] as PdfPage;
   yKanan = (kananJabatan['y'] as double) + 6;
 
   // gambar tanda tangan jika ada
   final bmp = _safeBitmap(signatureRightBytes);
   if (bmp != null) {
-    currentPage.graphics.drawImage(bmp, Rect.fromLTWH(rightX, yKanan, 120, 55));
+    // pastikan gambar digambar pada halaman yang sama
+    currentPage.graphics.drawImage(
+      bmp,
+      Rect.fromLTWH(rightX + (colWidth - 120) / 2, yKanan, 120, 55),
+    );
   }
 
   yKanan += 60;
@@ -332,8 +343,9 @@ Future<Uint8List> generatePerjanjianPdf({
     font: poppins11Bold,
     top: yKanan,
     left: rightX,
+    format: PdfStringFormat(alignment: PdfTextAlignment.center),
   );
-
+  currentPage = kananNama['page'] as PdfPage;
   yKanan = (kananNama['y'] as double) + 4;
 
   final kananNip = await _drawTextElement(
@@ -342,8 +354,9 @@ Future<Uint8List> generatePerjanjianPdf({
     font: poppins11,
     top: yKanan,
     left: rightX,
+    format: PdfStringFormat(alignment: PdfTextAlignment.center),
   );
-
+  currentPage = kananNip['page'] as PdfPage;
   yKanan = (kananNip['y'] as double) + 16;
 
   // ======= SETTING Y TERAKHIR ========
