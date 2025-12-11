@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'dart:ui';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:syncfusion_flutter_pdf/pdf.dart';
+import 'dart:math';
 
 // Pastikan file ini bisa memanggil fungsi buildTable1/buildTable2/buildTable3
 // Jika Anda sudah modular: import tabel
@@ -24,6 +25,7 @@ Future<Uint8List> generatePerjanjianPdf({
 }) async {
   final doc = PdfDocument();
 
+  final tanggal = _formatDateShort(DateTime.now());
   // ---------------------------
   // Load Poppins fonts (TTF) dari assets
   // ---------------------------
@@ -140,8 +142,9 @@ Future<Uint8List> generatePerjanjianPdf({
     ),
   );
   currentPage = headerRes['page'] as PdfPage;
-  y = headerRes['y'] as double;
-  y += 12;
+
+  // agar jarak header → paragraf tidak melebar
+  y = (headerRes['y'] as double) + 16;
 
   // ---------------------------
   // PARAGRAF PEMBUKA (justify)
@@ -243,108 +246,108 @@ Future<Uint8List> generatePerjanjianPdf({
   currentPage = p3['page'] as PdfPage;
   y = (p3['y'] as double) + 18;
 
-  // ---------------------------
-  // TANDA TANGAN — dua kolom (kiri = kosong -> teks "TTD KOSONG", kanan = ttd dari supabase bila ada)
-  // ---------------------------
-  final pageWidth = currentPage.getClientSize().width;
-  final marginLeft = 16.0;
-  final colWidth = (pageWidth - marginLeft * 2) / 2;
-  final leftX = marginLeft;
-  final rightX = marginLeft + colWidth;
+  // =============================
+  // TANGGAL — sebelum blok TTD
+  // =============================
 
-  // KIRI: jabatan + TTD KOSONG + garis + nama
-  await _drawTextElement(
+  // ======= POSISI DASAR =======
+  final pageWidth = currentPage.getClientSize().width;
+  final rightX = pageWidth / 2 + 16;
+
+  // ======= TANGGAL =======
+  if (y < 250) y = 250;
+
+  final dateResult = await _drawTextElement(
     page: currentPage,
-    text: jabatanPihak2,
+    text: "Pasuruan, $tanggal",
     font: poppins11,
     top: y,
-    format: PdfStringFormat(alignment: PdfTextAlignment.center),
-  ).then((res) {
-    currentPage = res['page'] as PdfPage;
-    // don't update y here, we'll compute baseline for signature block
-  });
+    left: rightX,
+  );
 
-  final sigBlockTop = y + 30;
-  // draw "TTD KOSONG"
-  final ttdKosongRes = await _drawTextElement(
+  y = (dateResult['y'] as double) + 12;
+
+  // Titik mulai TTD
+  final double ySignatureStart = y;
+  double yKiri = ySignatureStart;
+  double yKanan = ySignatureStart;
+
+  // ======================================
+  //       TTD KIRI — PIHAK KEDUA
+  // ======================================
+  final kiriJabatan = await _drawTextElement(
     page: currentPage,
-    text: 'TTD KOSONG',
-    font: poppins11,
-    top: sigBlockTop,
-    format: PdfStringFormat(alignment: PdfTextAlignment.center),
-  );
-  currentPage = ttdKosongRes['page'] as PdfPage;
-
-  final lineYLeft = sigBlockTop + 26;
-  currentPage.graphics.drawLine(
-    PdfPen(PdfColor(0, 0, 0), width: 0.8),
-    Offset(leftX + 12, lineYLeft),
-    Offset(leftX + colWidth - 12, lineYLeft),
+    text: jabatanPihak2,
+    font: poppins11Bold,
+    top: yKiri,
+    left: 32,
   );
 
-  // nama bawah garis kiri
-  final namaKiriRes = await _drawTextElement(
+  yKiri = (kiriJabatan['y'] as double) + 60;
+
+  final kiriNama = await _drawTextElement(
     page: currentPage,
     text: namaPihak2,
     font: poppins11Bold,
-    top: lineYLeft + 6,
-    format: PdfStringFormat(alignment: PdfTextAlignment.center),
+    top: yKiri,
+    left: 32,
   );
-  currentPage = namaKiriRes['page'] as PdfPage;
 
-  // KANAN: tanggal, jabatan, (signature image jika tersedia), garis, nama
-  final tanggalRes = await _drawTextElement(
+  yKiri = (kiriNama['y'] as double) + 4;
+
+  final kiriNip = await _drawTextElement(
     page: currentPage,
-    text: 'Pasuruan, ${_formatDateShort(DateTime.now())}',
+    text: "NIP. -",
     font: poppins11,
-    top: y,
-    format: PdfStringFormat(alignment: PdfTextAlignment.center),
+    top: yKiri,
+    left: 32,
   );
-  currentPage = tanggalRes['page'] as PdfPage;
 
-  final jabatanKananRes = await _drawTextElement(
+  yKiri = (kiriNip['y'] as double) + 16;
+
+  // ======================================
+  //       TTD KANAN — PIHAK PERTAMA
+  // ======================================
+  final kananJabatan = await _drawTextElement(
     page: currentPage,
     text: jabatanPihak1,
-    font: poppins11,
-    top: tanggalRes['y'] as double,
-    format: PdfStringFormat(alignment: PdfTextAlignment.center),
+    font: poppins11Bold,
+    top: yKanan,
+    left: rightX,
   );
-  currentPage = jabatanKananRes['page'] as PdfPage;
-  double sigTopRight = (jabatanKananRes['y'] as double) + 16;
 
-  // gambar signature kanan jika ada & valid
-  final rightBmp = _safeBitmap(signatureRightBytes);
-  final sigW = 140.0;
-  final sigH = 60.0;
-  if (rightBmp != null) {
-    currentPage.graphics.drawImage(
-      rightBmp,
-      Rect.fromLTWH(
-        rightX + (colWidth - sigW) / 2,
-        sigTopRight + 6,
-        sigW,
-        sigH,
-      ),
-    );
+  yKanan = (kananJabatan['y'] as double) + 6;
+
+  // gambar tanda tangan jika ada
+  final bmp = _safeBitmap(signatureRightBytes);
+  if (bmp != null) {
+    currentPage.graphics.drawImage(bmp, Rect.fromLTWH(rightX, yKanan, 120, 55));
   }
 
-  final lineYRight = sigTopRight + 6 + sigH + 8;
-  currentPage.graphics.drawLine(
-    PdfPen(PdfColor(0, 0, 0), width: 0.8),
-    Offset(rightX + 12, lineYRight),
-    Offset(rightX + colWidth - 12, lineYRight),
-  );
+  yKanan += 60;
 
-  final namaKananRes = await _drawTextElement(
+  final kananNama = await _drawTextElement(
     page: currentPage,
     text: namaPihak1,
     font: poppins11Bold,
-    top: lineYRight + 6,
-    format: PdfStringFormat(alignment: PdfTextAlignment.center),
+    top: yKanan,
+    left: rightX,
   );
-  currentPage = namaKananRes['page'] as PdfPage;
 
-  y = (namaKananRes['y'] as double) + 18;
+  yKanan = (kananNama['y'] as double) + 4;
+
+  final kananNip = await _drawTextElement(
+    page: currentPage,
+    text: "NIP. -",
+    font: poppins11,
+    top: yKanan,
+    left: rightX,
+  );
+
+  yKanan = (kananNip['y'] as double) + 16;
+
+  // ======= SETTING Y TERAKHIR ========
+  y = max(yKiri, yKanan) + 10;
 
   // ---------------------------
   // HALAMAN BERIKUTNYA: gambar judul lagi lalu tabel (gunakan await buildTableX)
