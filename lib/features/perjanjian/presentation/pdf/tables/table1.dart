@@ -7,7 +7,7 @@ Future<PdfGrid> buildTable1(List<List<String>> table1) async {
   PdfFont poppinsBold = await getPoppinsFont(size: 12, bold: true);
 
   final grid = PdfGrid();
-  grid.columns.add(count: 4);
+  grid.columns.add(count: 5);
 
   // Lebar kolom
   grid.columns[0].width = 30; // NO
