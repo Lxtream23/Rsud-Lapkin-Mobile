@@ -120,6 +120,51 @@ Future<Uint8List> generatePerjanjianPdf({
     );
   }
 
+  // helper: gambar satu bullet dengan hanging indent
+  Future<double> _drawBulletParagraph({
+    required PdfPage page,
+    required double top,
+    required double markerX, // posisi "a."
+    required double textX, // posisi awal teks (setelah marker)
+    required double pageRightMargin, // margin kanan halaman (mis. 40)
+    required String marker, // "a."
+    required String text, // isi bullet
+    required PdfFont font,
+  }) async {
+    // Lebar area teks = dari textX sampai pageWidth - rightMargin
+    final pageWidth = page.getClientSize().width;
+    final double textWidth = pageWidth - pageRightMargin - textX;
+
+    // gambar marker (a.)
+    await _drawTextElement(
+      page: page,
+      text: marker,
+      font: font,
+      top: top,
+      left: markerX,
+      // beri sedikit width agar method tidak crash, tapi marker kecil
+      width: 30,
+      format: PdfStringFormat(alignment: PdfTextAlignment.left),
+    );
+
+    // gambar isi paragraf di kolom teks dengan width yang jelas
+    final res = await _drawTextElement(
+      page: page,
+      text: text,
+      font: font,
+      top: top,
+      left: textX,
+      width: textWidth,
+      format: PdfStringFormat(
+        alignment: PdfTextAlignment.left,
+        wordWrap: PdfWordWrapType.word,
+      ),
+    );
+
+    // kembalikan Y akhir
+    return res['y'] as double;
+  }
+
   Future<double> _drawRowField({
     required PdfPage page,
     required double top,
@@ -603,30 +648,48 @@ Future<Uint8List> generatePerjanjianPdf({
     left: colonX,
   );
 
-  // geser sedikit ke bawah dari judul
-  yy += 14;
+  // jarak sedikit setelah judul
+  yy += 0;
 
   // ===============================
   // FUNGSI — Bullet List a,b,c…
   // ===============================
+
+  // posisi kolom
+  final double markerX = valueX; // posisi huruf "a."
+  final double textX = valueX + 20; // isi paragraf mulai dari sini
+  final double maxWidth = page2.getClientSize().width - textX - 40;
+
   for (int i = 0; i < fungsiList.length; i++) {
-    final huruf = String.fromCharCode(97 + i);
-    final isi = "$huruf. ${fungsiList[i]}";
+    final huruf = String.fromCharCode(97 + i); // a,b,c...
+    final String marker = "$huruf.";
+    final String isi = fungsiList[i];
 
-    // render teks dengan full width supaya wrapping diatur otomatis
-    final fx = await _drawTextElement(
+    // --- 1) draw marker dan ambil layout result ---
+    final markerResult = PdfTextElement(text: marker, font: poppins12).draw(
       page: page2,
-      text: isi,
-      font: poppins12,
-      top: yy,
-      left: valueX,
-      format: PdfStringFormat(
-        alignment: PdfTextAlignment.left,
-        wordWrap: PdfWordWrapType.word,
-      ),
-    );
+      bounds: Rect.fromLTWH(markerX, yy, 30, double.infinity),
+    )!;
 
-    yy = fx['y'] + 4;
+    // Pastikan isi fungsi sejajar dengan marker
+    final double baselineY = markerResult.bounds.top;
+
+    // --- 2) draw isi teks ---
+    final isiResult =
+        PdfTextElement(
+          text: isi,
+          font: poppins12,
+          format: PdfStringFormat(
+            alignment: PdfTextAlignment.left,
+            wordWrap: PdfWordWrapType.word,
+          ),
+        ).draw(
+          page: page2,
+          bounds: Rect.fromLTWH(textX, baselineY, maxWidth, double.infinity),
+        )!;
+
+    // pindahkan y ke bawah baris berikutnya
+    yy = max(markerResult.bounds.bottom, isiResult.bounds.bottom) + 6;
   }
 
   // Jarak sebelum tabel berikutnya
