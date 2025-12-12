@@ -901,8 +901,18 @@ Future<Uint8List> generatePerjanjianPdf({
   yy = ((yKiri2 > yKanan2) ? yKiri2 : yKanan2) + 10;
 
   // PAGE berikut: tabel 2 (rencana aksi / triwulan) — buat page baru
-  final page3 = doc.pages.add();
+  // Buat section baru untuk landscape
+  final landscapeSection = doc.sections!.add();
+
+  // Set orientasi & ukuran untuk section ini
+  landscapeSection.pageSettings.size = PdfPageSize.a4;
+  landscapeSection.pageSettings.orientation = PdfPageOrientation.landscape;
+
+  // Tambahkan halaman baru di section landscape
+  final page3 = landscapeSection.pages.add();
+
   double yy3 = 16;
+
   final h3res = await _drawTextElement(
     page: page3,
     text:
@@ -911,13 +921,17 @@ Future<Uint8List> generatePerjanjianPdf({
     top: yy3,
     format: PdfStringFormat(alignment: PdfTextAlignment.center),
   );
+
   yy3 = (h3res['y'] as double) + 8;
 
+  // --- TABEL ---
   final grid2 = await buildTable2(tabel2);
+
   final layout2 = grid2.draw(
     page: page3,
     bounds: Rect.fromLTWH(16, yy3, page3.getClientSize().width - 32, 0),
   );
+
   if (layout2 != null) {
     yy3 = layout2.bounds.bottom + 12;
   }
