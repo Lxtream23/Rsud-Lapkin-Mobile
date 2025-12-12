@@ -22,9 +22,11 @@ Future<Uint8List> generatePerjanjianPdf({
   required List<List<String>> tabel2,
   required List<Map<String, dynamic>> tabel3,
   required Uint8List? signatureRightBytes,
-  //String? pangkatUser,
+
   String? pangkatPihak1,
   String? pangkatPihak2,
+  required String tugasDetail,
+  required List<String> fungsiList,
 }) async {
   final doc = PdfDocument();
 
@@ -102,6 +104,20 @@ Future<Uint8List> generatePerjanjianPdf({
       return {'page': page, 'y': top};
     }
     return {'page': res.page, 'y': res.bounds.bottom};
+  }
+
+  void _drawTextStatic({
+    required PdfPage page,
+    required String text,
+    required PdfFont font,
+    required double top,
+    double left = 0,
+  }) {
+    page.graphics.drawString(
+      text,
+      font,
+      bounds: Rect.fromLTWH(left, top, 400, 20),
+    );
   }
 
   Future<double> _drawRowField({
@@ -500,6 +516,121 @@ Future<Uint8List> generatePerjanjianPdf({
   );
 
   yy = (h2res['y'] as double) + 8;
+
+  // ============================
+  // BLOK INFORMASI (Jabatan / Tugas / Fungsi)
+  // ============================
+
+  final double labelLeft = 16.0;
+  final double colonX = 110.0;
+  final double valueX = 125.0;
+
+  // ----------------------------
+  // JABATAN
+  // ----------------------------
+  final jabTxt = await _drawTextElement(
+    page: page2,
+    text: "Jabatan",
+    font: poppins12,
+    top: yy,
+    left: labelLeft,
+  );
+
+  _drawTextStatic(
+    page: page2,
+    text: ":",
+    font: poppins12,
+    top: yy,
+    left: colonX,
+  );
+
+  final jabVal = await _drawTextElement(
+    page: page2,
+    text: jabatanPihak1,
+    font: poppins12,
+    top: yy,
+    left: valueX,
+  );
+
+  yy = jabVal['y'] + 2;
+
+  // ----------------------------
+  // TUGAS
+  // ----------------------------
+  final tgTxt = await _drawTextElement(
+    page: page2,
+    text: "Tugas",
+    font: poppins12,
+    top: yy,
+    left: labelLeft,
+  );
+
+  _drawTextStatic(
+    page: page2,
+    text: ":",
+    font: poppins12,
+    top: yy,
+    left: colonX,
+  );
+
+  final tgVal = await _drawTextElement(
+    page: page2,
+    text: tugasDetail,
+    font: poppins12,
+    top: yy,
+    left: valueX,
+    format: PdfStringFormat(alignment: PdfTextAlignment.justify),
+  );
+
+  yy = tgVal['y'] + 2;
+
+  // ===============================
+  // FUNGSI (Judul + Titik Dua)
+  // ===============================
+  await _drawTextElement(
+    page: page2,
+    text: "Fungsi",
+    font: poppins12,
+    top: yy,
+    left: labelLeft,
+  );
+
+  await _drawTextElement(
+    page: page2,
+    text: ":",
+    font: poppins12,
+    top: yy,
+    left: colonX,
+  );
+
+  // geser sedikit ke bawah dari judul
+  yy += 14;
+
+  // ===============================
+  // FUNGSI — Bullet List a,b,c…
+  // ===============================
+  for (int i = 0; i < fungsiList.length; i++) {
+    final huruf = String.fromCharCode(97 + i);
+    final isi = "$huruf. ${fungsiList[i]}";
+
+    // render teks dengan full width supaya wrapping diatur otomatis
+    final fx = await _drawTextElement(
+      page: page2,
+      text: isi,
+      font: poppins12,
+      top: yy,
+      left: valueX,
+      format: PdfStringFormat(
+        alignment: PdfTextAlignment.left,
+        wordWrap: PdfWordWrapType.word,
+      ),
+    );
+
+    yy = fx['y'] + 4;
+  }
+
+  // Jarak sebelum tabel berikutnya
+  yy += 12;
 
   // build tables (builders may be async)
   final grid1 = await buildTable1(

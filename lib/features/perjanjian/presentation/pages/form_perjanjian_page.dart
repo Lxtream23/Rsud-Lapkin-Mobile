@@ -207,10 +207,10 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     result['namaPihakKedua'] = namaPihakKeduaController.text.trim();
     result['jabatanPihakKedua'] = selectedJabatanPihakKedua ?? "";
 
-    result['tugas'] = tugasController.text.trim();
+    result['tugasDetail'] = tugasController.text.trim();
 
     // FUNGSI (list aman selalu ada)
-    result['fungsi'] = fungsiControllers
+    result['fungsiList'] = fungsiControllers
         .map((c) => c.text.trim())
         .where((e) => e.isNotEmpty)
         .toList();
@@ -255,6 +255,9 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
         tabel2: data['table2'],
         tabel3: data['table3'],
         signatureRightBytes: signatureRightBytes,
+
+        tugasDetail: data['tugasDetail'],
+        fungsiList: List<String>.from(data['fungsiList']),
       );
 
       Navigator.pop(context); // tutup loading
