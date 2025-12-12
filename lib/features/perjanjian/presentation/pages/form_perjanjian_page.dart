@@ -23,6 +23,7 @@ class FormPerjanjianPage extends StatefulWidget {
 
 Map<String, dynamic>? userProfile;
 Uint8List? signatureRightBytes;
+String? pangkatUser;
 
 class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
   final supabase = Supabase.instance.client;
@@ -67,6 +68,7 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
   void initState() {
     super.initState();
     loadUserSignature();
+    getPangkatUser();
   }
 
   @override
@@ -108,6 +110,19 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
       print("❌ Error loadUserSignature: $e");
       return null;
     }
+  }
+
+  Future<String?> getPangkatUser() async {
+    final user = supabase.auth.currentUser;
+    if (user == null) return null;
+
+    final response = await supabase
+        .from('profiles')
+        .select('pangkat')
+        .eq('id', user.id)
+        .maybeSingle();
+
+    return response?['pangkat'] as String?;
   }
 
   /// Ambil data dari setiap tabel dengan memanggil method yang tersedia di state widget.
@@ -184,17 +199,22 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
       // 🔥 AMBIL TTD USER DARI SUPABASE
       final signatureRightBytes = await loadUserSignature();
 
+      // 🔥 Ambil pangkat user dari Supabase
+      final pangkatUser = await getPangkatUser();
+      debugPrint("Pangkat user: $pangkatUser");
+
       // 🔥 GENERATE PDF
       final result = await generatePerjanjianPdf(
         namaPihak1: data['namaPihakPertama'],
         jabatanPihak1: data['jabatanPihakPertama'],
+        pangkatPihak1: pangkatUser, // ← benar
         namaPihak2: data['namaPihakKedua'],
         jabatanPihak2: data['jabatanPihakKedua'],
+        pangkatPihak2: null, // ← benar
         tabel1: data['table1'],
         tabel2: data['table2'],
         tabel3: data['table3'],
-
-        signatureRightBytes: signatureRightBytes, // ← BENAR
+        signatureRightBytes: signatureRightBytes,
       );
 
       Navigator.pop(context); // tutup loading

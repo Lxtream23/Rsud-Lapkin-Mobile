@@ -22,6 +22,9 @@ Future<Uint8List> generatePerjanjianPdf({
   required List<List<String>> tabel2,
   required List<Map<String, dynamic>> tabel3,
   required Uint8List? signatureRightBytes,
+  //String? pangkatUser,
+  String? pangkatPihak1,
+  String? pangkatPihak2,
 }) async {
   final doc = PdfDocument();
 
@@ -372,13 +375,27 @@ Future<Uint8List> generatePerjanjianPdf({
   pageForSignature = kiriNama['page'] as PdfPage;
   yKiri = (kiriNama['y'] as double) + 4;
 
-  // Garis bawah nama pihak kedua
+  // --- Garis bawah
   pageForSignature.graphics.drawLine(
     PdfPen(PdfColor(0, 0, 0)),
-    Offset(marginLeft, yKiri - 2), // X1, Y
-    Offset(marginLeft + colWidth, yKiri - 2), // X2, Y
+    Offset(marginLeft, yKiri - 2),
+    Offset(marginLeft + colWidth, yKiri - 2),
   );
 
+  // --- Tambahkan PANGKAT Pihak Kedua
+  final kiriPangkat = await _drawTextElement(
+    page: pageForSignature,
+    text: pangkatPihak2 ?? "-",
+    font: poppins12,
+    top: yKiri,
+    left: marginLeft,
+    width: colWidth,
+    format: PdfStringFormat(alignment: PdfTextAlignment.center),
+  );
+  pageForSignature = kiriPangkat['page'] as PdfPage;
+  yKiri = (kiriPangkat['y'] as double) + 6;
+
+  // --- NIP
   final kiriNip = await _drawTextElement(
     page: pageForSignature,
     text: "NIP. -",
@@ -407,7 +424,7 @@ Future<Uint8List> generatePerjanjianPdf({
   pageForSignature = kananJabatan['page'] as PdfPage;
   yKanan = (kananJabatan['y'] as double) + 6;
 
-  // gambar tanda tangan tepat di kolom kanan
+  // Gambar tanda tangan
   final bmp = _safeBitmap(signatureRightBytes);
   if (bmp != null) {
     pageForSignature.graphics.drawImage(
@@ -430,13 +447,27 @@ Future<Uint8List> generatePerjanjianPdf({
   pageForSignature = kananNama['page'] as PdfPage;
   yKanan = (kananNama['y'] as double) + 4;
 
-  // Garis bawah nama pihak pertama
+  // --- Garis
   pageForSignature.graphics.drawLine(
     PdfPen(PdfColor(0, 0, 0)),
-    Offset(rightX, yKanan - 2), // X1, Y
-    Offset(rightX + colWidth, yKanan - 2), // X2, Y
+    Offset(rightX, yKanan - 2),
+    Offset(rightX + colWidth, yKanan - 2),
   );
 
+  // --- PANGKAT PIHAK PERTAMA
+  final kananPangkat = await _drawTextElement(
+    page: pageForSignature,
+    text: pangkatPihak1 ?? "-",
+    font: poppins12,
+    top: yKanan,
+    left: rightX,
+    width: colWidth,
+    format: PdfStringFormat(alignment: PdfTextAlignment.center),
+  );
+  pageForSignature = kananPangkat['page'] as PdfPage;
+  yKanan = (kananPangkat['y'] as double) + 6;
+
+  // --- NIP
   final kananNip = await _drawTextElement(
     page: pageForSignature,
     text: "NIP. -",
