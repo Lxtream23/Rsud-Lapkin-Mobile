@@ -29,6 +29,8 @@ Future<Uint8List> generatePerjanjianPdf({
   required List<String> fungsiList,
 }) async {
   final doc = PdfDocument();
+  // Set ukuran F4 / Folio
+  //doc.pageSettings.size = const Size(609.45, 935.43);
 
   final tanggal = _formatDateShort(DateTime.now());
   // ---------------------------
@@ -206,10 +208,17 @@ Future<Uint8List> generatePerjanjianPdf({
     return res['y'] as double;
   }
 
-  // ---------------------------
-  // Create first page and variables
-  // ---------------------------
-  PdfPage currentPage = doc.pages.add();
+  //===========================================================================
+  // === SECTION 1 : PORTRAIT (Halaman 1 dan Halaman 2) ===
+  final sectionPortrait = doc.sections!.add();
+  sectionPortrait.pageSettings.size = const Size(609.45, 935.43); // F4 / Folio
+  sectionPortrait.pageSettings.orientation = PdfPageOrientation.portrait;
+
+  //===========================================================================
+  // Halaman 1
+  //===========================================================================
+  PdfPage currentPage = sectionPortrait.pages.add();
+
   double y = 20; // posisi awal dari atas
   final pageSize = currentPage.getClientSize();
 
@@ -551,8 +560,9 @@ Future<Uint8List> generatePerjanjianPdf({
   //===========================================================================
   //       HALAMAN 2
   //===========================================================================
-  // PAGE untuk lampiran tabel 1 + 3
-  final page2 = doc.pages.add();
+  // Halaman 2 masih di section portrait
+  final PdfPage page2 = sectionPortrait.pages.add();
+
   double yy = 16;
   // header page 2
   final h2res = await _drawTextElement(
@@ -900,16 +910,15 @@ Future<Uint8List> generatePerjanjianPdf({
 
   yy = ((yKiri2 > yKanan2) ? yKiri2 : yKanan2) + 10;
 
-  // PAGE berikut: tabel 2 (rencana aksi / triwulan) — buat page baru
-  // Buat section baru untuk landscape
-  final landscapeSection = doc.sections!.add();
-
-  // Set orientasi & ukuran untuk section ini
-  landscapeSection.pageSettings.size = PdfPageSize.a4;
-  landscapeSection.pageSettings.orientation = PdfPageOrientation.landscape;
-
-  // Tambahkan halaman baru di section landscape
-  final page3 = landscapeSection.pages.add();
+  //===========================================================================
+  // SECTION 2: Landscape
+  final sectionLandscape = doc.sections!.add();
+  sectionLandscape.pageSettings.size = const Size(609.45, 935.43);
+  sectionLandscape.pageSettings.orientation = PdfPageOrientation.landscape;
+  //===========================================================================
+  // Halaman 3
+  //===========================================================================
+  final PdfPage page3 = sectionLandscape.pages.add();
 
   double yy3 = 16;
 
