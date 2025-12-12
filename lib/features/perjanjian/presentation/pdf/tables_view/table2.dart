@@ -12,9 +12,9 @@ Future<PdfGrid> buildTable2(List<List<String>> table2) async {
 
   // ---- LEBAR KOLOM ----
   grid.columns[0].width = 30; // NO
-  grid.columns[1].width = 160; // Sasaran
-  grid.columns[2].width = 140; // Indikator Kinerja
-  grid.columns[3].width = 60; // Target
+  grid.columns[1].width = 190; // Sasaran
+  grid.columns[2].width = 170; // Indikator Kinerja
+  grid.columns[3].width = 70; // Target
   grid.columns[4].width = 90; // I
   grid.columns[5].width = 90; // II
   grid.columns[6].width = 90; // III
@@ -45,10 +45,10 @@ Future<PdfGrid> buildTable2(List<List<String>> table2) async {
 
   // HEADER 2
   final h2 = grid.headers[1];
-  h2.cells[4].value = 'Triwulanan I';
-  h2.cells[5].value = 'Triwulanan II';
-  h2.cells[6].value = 'Triwulanan III';
-  h2.cells[7].value = 'Triwulanan IV';
+  h2.cells[4].value = 'Triwulan I';
+  h2.cells[5].value = 'Triwulan II';
+  h2.cells[6].value = 'Triwulan III';
+  h2.cells[7].value = 'Triwulan IV';
 
   // ---- STYLE HEADER ----
   final headerStyle = PdfGridCellStyle()
@@ -81,6 +81,18 @@ Future<PdfGrid> buildTable2(List<List<String>> table2) async {
     // --- NO otomatis ---
     row.cells[0].value = no.toString();
     no++;
+    row.cells[0].style = PdfGridCellStyle()
+      ..font = poppins
+      ..stringFormat = PdfStringFormat(
+        alignment: PdfTextAlignment.center,
+        lineAlignment: PdfVerticalAlignment.middle,
+      )
+      ..borders = PdfBorders(
+        left: PdfPen(PdfColor(0, 0, 0)),
+        right: PdfPen(PdfColor(0, 0, 0)),
+        top: PdfPen(PdfColor(0, 0, 0)),
+        bottom: PdfPen(PdfColor(0, 0, 0)),
+      );
 
     // --- Kolom lain ---
     for (int i = 1; i < 8; i++) {
