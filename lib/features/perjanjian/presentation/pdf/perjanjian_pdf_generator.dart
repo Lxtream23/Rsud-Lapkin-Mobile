@@ -119,7 +119,9 @@ Future<Uint8List> generatePerjanjianPdf({
       logoBmp,
       Rect.fromLTWH((pageSize.width - logoW) / 2, y, logoW, logoW),
     );
-    y += 90;
+
+    // Tambahkan jarak kecil saja
+    y += 2; // 80 + 16 = 96 (atau kecilkan lagi jika mau)
   } catch (_) {
     // ignore if no logo
   }
@@ -247,89 +249,103 @@ Future<Uint8List> generatePerjanjianPdf({
   y = (p3['y'] as double) + 18;
 
   // =============================
-  // TANGGAL — sebelum blok TTD
+  //       TANGGAL + BLOK TTD
   // =============================
 
-  // ======= POSISI DASAR =======
-  final pageWidth = currentPage.getClientSize().width;
-  final marginLeft = 16.0;
-  final colWidth = (pageWidth - marginLeft * 2) / 2;
-  final rightX = marginLeft + colWidth;
+  // posisi dasar
+  final double pageWidth = currentPage.getClientSize().width;
+  const double marginLeft = 16.0;
+  final double colWidth = (pageWidth - marginLeft * 2) / 2;
+  final double rightX = marginLeft + colWidth;
 
-  // ======= TANGGAL =======
-  // pastikan berada minimal di bawah area header
-  if (y < 250) y = 250;
+  // pastikan Y tidak terlalu dekat paragraf, tetapi JANGAN pakai if(y < 250)
+  y += 12;
 
-  final dateResult = await _drawTextElement(
+  // ======================================
+  //               TANGGAL
+  // ======================================
+  final dateRes = await _drawTextElement(
     page: currentPage,
     text: "Pasuruan, $tanggal",
     font: poppins11,
     top: y,
     left: rightX,
+    width: colWidth,
+    format: PdfStringFormat(alignment: PdfTextAlignment.center),
   );
-  currentPage = dateResult['page'] as PdfPage;
-  y = (dateResult['y'] as double) + 12;
 
-  // Titik mulai TTD
-  final double ySignatureStart = y;
-  double yKiri = ySignatureStart;
-  double yKanan = ySignatureStart;
+  currentPage = dateRes['page'] as PdfPage;
+  y = (dateRes['y'] as double) + 18;
 
   // ======================================
-  //       TTD KIRI — PIHAK KEDUA
+  //             SETUP KOORDINAT
   // ======================================
+  double yKiri = y;
+  double yKanan = y;
+
+  // halaman final untuk tanda tangan (untuk cegah gambar muncul di halaman salah)
+  PdfPage pageForSignature = currentPage;
+
+  // ======================================
+  //    KOLOM KIRI – PIHAK KEDUA
+  // ======================================
+
   final kiriJabatan = await _drawTextElement(
-    page: currentPage,
+    page: pageForSignature,
     text: jabatanPihak2,
     font: poppins11Bold,
     top: yKiri,
     left: marginLeft,
+    width: colWidth,
     format: PdfStringFormat(alignment: PdfTextAlignment.center),
   );
-  currentPage = kiriJabatan['page'] as PdfPage;
+  pageForSignature = kiriJabatan['page'] as PdfPage;
   yKiri = (kiriJabatan['y'] as double) + 60;
 
   final kiriNama = await _drawTextElement(
-    page: currentPage,
+    page: pageForSignature,
     text: namaPihak2,
     font: poppins11Bold,
     top: yKiri,
     left: marginLeft,
+    width: colWidth,
     format: PdfStringFormat(alignment: PdfTextAlignment.center),
   );
-  currentPage = kiriNama['page'] as PdfPage;
+  pageForSignature = kiriNama['page'] as PdfPage;
   yKiri = (kiriNama['y'] as double) + 4;
 
   final kiriNip = await _drawTextElement(
-    page: currentPage,
+    page: pageForSignature,
     text: "NIP. -",
     font: poppins11,
     top: yKiri,
     left: marginLeft,
+    width: colWidth,
     format: PdfStringFormat(alignment: PdfTextAlignment.center),
   );
-  currentPage = kiriNip['page'] as PdfPage;
+  pageForSignature = kiriNip['page'] as PdfPage;
   yKiri = (kiriNip['y'] as double) + 16;
 
   // ======================================
-  //       TTD KANAN — PIHAK PERTAMA
+  //    KOLOM KANAN – PIHAK PERTAMA
   // ======================================
+
   final kananJabatan = await _drawTextElement(
-    page: currentPage,
+    page: pageForSignature,
     text: jabatanPihak1,
     font: poppins11Bold,
     top: yKanan,
     left: rightX,
+    width: colWidth,
     format: PdfStringFormat(alignment: PdfTextAlignment.center),
   );
-  currentPage = kananJabatan['page'] as PdfPage;
+  pageForSignature = kananJabatan['page'] as PdfPage;
   yKanan = (kananJabatan['y'] as double) + 6;
 
-  // gambar tanda tangan jika ada
+  // gambar tanda tangan tepat di kolom kanan
   final bmp = _safeBitmap(signatureRightBytes);
   if (bmp != null) {
-    // pastikan gambar digambar pada halaman yang sama
-    currentPage.graphics.drawImage(
+    pageForSignature.graphics.drawImage(
       bmp,
       Rect.fromLTWH(rightX + (colWidth - 120) / 2, yKanan, 120, 55),
     );
@@ -338,29 +354,31 @@ Future<Uint8List> generatePerjanjianPdf({
   yKanan += 60;
 
   final kananNama = await _drawTextElement(
-    page: currentPage,
+    page: pageForSignature,
     text: namaPihak1,
     font: poppins11Bold,
     top: yKanan,
     left: rightX,
+    width: colWidth,
     format: PdfStringFormat(alignment: PdfTextAlignment.center),
   );
-  currentPage = kananNama['page'] as PdfPage;
+  pageForSignature = kananNama['page'] as PdfPage;
   yKanan = (kananNama['y'] as double) + 4;
 
   final kananNip = await _drawTextElement(
-    page: currentPage,
+    page: pageForSignature,
     text: "NIP. -",
     font: poppins11,
     top: yKanan,
     left: rightX,
+    width: colWidth,
     format: PdfStringFormat(alignment: PdfTextAlignment.center),
   );
-  currentPage = kananNip['page'] as PdfPage;
+  pageForSignature = kananNip['page'] as PdfPage;
   yKanan = (kananNip['y'] as double) + 16;
 
-  // ======= SETTING Y TERAKHIR ========
-  y = max(yKiri, yKanan) + 10;
+  // update Y akhir halaman
+  y = (yKiri > yKanan ? yKiri : yKanan) + 10;
 
   // ---------------------------
   // HALAMAN BERIKUTNYA: gambar judul lagi lalu tabel (gunakan await buildTableX)
