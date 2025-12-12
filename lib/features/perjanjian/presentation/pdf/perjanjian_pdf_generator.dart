@@ -333,7 +333,7 @@ Future<Uint8List> generatePerjanjianPdf({
   );
 
   currentPage = dateRes['page'] as PdfPage;
-  y = (dateRes['y'] as double) + 18;
+  y = (dateRes['y'] as double) + 6;
 
   // ======================================
   //             SETUP KOORDINAT
@@ -371,6 +371,13 @@ Future<Uint8List> generatePerjanjianPdf({
   );
   pageForSignature = kiriNama['page'] as PdfPage;
   yKiri = (kiriNama['y'] as double) + 4;
+
+  // Garis bawah nama pihak kedua
+  pageForSignature.graphics.drawLine(
+    PdfPen(PdfColor(0, 0, 0)),
+    Offset(marginLeft, yKiri - 2), // X1, Y
+    Offset(marginLeft + colWidth, yKiri - 2), // X2, Y
+  );
 
   final kiriNip = await _drawTextElement(
     page: pageForSignature,
@@ -423,6 +430,13 @@ Future<Uint8List> generatePerjanjianPdf({
   pageForSignature = kananNama['page'] as PdfPage;
   yKanan = (kananNama['y'] as double) + 4;
 
+  // Garis bawah nama pihak pertama
+  pageForSignature.graphics.drawLine(
+    PdfPen(PdfColor(0, 0, 0)),
+    Offset(rightX, yKanan - 2), // X1, Y
+    Offset(rightX + colWidth, yKanan - 2), // X2, Y
+  );
+
   final kananNip = await _drawTextElement(
     page: pageForSignature,
     text: "NIP. -",
@@ -438,22 +452,22 @@ Future<Uint8List> generatePerjanjianPdf({
   // update Y akhir halaman
   y = (yKiri > yKanan ? yKiri : yKanan) + 10;
 
-  // ---------------------------
-  // HALAMAN BERIKUTNYA: gambar judul lagi lalu tabel (gunakan await buildTableX)
-  // Untuk tiap tabel: draw grid and update page & y berdasarkan result
-  // ---------------------------
+  //===========================================================================
+  //       HALAMAN 2
+  //===========================================================================
   // PAGE untuk lampiran tabel 1 + 3
-  PdfPage page2 = doc.pages.add();
+  final page2 = doc.pages.add();
   double yy = 16;
   // header page 2
   final h2res = await _drawTextElement(
     page: page2,
-    text: headerText,
+    text:
+        "INDIKATOR KINERJA INDIVIDU\nUOBK RSUD BANGIL\nTAHUN ${DateTime.now().year}",
     font: poppins14Bold,
     top: yy,
     format: PdfStringFormat(alignment: PdfTextAlignment.center),
   );
-  page2 = h2res['page'] as PdfPage;
+
   yy = (h2res['y'] as double) + 8;
 
   // build tables (builders may be async)
@@ -465,7 +479,6 @@ Future<Uint8List> generatePerjanjianPdf({
     bounds: Rect.fromLTWH(16, yy, page2.getClientSize().width - 32, 0),
   );
   if (layout1 != null) {
-    page2 = layout1.page!;
     yy = layout1.bounds.bottom + 12;
   } else {
     yy += 12;
@@ -477,7 +490,6 @@ Future<Uint8List> generatePerjanjianPdf({
     bounds: Rect.fromLTWH(16, yy, page2.getClientSize().width - 32, 0),
   );
   if (layout3 != null) {
-    page2 = layout3.page!;
     yy = layout3.bounds.bottom + 12;
   }
 
