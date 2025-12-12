@@ -101,6 +101,47 @@ Future<Uint8List> generatePerjanjianPdf({
     return {'page': res.page, 'y': res.bounds.bottom};
   }
 
+  Future<double> _drawRowField({
+    required PdfPage page,
+    required double top,
+    required String label,
+    required String value,
+    required PdfFont font,
+  }) async {
+    const double labelX = 16;
+    const double colonX = 140;
+    const double valueX = 150;
+
+    // label
+    await _drawTextElement(
+      page: page,
+      text: label,
+      font: font,
+      top: top,
+      left: labelX,
+    );
+
+    // colon
+    await _drawTextElement(
+      page: page,
+      text: ":",
+      font: font,
+      top: top,
+      left: colonX,
+    );
+
+    // value
+    final res = await _drawTextElement(
+      page: page,
+      text: value,
+      font: font,
+      top: top,
+      left: valueX,
+    );
+
+    return res['y'] as double;
+  }
+
   // ---------------------------
   // Create first page and variables
   // ---------------------------
@@ -137,7 +178,7 @@ Future<Uint8List> generatePerjanjianPdf({
   // gunakan drawTextElement dan perbarui page & y
   // ---------------------------
   final headerText =
-      'PERJANJIAN KINERJA TAHUN ${DateTime.now().year}\n${jabatanPihak1.toUpperCase()}\nUOBK RSUD BANGIL\nKABUPATEN PASURUAN';
+      'PEMERINTAH KABUPATEN PASURUAN\n PERJANJIAN KINERJA TAHUN ${DateTime.now().year}\nUOBK RSUD BANGIL';
 
   final headerRes = await _drawTextElement(
     page: currentPage,
@@ -173,22 +214,26 @@ Future<Uint8List> generatePerjanjianPdf({
   // ---------------------------
   // PIHAK PERTAMA
   // ---------------------------
-  final r1 = await _drawTextElement(
+
+  // Nama
+  y = await _drawRowField(
     page: currentPage,
-    text: 'Nama             :  $namaPihak1',
-    font: poppins12,
     top: y,
+    label: "Nama",
+    value: namaPihak1,
+    font: poppins12,
   );
-  currentPage = r1['page'] as PdfPage;
-  y = r1['y'] as double;
-  final r2 = await _drawTextElement(
+
+  // Jabatan
+  y = await _drawRowField(
     page: currentPage,
-    text: 'Jabatan           :  $jabatanPihak1',
-    font: poppins12,
     top: y,
+    label: "Jabatan",
+    value: jabatanPihak1,
+    font: poppins12,
   );
-  currentPage = r2['page'] as PdfPage;
-  y = r2['y'] as double;
+
+  // Kalimat lanjutan
   final r3 = await _drawTextElement(
     page: currentPage,
     text: 'Selanjutnya disebut pihak pertama.',
@@ -201,22 +246,26 @@ Future<Uint8List> generatePerjanjianPdf({
   // ---------------------------
   // PIHAK KEDUA
   // ---------------------------
-  final r4 = await _drawTextElement(
+
+  // Nama
+  y = await _drawRowField(
     page: currentPage,
-    text: 'Nama              :  $namaPihak2',
-    font: poppins12,
     top: y,
+    label: "Nama",
+    value: namaPihak2,
+    font: poppins12,
   );
-  currentPage = r4['page'] as PdfPage;
-  y = r4['y'] as double;
-  final r5 = await _drawTextElement(
+
+  // Jabatan
+  y = await _drawRowField(
     page: currentPage,
-    text: 'Jabatan           :  $jabatanPihak2',
-    font: poppins12,
     top: y,
+    label: "Jabatan",
+    value: jabatanPihak2,
+    font: poppins12,
   );
-  currentPage = r5['page'] as PdfPage;
-  y = r5['y'] as double;
+
+  // Kalimat lanjutan
   final r6 = await _drawTextElement(
     page: currentPage,
     text: 'Selaku atasan pihak pertama, selanjutnya disebut pihak kedua.',
@@ -260,9 +309,12 @@ Future<Uint8List> generatePerjanjianPdf({
 
   // posisi dasar
   final double pageWidth = currentPage.getClientSize().width;
-  const double marginLeft = 16.0;
-  final double colWidth = (pageWidth - marginLeft * 2) / 2;
-  final double rightX = marginLeft + colWidth;
+  // Sesuaikan dengan margin paragraf atas
+  const double marginLeft = 20.0;
+  const double marginRight = 40.0;
+  const double colWidth = 180.0; // ukuran pas dan rapi
+
+  final double rightX = pageWidth - marginRight - colWidth;
 
   // pastikan Y tidak terlalu dekat paragraf, tetapi JANGAN pakai if(y < 250)
   y += 12;
