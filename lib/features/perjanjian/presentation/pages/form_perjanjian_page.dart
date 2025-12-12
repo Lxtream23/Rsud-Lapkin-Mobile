@@ -67,8 +67,15 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
   @override
   void initState() {
     super.initState();
+    _loadUserData();
     loadUserSignature();
     getPangkatUser();
+
+    if (fungsiControllers.isEmpty) {
+      _addFungsiField();
+    } else {
+      _attachListener(0);
+    }
   }
 
   @override
@@ -76,6 +83,29 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     namaPihakPertamaController.dispose();
     namaPihakKeduaController.dispose();
     super.dispose();
+  }
+
+  Future<Map<String, dynamic>?> getUserProfile() async {
+    final user = Supabase.instance.client.auth.currentUser;
+
+    if (user == null) return null;
+
+    final response = await Supabase.instance.client
+        .from('profiles')
+        .select()
+        .eq('id', user.id)
+        .maybeSingle();
+
+    return response;
+  }
+
+  Future<void> _loadUserData() async {
+    final data = await getUserProfile();
+
+    if (data != null) {
+      namaPihakPertamaController.text = data['nama_lengkap'] ?? "";
+      jabatanPihakPertamaController.text = data['jabatan'] ?? "";
+    }
   }
 
   Future<Uint8List?> loadUserSignature() async {
@@ -177,6 +207,14 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     result['namaPihakKedua'] = namaPihakKeduaController.text.trim();
     result['jabatanPihakKedua'] = selectedJabatanPihakKedua ?? "";
 
+    result['tugas'] = tugasController.text.trim();
+
+    // FUNGSI (list aman selalu ada)
+    result['fungsi'] = fungsiControllers
+        .map((c) => c.text.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+
     return result;
   }
 
@@ -188,6 +226,8 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     data['table1'] = (data['table1'] ?? []).cast<List<String>>();
     data['table2'] = (data['table2'] ?? []).cast<List<String>>();
     data['table3'] = (data['table3'] as List).cast<Map<String, dynamic>>();
+
+    data['fungsi'] = fungsiControllers.map((c) => c.text).toList();
 
     showDialog(
       context: context,
@@ -307,23 +347,16 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     );
   }
 
-  // // Modern input field with label
-  // final jabatanController = TextEditingController();
-  // final tugasController = TextEditingController();
-  // final fungsiAController = TextEditingController();
-  // final fungsiBController = TextEditingController();
-  // final fungsiCController = TextEditingController();
-  // final fungsiDController = TextEditingController();
-  // final fungsiEController = TextEditingController();
-
   Widget _buildModernInput({
     required String hint,
     required TextEditingController controller,
+    bool readOnly = false,
   }) {
     final theme = Theme.of(context).colorScheme;
 
     return TextField(
       controller: controller,
+      readOnly: readOnly,
       minLines: 1,
       maxLines: null,
       keyboardType: TextInputType.multiline,
@@ -347,132 +380,132 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     );
   }
 
-  // -------------------------------------
+  //-------------------------------------
 
-  // ============ Fungsi management ===========
-  // void _addFungsiField() {
-  //   final ctrl = TextEditingController();
+  //============ Fungsi management ===========
+  void _addFungsiField() {
+    final ctrl = TextEditingController();
 
-  //   ctrl.addListener(() {
-  //     final isLast = ctrl == fungsiControllers.last;
+    ctrl.addListener(() {
+      final isLast = ctrl == fungsiControllers.last;
 
-  //     if (isLast && ctrl.text.trim().isNotEmpty) {
-  //       _addFungsiField(); // auto append
-  //       setState(() {});
-  //     }
-  //   });
+      if (isLast && ctrl.text.trim().isNotEmpty) {
+        _addFungsiField(); // auto append
+        setState(() {});
+      }
+    });
 
-  //   setState(() {
-  //     fungsiControllers.add(ctrl);
-  //   });
-  // }
+    setState(() {
+      fungsiControllers.add(ctrl);
+    });
+  }
 
-  // void _removeFungsi(int index) {
-  //   debugPrint(
-  //     "🗑 DELETE REQUEST [FUNGSI] → index: $index, total: ${fungsiControllers.length}",
-  //   );
+  void _removeFungsi(int index) {
+    debugPrint(
+      "🗑 DELETE REQUEST [FUNGSI] → index: $index, total: ${fungsiControllers.length}",
+    );
 
-  //   // --- Validasi Index ---
-  //   if (index < 0 || index >= fungsiControllers.length) {
-  //     debugPrint("❌ DELETE FAILED [FUNGSI] → index tidak valid");
-  //     _showDeleteError("Gagal menghapus: index tidak valid");
-  //     return;
-  //   }
+    // --- Validasi Index ---
+    if (index < 0 || index >= fungsiControllers.length) {
+      debugPrint("❌ DELETE FAILED [FUNGSI] → index tidak valid");
+      _showDeleteError("Gagal menghapus: index tidak valid");
+      return;
+    }
 
-  //   final summary = fungsiControllers[index].text.trim().isEmpty
-  //       ? "— kosong —"
-  //       : fungsiControllers[index].text.trim();
+    final summary = fungsiControllers[index].text.trim().isEmpty
+        ? "— kosong —"
+        : fungsiControllers[index].text.trim();
 
-  //   // --- Jika hanya ada 1 fungsi, hanya clear, tidak hapus ---
-  //   if (fungsiControllers.length == 1) {
-  //     debugPrint("🗑 DELETE [FUNGSI] → hanya satu, clear saja");
-  //     fungsiControllers.first.clear();
+    // --- Jika hanya ada 1 fungsi, hanya clear, tidak hapus ---
+    if (fungsiControllers.length == 1) {
+      debugPrint("🗑 DELETE [FUNGSI] → hanya satu, clear saja");
+      fungsiControllers.first.clear();
 
-  //     setState(() {});
-  //     _showDeleteSuccess("Kolom fungsi baris ke 1 dikosongkan");
-  //     return;
-  //   }
+      setState(() {});
+      _showDeleteSuccess("Kolom fungsi baris ke 1 dikosongkan");
+      return;
+    }
 
-  //   // --- Dispose controller ---
-  //   fungsiControllers[index].dispose();
+    // --- Dispose controller ---
+    fungsiControllers[index].dispose();
 
-  //   // --- Hapus dari list ---
-  //   setState(() {
-  //     fungsiControllers.removeAt(index);
-  //   });
+    // --- Hapus dari list ---
+    setState(() {
+      fungsiControllers.removeAt(index);
+    });
 
-  //   debugPrint("✅ DELETE SUCCESS [FUNGSI] → removed index: $index");
+    debugPrint("✅ DELETE SUCCESS [FUNGSI] → removed index: $index");
 
-  //   _showDeleteSuccess(
-  //     'Kolom fungsi baris ke ${index + 1} berisi "${summary}" dihapus',
-  //   );
-  // }
+    _showDeleteSuccess(
+      'Kolom fungsi baris ke ${index + 1} berisi "${summary}" dihapus',
+    );
+  }
 
-  // void _attachListener(int index) {
-  //   fungsiControllers[index].addListener(() {
-  //     final isLast = index == fungsiControllers.length - 1;
-  //     final hasText = fungsiControllers[index].text.trim().isNotEmpty;
+  void _attachListener(int index) {
+    fungsiControllers[index].addListener(() {
+      final isLast = index == fungsiControllers.length - 1;
+      final hasText = fungsiControllers[index].text.trim().isNotEmpty;
 
-  //     // Jika mengetik di field terakhir → auto tambah
-  //     if (isLast && hasText) {
-  //       _addFungsiField();
-  //     }
+      // Jika mengetik di field terakhir → auto tambah
+      if (isLast && hasText) {
+        _addFungsiField();
+      }
 
-  //     setState(() {}); // refresh UI
-  //   });
-  // }
+      setState(() {}); // refresh UI
+    });
+  }
 
-  // Widget _buildFungsiList() {
-  //   return Column(
-  //     crossAxisAlignment: CrossAxisAlignment.start,
-  //     children: [
-  //       for (int i = 0; i < fungsiControllers.length; i++) ...[
-  //         Row(
-  //           crossAxisAlignment: CrossAxisAlignment.center,
-  //           children: [
-  //             Expanded(
-  //               child: _buildModernInput(
-  //                 hint: "Fungsi ${String.fromCharCode(97 + i)}...",
-  //                 controller: fungsiControllers[i],
-  //               ),
-  //             ),
+  Widget _buildFungsiList() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (int i = 0; i < fungsiControllers.length; i++) ...[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: _buildModernInput(
+                  hint: "Fungsi ${String.fromCharCode(97 + i)}...",
+                  controller: fungsiControllers[i],
+                ),
+              ),
 
-  //             const SizedBox(width: 8),
+              const SizedBox(width: 8),
 
-  //             // tombol delete
-  //             IconButton(
-  //               icon: Icon(Icons.delete_outline, color: Color(0xFFE74C3C)),
-  //               splashRadius: 20,
-  //               //onPressed: () => _removeFungsi(i),
-  //               onPressed: () async {
-  //                 final confirm = await showConfirmDeleteDialog(context);
-  //                 if (confirm) {
-  //                   _removeFungsi(i);
-  //                 }
-  //               },
-  //             ),
-  //           ],
-  //         ),
-  //         const SizedBox(height: 12),
-  //       ],
+              // tombol delete
+              IconButton(
+                icon: Icon(Icons.delete_outline, color: Color(0xFFE74C3C)),
+                splashRadius: 20,
+                //onPressed: () => _removeFungsi(i),
+                onPressed: () async {
+                  final confirm = await showConfirmDeleteDialog(context);
+                  if (confirm) {
+                    _removeFungsi(i);
+                  }
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+        ],
 
-  //       // === BUTTON TAMBAH FUNGSI (model baru, kiri) ===
-  //       Align(
-  //         alignment: Alignment.centerLeft,
-  //         child: TextButton.icon(
-  //           onPressed: _addFungsiField,
-  //           icon: const Icon(Icons.add, size: 18),
-  //           label: const Text("Tambah Fungsi"),
-  //           style: TextButton.styleFrom(
-  //             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-  //           ),
-  //         ),
-  //       ),
+        // === BUTTON TAMBAH FUNGSI (model baru, kiri) ===
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: _addFungsiField,
+            icon: const Icon(Icons.add, size: 18),
+            label: const Text("Tambah Fungsi"),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+          ),
+        ),
 
-  //       const SizedBox(height: 20),
-  //     ],
-  //   );
-  // }
+        const SizedBox(height: 20),
+      ],
+    );
+  }
 
   // ========================================
   // CONFIRM DELETE DIALOG
@@ -614,15 +647,17 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
 
                     // === INPUT NAMA PIHAK PERTAMA ===
                     _buildModernInput(
-                      hint: "BUDI SANTOSO",
+                      hint: "Nama Lengkap",
                       controller: namaPihakPertamaController,
+                      readOnly: true,
                     ),
                     const SizedBox(height: 8),
 
                     // === INPUT JABATAN PIHAK PERTAMA ===
                     _buildModernInput(
-                      hint: "Administrasi Pengembangan",
+                      hint: "Jabatan",
                       controller: jabatanPihakPertamaController,
+                      readOnly: true,
                     ),
 
                     const SizedBox(height: 8),
@@ -674,59 +709,59 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                     ),
                     const SizedBox(height: 20),
 
-                    //
-                    // // === INPUT MODERN (Jabatan, Tugas, Fungsi) ===
-                    // const SizedBox(height: 30),
-                    // Align(
-                    //   alignment: Alignment.centerLeft,
-                    //   child: Text(
-                    //     "Jabatan & Tugas",
-                    //     style: TextStyle(
-                    //       fontSize: 14,
-                    //       fontWeight: FontWeight.bold,
-                    //       color: Colors.black87,
-                    //     ),
-                    //   ),
-                    // ),
-                    // const SizedBox(height: 16),
+                    // === INPUT MODERN (Jabatan, Tugas, Fungsi) ===
+                    const SizedBox(height: 30),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        "Jabatan & Tugas",
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
 
-                    // // JABATAN
-                    // _buildModernInput(
-                    //   // label: "Jabatan",
-                    //   hint: "Masukkan jabatan...",
-                    //   controller: jabatanController,
-                    // ),
+                    // JABATAN
+                    _buildModernInput(
+                      // label: "Jabatan",
+                      hint: "jabatan",
+                      controller: jabatanPihakPertamaController,
+                      readOnly: true,
+                    ),
 
-                    // const SizedBox(height: 12),
+                    const SizedBox(height: 12),
 
-                    // // TUGAS
-                    // _buildModernInput(
-                    //   // label: "Tugas",
-                    //   hint: "Masukkan tugas...",
-                    //   controller: tugasController,
-                    // ),
+                    // TUGAS
+                    _buildModernInput(
+                      // label: "Tugas",
+                      hint: "Masukkan tugas...",
+                      controller: tugasController,
+                    ),
 
-                    // const SizedBox(height: 20),
+                    const SizedBox(height: 20),
 
-                    // // FUNGSI A – E
-                    // Align(
-                    //   alignment: Alignment.centerLeft,
-                    //   child: Text(
-                    //     "Fungsi",
-                    //     style: TextStyle(
-                    //       fontSize: 14,
-                    //       fontWeight: FontWeight.bold,
-                    //       color: Colors.black87,
-                    //     ),
-                    //   ),
-                    // ),
+                    // FUNGSI A – E
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        "Fungsi",
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
 
-                    // const SizedBox(height: 12),
+                    const SizedBox(height: 12),
 
-                    // // pemanggilan fungsi list
-                    // _buildFungsiList(),
+                    // pemanggilan fungsi list
+                    _buildFungsiList(),
 
-                    // const SizedBox(height: 20),
+                    const SizedBox(height: 20),
 
                     // === Card-based Table SASARAN & INDIKATOR ===
                     CardTable1Widget(key: table1Key),
