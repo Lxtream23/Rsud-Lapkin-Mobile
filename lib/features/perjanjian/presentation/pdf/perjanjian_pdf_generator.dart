@@ -560,7 +560,7 @@ Future<Uint8List> generatePerjanjianPdf({
     format: PdfStringFormat(alignment: PdfTextAlignment.center),
   );
 
-  yy = (h2res['y'] as double) + 8;
+  yy = (h2res['y'] as double) + 20;
 
   // ============================
   // BLOK INFORMASI (Jabatan / Tugas / Fungsi)
@@ -693,7 +693,7 @@ Future<Uint8List> generatePerjanjianPdf({
   }
 
   // Jarak sebelum tabel berikutnya
-  yy += 12;
+  yy += 20;
 
   // build tables (builders may be async)
   final grid1 = await buildTable1(
