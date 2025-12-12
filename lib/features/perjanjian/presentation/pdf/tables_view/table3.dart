@@ -20,7 +20,7 @@ Future<PdfGrid> buildTable3(List<Map<String, dynamic>> table3) async {
   grid.headers.add(1);
   final header = grid.headers[0];
   header.cells[0].value = 'NO';
-  header.cells[1].value = 'PROGRAM / SUB PROGRAM';
+  header.cells[1].value = 'PROGRAM';
   header.cells[2].value = 'ANGGARAN';
   header.cells[3].value = 'KETERANGAN';
 

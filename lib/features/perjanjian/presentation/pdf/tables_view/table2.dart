@@ -27,7 +27,7 @@ Future<PdfGrid> buildTable2(List<List<String>> table2) async {
   h1.cells[1].value = 'Indikator Kinerja';
   h1.cells[2].value = 'Target';
 
-  h1.cells[3].value = 'Target Triwulanan';
+  h1.cells[3].value = 'Target';
   h1.cells[3].columnSpan = 4; // gabung col 3–6
 
   h1.cells[0].rowSpan = 2;
@@ -36,10 +36,10 @@ Future<PdfGrid> buildTable2(List<List<String>> table2) async {
 
   // HEADER ROW 2
   final h2 = grid.headers[1];
-  h2.cells[3].value = 'I';
-  h2.cells[4].value = 'II';
-  h2.cells[5].value = 'III';
-  h2.cells[6].value = 'IV';
+  h2.cells[3].value = 'Triwulanan I';
+  h2.cells[4].value = 'Triwulanan II';
+  h2.cells[5].value = 'Triwulanan III';
+  h2.cells[6].value = 'Triwulanan IV';
 
   // STYLE HEADER
   final headerStyle = PdfGridCellStyle()

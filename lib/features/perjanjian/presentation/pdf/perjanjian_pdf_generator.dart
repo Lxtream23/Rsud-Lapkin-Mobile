@@ -7,9 +7,9 @@ import 'dart:math';
 
 // Pastikan file ini bisa memanggil fungsi buildTable1/buildTable2/buildTable3
 // Jika Anda sudah modular: import tabel
-import 'tables/table1.dart';
-import 'tables/table2.dart';
-import 'tables/table3.dart';
+import 'tables_view/table1.dart';
+import 'tables_view/table2.dart';
+import 'tables_view/table3.dart';
 
 /// Generate PDF yang tahan terhadap layout dinamis.
 /// signatureRightBytes: nullable — jika null, tidak ada gambar (tetap gambar garis & teks)
@@ -415,7 +415,7 @@ Future<Uint8List> generatePerjanjianPdf({
   final kiriJabatan = await _drawTextElement(
     page: pageForSignature,
     text: "PIHAK KEDUA",
-    font: poppins12Bold,
+    font: poppins12,
     top: yKiri,
     left: marginLeft,
     width: colWidth,
@@ -427,7 +427,7 @@ Future<Uint8List> generatePerjanjianPdf({
   final kiriNama = await _drawTextElement(
     page: pageForSignature,
     text: namaPihak2,
-    font: poppins12Bold,
+    font: poppins12,
     top: yKiri,
     left: marginLeft,
     width: colWidth,
@@ -437,7 +437,7 @@ Future<Uint8List> generatePerjanjianPdf({
   yKiri = (kiriNama['y'] as double) + 4;
 
   // --- Garis bawah mengikuti panjang nama pihak kedua ---
-  final namaWidthKiri = poppins12Bold.measureString(namaPihak2).width;
+  final namaWidthKiri = poppins12.measureString(namaPihak2).width;
 
   pageForSignature.graphics.drawLine(
     PdfPen(PdfColor(0, 0, 0)),
@@ -478,7 +478,7 @@ Future<Uint8List> generatePerjanjianPdf({
   final kananJabatan = await _drawTextElement(
     page: pageForSignature,
     text: "PIHAK PERTAMA",
-    font: poppins12Bold,
+    font: poppins12,
     top: yKanan,
     left: rightX,
     width: colWidth,
@@ -501,7 +501,7 @@ Future<Uint8List> generatePerjanjianPdf({
   final kananNama = await _drawTextElement(
     page: pageForSignature,
     text: namaPihak1,
-    font: poppins12Bold,
+    font: poppins12,
     top: yKanan,
     left: rightX,
     width: colWidth,
@@ -511,7 +511,7 @@ Future<Uint8List> generatePerjanjianPdf({
   yKanan = (kananNama['y'] as double) + 4;
 
   // --- Garis bawah mengikuti panjang nama pihak pertama ---
-  final namaWidthKanan = poppins12Bold.measureString(namaPihak1).width;
+  final namaWidthKanan = poppins12.measureString(namaPihak1).width;
 
   pageForSignature.graphics.drawLine(
     PdfPen(PdfColor(0, 0, 0)),
@@ -721,6 +721,184 @@ Future<Uint8List> generatePerjanjianPdf({
   if (layout3 != null) {
     yy = layout3.bounds.bottom + 12;
   }
+
+  // =============================
+  //       TANGGAL + BLOK TTD HALAMAN 2
+  // =============================
+
+  // posisi dasar
+  final double pageWidth2 = page2.getClientSize().width;
+  const double marginLeft2 = 20.0;
+  const double marginRight2 = 40.0;
+  const double colWidth2 = 180.0;
+
+  final double rightX2 = pageWidth2 - marginRight2 - colWidth2;
+
+  // pastikan Y melanjutkan posisi terakhir tabel
+  yy += 12;
+
+  // ======================================
+  //               TANGGAL
+  // ======================================
+  final dateRes2 = await _drawTextElement(
+    page: page2,
+    text: "Pasuruan, $tanggal",
+    font: poppins12,
+    top: yy,
+    left: rightX2,
+    width: colWidth2,
+    format: PdfStringFormat(alignment: PdfTextAlignment.center),
+  );
+
+  yy = (dateRes2['y'] as double) + 6;
+
+  // ======================================
+  //         VARIABEL KHUSUS HALAMAN 2
+  // ======================================
+  double yKiri2 = yy;
+  double yKanan2 = yy;
+
+  PdfPage pageForSignature2 = page2;
+
+  // ======================================
+  //    KOLOM KIRI – PIHAK KEDUA
+  // ======================================
+
+  final kiriJabatan2 = await _drawTextElement(
+    page: pageForSignature2,
+    text: "PIHAK KEDUA",
+    font: poppins12,
+    top: yKiri2,
+    left: marginLeft2,
+    width: colWidth2,
+    format: PdfStringFormat(alignment: PdfTextAlignment.center),
+  );
+
+  pageForSignature2 = kiriJabatan2['page'] as PdfPage;
+  yKiri2 = (kiriJabatan2['y'] as double) + 60;
+
+  final kiriNama2 = await _drawTextElement(
+    page: pageForSignature2,
+    text: namaPihak2,
+    font: poppins12,
+    top: yKiri2,
+    left: marginLeft2,
+    width: colWidth2,
+    format: PdfStringFormat(alignment: PdfTextAlignment.center),
+  );
+  pageForSignature2 = kiriNama2['page'] as PdfPage;
+  yKiri2 = (kiriNama2['y'] as double) + 4;
+
+  // garis bawah
+  final namaWidthKiri2 = poppins12.measureString(namaPihak2).width;
+
+  pageForSignature2.graphics.drawLine(
+    PdfPen(PdfColor(0, 0, 0)),
+    Offset(marginLeft2 + (colWidth2 - namaWidthKiri2) / 2, yKiri2 - 2),
+    Offset(marginLeft2 + (colWidth2 + namaWidthKiri2) / 2, yKiri2 - 2),
+  );
+
+  // pangkat
+  final kiriPangkat2 = await _drawTextElement(
+    page: pageForSignature2,
+    text: pangkatPihak2 ?? "-",
+    font: poppins12,
+    top: yKiri2,
+    left: marginLeft2,
+    width: colWidth2,
+    format: PdfStringFormat(alignment: PdfTextAlignment.center),
+  );
+  pageForSignature2 = kiriPangkat2['page'] as PdfPage;
+  yKiri2 = (kiriPangkat2['y'] as double) + 6;
+
+  // nip
+  final kiriNip2 = await _drawTextElement(
+    page: pageForSignature2,
+    text: "NIP. -",
+    font: poppins12,
+    top: yKiri2,
+    left: marginLeft2,
+    width: colWidth2,
+    format: PdfStringFormat(alignment: PdfTextAlignment.center),
+  );
+  pageForSignature2 = kiriNip2['page'] as PdfPage;
+  yKiri2 = (kiriNip2['y'] as double) + 16;
+
+  // ======================================
+  //    KOLOM KANAN – PIHAK PERTAMA
+  // ======================================
+
+  final kananJabatan2 = await _drawTextElement(
+    page: pageForSignature2,
+    text: "PIHAK PERTAMA",
+    font: poppins12,
+    top: yKanan2,
+    left: rightX2,
+    width: colWidth2,
+    format: PdfStringFormat(alignment: PdfTextAlignment.center),
+  );
+  pageForSignature2 = kananJabatan2['page'] as PdfPage;
+  yKanan2 = (kananJabatan2['y'] as double) + 6;
+
+  // tanda tangan
+  final bmp2 = _safeBitmap(signatureRightBytes);
+  if (bmp2 != null) {
+    pageForSignature2.graphics.drawImage(
+      bmp2,
+      Rect.fromLTWH(rightX2 + (colWidth2 - 120) / 2, yKanan2, 120, 55),
+    );
+  }
+
+  yKanan2 += 60;
+
+  // nama pihak pertama
+  final kananNama2 = await _drawTextElement(
+    page: pageForSignature2,
+    text: namaPihak1,
+    font: poppins12,
+    top: yKanan2,
+    left: rightX2,
+    width: colWidth2,
+    format: PdfStringFormat(alignment: PdfTextAlignment.center),
+  );
+  pageForSignature2 = kananNama2['page'] as PdfPage;
+  yKanan2 = (kananNama2['y'] as double) + 4;
+
+  // garis bawah
+  final namaWidthKanan2 = poppins12.measureString(namaPihak1).width;
+
+  pageForSignature2.graphics.drawLine(
+    PdfPen(PdfColor(0, 0, 0)),
+    Offset(rightX2 + (colWidth2 - namaWidthKanan2) / 2, yKanan2 - 2),
+    Offset(rightX2 + (colWidth2 + namaWidthKanan2) / 2, yKanan2 - 2),
+  );
+
+  // pangkat
+  final kananPangkat2 = await _drawTextElement(
+    page: pageForSignature2,
+    text: pangkatPihak1 ?? "-",
+    font: poppins12,
+    top: yKanan2,
+    left: rightX2,
+    width: colWidth2,
+    format: PdfStringFormat(alignment: PdfTextAlignment.center),
+  );
+  pageForSignature2 = kananPangkat2['page'] as PdfPage;
+  yKanan2 = (kananPangkat2['y'] as double) + 6;
+
+  // nip
+  final kananNip2 = await _drawTextElement(
+    page: pageForSignature2,
+    text: "NIP. -",
+    font: poppins12,
+    top: yKanan2,
+    left: rightX2,
+    width: colWidth2,
+    format: PdfStringFormat(alignment: PdfTextAlignment.center),
+  );
+  pageForSignature2 = kananNip2['page'] as PdfPage;
+
+  yy = ((yKiri2 > yKanan2) ? yKiri2 : yKanan2) + 10;
 
   // PAGE berikut: tabel 2 (rencana aksi / triwulan) — buat page baru
   final page3 = doc.pages.add();
