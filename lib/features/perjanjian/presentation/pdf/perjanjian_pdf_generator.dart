@@ -29,7 +29,7 @@ Future<Uint8List> generatePerjanjianPdf({
   // ---------------------------
   // Load Poppins fonts (TTF) dari assets
   // ---------------------------
-  PdfFont poppins11, poppins11Bold, poppins14Bold;
+  PdfFont poppins12, poppins12Bold, poppins14Bold;
   try {
     final reg = (await rootBundle.load(
       'assets/fonts/Poppins-Regular.ttf',
@@ -38,15 +38,15 @@ Future<Uint8List> generatePerjanjianPdf({
       'assets/fonts/Poppins-Bold.ttf',
     )).buffer.asUint8List();
 
-    poppins11 = PdfTrueTypeFont(reg, 11);
-    poppins11Bold = PdfTrueTypeFont(bold, 11);
+    poppins12 = PdfTrueTypeFont(reg, 12);
+    poppins12Bold = PdfTrueTypeFont(bold, 12);
     poppins14Bold = PdfTrueTypeFont(bold, 14);
   } catch (e) {
     // fallback ke standard font kalau gagal load
-    poppins11 = PdfStandardFont(PdfFontFamily.helvetica, 11);
-    poppins11Bold = PdfStandardFont(
+    poppins12 = PdfStandardFont(PdfFontFamily.helvetica, 12);
+    poppins12Bold = PdfStandardFont(
       PdfFontFamily.helvetica,
-      11,
+      12,
       style: PdfFontStyle.bold,
     );
     poppins14Bold = PdfStandardFont(
@@ -105,26 +105,32 @@ Future<Uint8List> generatePerjanjianPdf({
   // Create first page and variables
   // ---------------------------
   PdfPage currentPage = doc.pages.add();
-  double y = 20;
+  double y = 20; // posisi awal dari atas
   final pageSize = currentPage.getClientSize();
 
-  // Optional logo (cari di assets jika ada)
+  // ---------------------------
+  // LOGO
+  // ---------------------------
   try {
     final logoBytes = (await rootBundle.load(
       'assets/images/logo_pemda.png',
     )).buffer.asUint8List();
+
     final logoBmp = PdfBitmap(logoBytes);
     final logoW = 80.0;
+
+    // Gambar logo
     currentPage.graphics.drawImage(
       logoBmp,
       Rect.fromLTWH((pageSize.width - logoW) / 2, y, logoW, logoW),
     );
 
-    // Tambahkan jarak kecil saja
-    y += 2; // 80 + 16 = 96 (atau kecilkan lagi jika mau)
-  } catch (_) {
-    // ignore if no logo
-  }
+    // -------------------------------
+    // JARAK LOGO → HEADER (atur disini)
+    // -------------------------------
+    const double spacingLogoToHeader = 10; // Ubah sesuka kamu (5/10/15/20)
+    y += logoW + spacingLogoToHeader;
+  } catch (_) {}
 
   // ---------------------------
   // HEADER / JUDUL (multi-line, tengah)
@@ -140,13 +146,13 @@ Future<Uint8List> generatePerjanjianPdf({
     top: y,
     format: PdfStringFormat(
       alignment: PdfTextAlignment.center,
-      lineAlignment: PdfVerticalAlignment.middle,
+      lineAlignment: PdfVerticalAlignment.top,
     ),
   );
   currentPage = headerRes['page'] as PdfPage;
 
   // agar jarak header → paragraf tidak melebar
-  y = (headerRes['y'] as double) + 16;
+  y = (headerRes['y'] as double) + 20;
 
   // ---------------------------
   // PARAGRAF PEMBUKA (justify)
@@ -156,29 +162,29 @@ Future<Uint8List> generatePerjanjianPdf({
   final p1 = await _drawTextElement(
     page: currentPage,
     text: pembuka,
-    font: poppins11,
+    font: poppins12,
     top: y,
     format: PdfStringFormat(alignment: PdfTextAlignment.justify),
   );
   currentPage = p1['page'] as PdfPage;
   y = p1['y'] as double;
-  y += 8;
+  y += 10;
 
   // ---------------------------
   // PIHAK PERTAMA
   // ---------------------------
   final r1 = await _drawTextElement(
     page: currentPage,
-    text: 'Nama    :  $namaPihak1',
-    font: poppins11,
+    text: 'Nama             :  $namaPihak1',
+    font: poppins12,
     top: y,
   );
   currentPage = r1['page'] as PdfPage;
   y = r1['y'] as double;
   final r2 = await _drawTextElement(
     page: currentPage,
-    text: 'Jabatan :  $jabatanPihak1',
-    font: poppins11,
+    text: 'Jabatan           :  $jabatanPihak1',
+    font: poppins12,
     top: y,
   );
   currentPage = r2['page'] as PdfPage;
@@ -186,27 +192,27 @@ Future<Uint8List> generatePerjanjianPdf({
   final r3 = await _drawTextElement(
     page: currentPage,
     text: 'Selanjutnya disebut pihak pertama.',
-    font: poppins11,
+    font: poppins12,
     top: y,
   );
   currentPage = r3['page'] as PdfPage;
-  y = (r3['y'] as double) + 8;
+  y = (r3['y'] as double) + 10;
 
   // ---------------------------
   // PIHAK KEDUA
   // ---------------------------
   final r4 = await _drawTextElement(
     page: currentPage,
-    text: 'Nama    :  $namaPihak2',
-    font: poppins11,
+    text: 'Nama              :  $namaPihak2',
+    font: poppins12,
     top: y,
   );
   currentPage = r4['page'] as PdfPage;
   y = r4['y'] as double;
   final r5 = await _drawTextElement(
     page: currentPage,
-    text: 'Jabatan :  $jabatanPihak2',
-    font: poppins11,
+    text: 'Jabatan           :  $jabatanPihak2',
+    font: poppins12,
     top: y,
   );
   currentPage = r5['page'] as PdfPage;
@@ -214,12 +220,12 @@ Future<Uint8List> generatePerjanjianPdf({
   final r6 = await _drawTextElement(
     page: currentPage,
     text: 'Selaku atasan pihak pertama, selanjutnya disebut pihak kedua.',
-    font: poppins11,
+    font: poppins12,
     top: y,
     format: PdfStringFormat(alignment: PdfTextAlignment.justify),
   );
   currentPage = r6['page'] as PdfPage;
-  y = (r6['y'] as double) + 8;
+  y = (r6['y'] as double) + 10;
 
   // ---------------------------
   // Paragraf lanjutan
@@ -229,24 +235,24 @@ Future<Uint8List> generatePerjanjianPdf({
   final p2 = await _drawTextElement(
     page: currentPage,
     text: par2,
-    font: poppins11,
+    font: poppins12,
     top: y,
     format: PdfStringFormat(alignment: PdfTextAlignment.justify),
   );
   currentPage = p2['page'] as PdfPage;
-  y = (p2['y'] as double) + 8;
+  y = (p2['y'] as double) + 10;
 
   final par3 =
       'Pihak kedua akan melakukan evaluasi terhadap capaian kinerja dari perjanjian ini dan mengambil tindakan yang diperlukan dalam rangka pemberian penghargaan dan sanksi.';
   final p3 = await _drawTextElement(
     page: currentPage,
     text: par3,
-    font: poppins11,
+    font: poppins12,
     top: y,
     format: PdfStringFormat(alignment: PdfTextAlignment.justify),
   );
   currentPage = p3['page'] as PdfPage;
-  y = (p3['y'] as double) + 18;
+  y = (p3['y'] as double) + 20;
 
   // =============================
   //       TANGGAL + BLOK TTD
@@ -267,7 +273,7 @@ Future<Uint8List> generatePerjanjianPdf({
   final dateRes = await _drawTextElement(
     page: currentPage,
     text: "Pasuruan, $tanggal",
-    font: poppins11,
+    font: poppins12,
     top: y,
     left: rightX,
     width: colWidth,
@@ -292,8 +298,8 @@ Future<Uint8List> generatePerjanjianPdf({
 
   final kiriJabatan = await _drawTextElement(
     page: pageForSignature,
-    text: jabatanPihak2,
-    font: poppins11Bold,
+    text: "PIHAK KEDUA",
+    font: poppins12Bold,
     top: yKiri,
     left: marginLeft,
     width: colWidth,
@@ -305,7 +311,7 @@ Future<Uint8List> generatePerjanjianPdf({
   final kiriNama = await _drawTextElement(
     page: pageForSignature,
     text: namaPihak2,
-    font: poppins11Bold,
+    font: poppins12Bold,
     top: yKiri,
     left: marginLeft,
     width: colWidth,
@@ -317,7 +323,7 @@ Future<Uint8List> generatePerjanjianPdf({
   final kiriNip = await _drawTextElement(
     page: pageForSignature,
     text: "NIP. -",
-    font: poppins11,
+    font: poppins12,
     top: yKiri,
     left: marginLeft,
     width: colWidth,
@@ -332,8 +338,8 @@ Future<Uint8List> generatePerjanjianPdf({
 
   final kananJabatan = await _drawTextElement(
     page: pageForSignature,
-    text: jabatanPihak1,
-    font: poppins11Bold,
+    text: "PIHAK PERTAMA",
+    font: poppins12Bold,
     top: yKanan,
     left: rightX,
     width: colWidth,
@@ -356,7 +362,7 @@ Future<Uint8List> generatePerjanjianPdf({
   final kananNama = await _drawTextElement(
     page: pageForSignature,
     text: namaPihak1,
-    font: poppins11Bold,
+    font: poppins12Bold,
     top: yKanan,
     left: rightX,
     width: colWidth,
@@ -368,7 +374,7 @@ Future<Uint8List> generatePerjanjianPdf({
   final kananNip = await _drawTextElement(
     page: pageForSignature,
     text: "NIP. -",
-    font: poppins11,
+    font: poppins12,
     top: yKanan,
     left: rightX,
     width: colWidth,
