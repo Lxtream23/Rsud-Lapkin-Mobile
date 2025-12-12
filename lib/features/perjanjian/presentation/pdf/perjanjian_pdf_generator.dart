@@ -436,11 +436,13 @@ Future<Uint8List> generatePerjanjianPdf({
   pageForSignature = kiriNama['page'] as PdfPage;
   yKiri = (kiriNama['y'] as double) + 4;
 
-  // --- Garis bawah
+  // --- Garis bawah mengikuti panjang nama pihak kedua ---
+  final namaWidthKiri = poppins12Bold.measureString(namaPihak2).width;
+
   pageForSignature.graphics.drawLine(
     PdfPen(PdfColor(0, 0, 0)),
-    Offset(marginLeft, yKiri - 2),
-    Offset(marginLeft + colWidth, yKiri - 2),
+    Offset(marginLeft + (colWidth - namaWidthKiri) / 2, yKiri - 2),
+    Offset(marginLeft + (colWidth + namaWidthKiri) / 2, yKiri - 2),
   );
 
   // --- Tambahkan PANGKAT Pihak Kedua
@@ -508,11 +510,13 @@ Future<Uint8List> generatePerjanjianPdf({
   pageForSignature = kananNama['page'] as PdfPage;
   yKanan = (kananNama['y'] as double) + 4;
 
-  // --- Garis
+  // --- Garis bawah mengikuti panjang nama pihak pertama ---
+  final namaWidthKanan = poppins12Bold.measureString(namaPihak1).width;
+
   pageForSignature.graphics.drawLine(
     PdfPen(PdfColor(0, 0, 0)),
-    Offset(rightX, yKanan - 2),
-    Offset(rightX + colWidth, yKanan - 2),
+    Offset(rightX + (colWidth - namaWidthKanan) / 2, yKanan - 2),
+    Offset(rightX + (colWidth + namaWidthKanan) / 2, yKanan - 2),
   );
 
   // --- PANGKAT PIHAK PERTAMA
