@@ -328,15 +328,50 @@ class _CardTable3WidgetState extends State<CardTable3Widget> {
                           : row["keterangan"].text,
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Colors.red),
-                    onPressed: () async {
-                      final ok = await showConfirmDeleteDialog(context);
-                      if (!ok) return;
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // 🗑️ DELETE
+                      IconButton(
+                        icon: const Icon(
+                          Icons.delete_outline,
+                          color: Colors.red,
+                        ),
+                        onPressed: () async {
+                          final ok = await showConfirmDeleteDialog(context);
+                          if (!ok) return;
 
-                      _deleteRow(i);
-                      _showDeleteSuccess("Program dihapus");
-                    },
+                          _deleteRow(i);
+                          _showDeleteSuccess("Program dihapus");
+                        },
+                      ),
+
+                      // ▶️ / ⬇️ PANAH ANIMASI
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            openIndex = openIndex == i ? null : i;
+                          });
+                        },
+                        child: AnimatedRotation(
+                          turns: openIndex == i ? -0.25 : 0, // kiri -> bawah
+                          duration: const Duration(milliseconds: 260),
+                          curve: Curves.easeInOut,
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            // decoration: BoxDecoration(
+                            //   color: Colors.white,
+                            //   borderRadius: BorderRadius.circular(20),
+                            // ),
+                            child: const Icon(
+                              Icons.chevron_left, // 👈 arah kiri
+                              size: 22,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
