@@ -19,6 +19,46 @@ class _CardTable3WidgetState extends State<CardTable3Widget> {
   }
 
   // =========================
+  // GET DATA AS STRINGS
+  // =========================
+  List<Map<String, dynamic>> getRowsAsStrings() {
+    final List<Map<String, dynamic>> result = [];
+
+    for (int i = 0; i < _rows.length; i++) {
+      final row = _rows[i];
+
+      result.add({
+        "no": "${i + 1}",
+        "program": row["program"].text,
+        "anggaran": row["anggaran"].text,
+        "keterangan": row["keterangan"].text,
+        "sub": _mapSub(row["sub"], [i + 1]),
+      });
+    }
+
+    return result;
+  }
+
+  List<Map<String, dynamic>> _mapSub(List subs, List<int> path) {
+    final List<Map<String, dynamic>> result = [];
+
+    for (int i = 0; i < subs.length; i++) {
+      final sub = subs[i];
+      final newPath = [...path, i + 1];
+
+      result.add({
+        "no": newPath.join("."),
+        "program": sub["program"].text,
+        "anggaran": sub["anggaran"].text,
+        "keterangan": sub["keterangan"].text,
+        "sub": _mapSub(sub["sub"], newPath),
+      });
+    }
+
+    return result;
+  }
+
+  // =========================
   // AUTO NUMBERING
   // =========================
   String num(List<int> path) => path.join(".");
