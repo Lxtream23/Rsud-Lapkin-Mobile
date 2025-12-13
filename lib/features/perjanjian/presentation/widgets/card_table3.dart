@@ -1,4 +1,3 @@
-// lib/presentation/widgets/card_table3.dart
 import 'package:flutter/material.dart';
 import 'package:rsud_lapkin_mobile/core/widgets/ui_helpers/app_snackbar.dart';
 
@@ -9,778 +8,352 @@ class CardTable3Widget extends StatefulWidget {
   State<CardTable3Widget> createState() => _CardTable3WidgetState();
 }
 
-class _CardTable3WidgetState extends State<CardTable3Widget>
-    with TickerProviderStateMixin {
-  /// Struktur per baris (program):
-  /// {
-  ///   "program": TextEditingController(),
-  ///   "anggaran": TextEditingController(),
-  ///   "keterangan": TextEditingController(),
-  ///   "sub": List<TextEditingController>() // sub program — hanya teks, tanpa anggaran
-  /// }
+class _CardTable3WidgetState extends State<CardTable3Widget> {
   final List<Map<String, dynamic>> _rows = [];
-
-  /// index panel yang terbuka (expand/collapse)
   int? openIndex;
-
-  /// threshold untuk "daftar panjang" — saat list melebihi ini,
-  /// membuka panel akan memastikan hanya satu panel terbuka.
-  final int _longListThreshold = 8;
 
   @override
   void initState() {
     super.initState();
-    _addRow(); // minimal 1 program baris
+    _addRow();
   }
 
-  /// Convert ke List<List<String>> (dipakai PDF collector jika perlu)
-  // List<List<String>> getRowsAsStrings() {
-  //   final result = <List<String>>[];
-  //   for (final r in _rows) {
-  //     final p = (r['program'] as TextEditingController).text.trim();
-  //     final a = (r['anggaran'] as TextEditingController).text.trim();
-  //     final k = (r['keterangan'] as TextEditingController).text.trim();
-  //     result.add([p, a, k]);
-  //     // NOTE: sub-programs tidak dimasukkan ke tabel 3 biasa; kalau perlu tambahkan sesuai kebutuhan
-  //   }
-  //   return result;
-  // }
+  // =========================
+  // AUTO NUMBERING
+  // =========================
+  String num(List<int> path) => path.join(".");
 
-  /// Dipakai untuk PDF — termasuk sub program
-  List<Map<String, dynamic>> getRowsForPdf() {
-    final result = <Map<String, dynamic>>[];
-
-    for (final r in _rows) {
-      result.add({
-        "program": (r['program'] as TextEditingController).text.trim(),
-        "anggaran": (r['anggaran'] as TextEditingController).text.trim(),
-        "keterangan": (r['keterangan'] as TextEditingController).text.trim(),
-
-        // sub-program dikirim ke PDF
-        "sub": (r['sub'] as List<TextEditingController>)
-            .map((c) => c.text.trim())
-            .where((t) => t.isNotEmpty)
-            .toList(),
-      });
-    }
-
-    return result;
-  }
-
-  @override
-  void dispose() {
-    for (final r in _rows) {
-      try {
-        (r['program'] as TextEditingController).dispose();
-      } catch (_) {}
-      try {
-        (r['anggaran'] as TextEditingController).dispose();
-      } catch (_) {}
-      try {
-        (r['keterangan'] as TextEditingController).dispose();
-      } catch (_) {}
-      if (r['sub'] is List) {
-        for (final s in (r['sub'] as List<TextEditingController>)) {
-          try {
-            s.dispose();
-          } catch (_) {}
-        }
-      }
-    }
-    super.dispose();
-  }
-
-  // -------------------------
-  // Row management (program)
-  // -------------------------
+  // =========================
+  // DATA MANAGEMENT
+  // =========================
   void _addRow() {
-    final map = {
+    _rows.add({
       "program": TextEditingController(),
       "anggaran": TextEditingController(),
       "keterangan": TextEditingController(),
-      "sub": <Map<String, TextEditingController>>[],
-    };
-    setState(() => _rows.add(map));
+      "sub": <Map<String, dynamic>>[],
+    });
+    setState(() {});
   }
 
-  void _deleteRow(int index) {
-    if (index < 0 || index >= _rows.length) return;
-
-    // Jika hanya 1, clear saja
+  void _deleteRow(int i) {
     if (_rows.length == 1) {
-      (_rows.first['program'] as TextEditingController).clear();
-      (_rows.first['anggaran'] as TextEditingController).clear();
-      (_rows.first['keterangan'] as TextEditingController).clear();
-      (_rows.first['sub'] as List<TextEditingController>).clear();
+      _rows.first["program"].clear();
+      _rows.first["anggaran"].clear();
+      _rows.first["keterangan"].clear();
+      (_rows.first["sub"] as List).clear();
       setState(() {});
-      _showDeleteSuccess("Baris program dikosongkan");
       return;
     }
-
-    // dispose controllers
-    for (final s in (_rows[index]['sub'] as List<TextEditingController>)) {
-      try {
-        s.dispose();
-      } catch (_) {}
-    }
-    try {
-      (_rows[index]['program'] as TextEditingController).dispose();
-      (_rows[index]['anggaran'] as TextEditingController).dispose();
-      (_rows[index]['keterangan'] as TextEditingController).dispose();
-    } catch (_) {}
-
-    final removedSummary = (_rows[index]['program'] as TextEditingController)
-        .text
-        .trim();
-    _rows.removeAt(index);
-
-    // adjust openIndex
-    if (openIndex != null) {
-      if (openIndex == index) {
-        openIndex = null;
-      } else if (openIndex! > index) {
-        openIndex = openIndex! - 1;
-      }
-    }
-
+    _rows.removeAt(i);
     setState(() {});
-    _showDeleteSuccess(
-      'Program "${removedSummary.isEmpty ? "— kosong —" : removedSummary}" dihapus',
+    _success("Program dihapus");
+  }
+
+  void _addSub(int p) {
+    (_rows[p]["sub"] as List).add({
+      "program": TextEditingController(),
+      "anggaran": TextEditingController(),
+      "keterangan": TextEditingController(),
+      "sub": <Map<String, dynamic>>[],
+    });
+    setState(() => openIndex = p);
+  }
+
+  void _addSubSub(int p, int s) {
+    (_rows[p]["sub"][s]["sub"] as List).add({
+      "program": TextEditingController(),
+      "anggaran": TextEditingController(),
+      "keterangan": TextEditingController(),
+      "sub": <Map<String, dynamic>>[],
+    });
+    setState(() {});
+  }
+
+  void _deleteSub(int p, int s) {
+    (_rows[p]["sub"] as List).removeAt(s);
+    setState(() {});
+    _success("Sub-program dihapus");
+  }
+
+  void _deleteSubSub(int p, int s, int ss) {
+    (_rows[p]["sub"][s]["sub"] as List).removeAt(ss);
+    setState(() {});
+    _success("Sub-sub program dihapus");
+  }
+
+  // =========================
+  // TOTAL
+  // =========================
+  double _parse(String t) =>
+      double.tryParse(t.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+
+  double get totalAnggaran =>
+      _rows.fold(0, (s, r) => s + _parse(r["anggaran"].text));
+
+  String rupiah(double v) {
+    final s = v.toInt().toString();
+    final b = StringBuffer();
+    for (int i = 0; i < s.length; i++) {
+      if ((s.length - i) % 3 == 0 && i != 0) b.write('.');
+      b.write(s[i]);
+    }
+    return "Rp ${b.toString()}";
+  }
+
+  // =========================
+  // UI
+  // =========================
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _header(),
+        const SizedBox(height: 8),
+
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: _rows.length,
+          itemBuilder: (_, i) => _programCard(i),
+        ),
+
+        const SizedBox(height: 10),
+        _footer(),
+      ],
     );
   }
 
-  // -------------------------
-  // Sub-row management
-  // -------------------------
-  void _addSubRow(int parentIndex) {
-    final subList =
-        _rows[parentIndex]['sub'] as List<Map<String, TextEditingController>>;
-
-    subList.add({
-      "program": TextEditingController(),
-      "anggaran": TextEditingController(),
-      "keterangan": TextEditingController(),
-    });
-
-    setState(() {
-      openIndex = parentIndex;
-    });
+  // =========================
+  // HEADER
+  // =========================
+  Widget _header() {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.blueGrey.shade100,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: const Row(
+        children: [
+          SizedBox(width: 40, child: Text("No", style: _th)),
+          Expanded(flex: 4, child: Text("Program", style: _th)),
+          Expanded(flex: 2, child: Text("Anggaran", style: _th)),
+          Expanded(flex: 2, child: Text("Ket", style: _th)),
+        ],
+      ),
+    );
   }
 
-  void _deleteSubRow(int parent, int index) {
-    if (parent < 0 || parent >= _rows.length) return;
+  // =========================
+  // PROGRAM CARD
+  // =========================
+  Widget _programCard(int i) {
+    final row = _rows[i];
+    final sub = row["sub"] as List<Map<String, dynamic>>;
 
-    final subList =
-        _rows[parent]['sub'] as List<Map<String, TextEditingController>>;
-
-    if (index < 0 || index >= subList.length) return;
-
-    final sub = subList[index];
-
-    final programText = sub['program']?.text.trim() ?? '';
-    final anggaranText = sub['anggaran']?.text.trim() ?? '';
-    final keteranganText = sub['keterangan']?.text.trim() ?? '';
-
-    final isEmpty =
-        programText.isEmpty && anggaranText.isEmpty && keteranganText.isEmpty;
-
-    // 🔹 Jika semua field kosong → langsung hapus
-    if (isEmpty) {
-      for (final controller in sub.values) {
-        try {
-          controller.dispose();
-        } catch (_) {}
-      }
-
-      subList.removeAt(index);
-      setState(() {});
-      _showDeleteSuccess("Sub-program dihapus");
-      return;
-    }
-
-    // 🔹 Jika ada isi → konfirmasi dulu
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Hapus Sub Program"),
-        content: const Text(
-          "Sub program ini memiliki data.\nApakah Anda yakin ingin menghapusnya?",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Batal"),
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.only(bottom: 6),
+      child: Column(
+        children: [
+          InkWell(
+            onTap: () => setState(() => openIndex = openIndex == i ? null : i),
+            child: Padding(
+              padding: const EdgeInsets.all(10),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 40,
+                    child: Text(
+                      num([i + 1]),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 4,
+                    child: Text(
+                      row["program"].text.isEmpty
+                          ? "— Program —"
+                          : row["program"].text,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Text(rupiah(_parse(row["anggaran"].text))),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      row["keterangan"].text.isEmpty
+                          ? "-"
+                          : row["keterangan"].text,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                    onPressed: () => _deleteRow(i),
+                  ),
+                ],
+              ),
+            ),
           ),
-          TextButton(
-            onPressed: () {
-              for (final controller in sub.values) {
-                try {
-                  controller.dispose();
-                } catch (_) {}
-              }
 
-              subList.removeAt(index);
-              Navigator.pop(context);
+          if (openIndex == i) _expanded(i, sub),
+        ],
+      ),
+    );
+  }
 
-              setState(() {});
-              _showDeleteSuccess("Sub-program dihapus");
-            },
-            child: const Text("Hapus", style: TextStyle(color: Colors.red)),
+  // =========================
+  // EXPANDED FORM
+  // =========================
+  Widget _expanded(int i, List<Map<String, dynamic>> sub) {
+    final row = _rows[i];
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+      child: Column(
+        children: [
+          _input("Program", row["program"]),
+          _input("Anggaran", row["anggaran"]),
+          _input("Keterangan", row["keterangan"]),
+          const Divider(),
+
+          for (int s = 0; s < sub.length; s++)
+            Builder(
+              builder: (context) {
+                final List<Map<String, dynamic>> subSub = sub[s]["sub"];
+                return Column(
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          num([i + 1, s + 1]),
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _input("Sub Program", sub[s]["program"]),
+                        ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.delete_outline,
+                            color: Colors.red,
+                          ),
+                          onPressed: () => _deleteSub(i, s),
+                        ),
+                      ],
+                    ),
+
+                    // SUB-SUB
+                    for (int ss = 0; ss < subSub.length; ss++)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 32, bottom: 6),
+                        child: Row(
+                          children: [
+                            Text(
+                              num([i + 1, s + 1, ss + 1]),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _input(
+                                "Sub-Sub Program",
+                                subSub[ss]["program"],
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close, size: 18),
+                              onPressed: () => _deleteSubSub(i, s, ss),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        icon: const Icon(Icons.add, size: 18),
+                        label: const Text("Tambah Sub-Sub"),
+                        onPressed: () => _addSubSub(i, s),
+                      ),
+                    ),
+                    const Divider(),
+                  ],
+                );
+              },
+            ),
+
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              icon: const Icon(Icons.add),
+              label: const Text("Tambah Sub Program"),
+              onPressed: () => _addSub(i),
+            ),
           ),
         ],
       ),
     );
   }
 
-  // -------------------------
-  // Helpers: totals
-  // -------------------------
-  /// jumlah total sub across all program
-  int get totalSubCount {
-    return _rows.fold<int>(0, (sum, r) {
-      final list = r['sub'] as List<TextEditingController>;
-      return sum + list.length;
-    });
-  }
-
-  /// jumlah total anggaran (parse numeric, toleran terhadap format "1.000.000,00" or "1000000")
-  double get totalAnggaran {
-    double sum = 0.0;
-    for (final r in _rows) {
-      final text = (r['anggaran'] as TextEditingController).text.trim();
-      if (text.isEmpty) continue;
-      // remove non-digit except comma and dot
-      final cleaned = text.replaceAll(RegExp(r'[^0-9\.,-]'), '');
-      // Try to determine decimal separator: if contains ',' and also '.', assume '.' thousands, ',' decimal
-      String normalized = cleaned;
-      if (cleaned.contains(',') && cleaned.contains('.')) {
-        normalized = cleaned.replaceAll('.', '').replaceAll(',', '.');
-      } else if (cleaned.contains(',') && !cleaned.contains('.')) {
-        // if only comma, treat comma as decimal separator -> replace with dot
-        normalized = cleaned.replaceAll(',', '.');
-      } else {
-        // only dots or only digits -> remove dots as thousand separators
-        normalized = cleaned.replaceAll(',', '').replaceAll('.', '');
-      }
-      // Now try parse
-      final val = double.tryParse(normalized) ?? 0.0;
-      sum += val;
-    }
-    return sum;
-  }
-
-  String formatCurrency(double v) {
-    // Simple Indonesian formatted currency: Rp 1.234.567 (no decimals if zeros)
-    final isNegative = v < 0;
-    v = v.abs();
-    final intPart = v.floor();
-    final decimals = ((v - intPart) * 100).round();
-    final intStr = intPart.toString();
-    final buffer = StringBuffer();
-    for (int i = 0; i < intStr.length; i++) {
-      final pos = intStr.length - i;
-      buffer.write(intStr[i]);
-      if (pos > 1 && pos % 3 == 1) buffer.write('.');
-    }
-
-    // If decimals are zero, don't show ,00
-    final decimalPart = decimals == 0
-        ? ''
-        : ',${decimals.toString().padLeft(2, '0')}';
-    final result =
-        'Rp ${isNegative ? '-' : ''}${buffer.toString()}$decimalPart';
-    return result;
-  }
-
-  // -------------------------
-  // UI helpers
-  // -------------------------
-  Widget _labelChip(String text) {
+  // =========================
+  // FOOTER
+  // =========================
+  Widget _footer() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFBEF8FF),
-        borderRadius: BorderRadius.circular(20),
+        color: Colors.grey.shade200,
+        borderRadius: BorderRadius.circular(10),
       ),
-      child: Text(text, style: const TextStyle(fontWeight: FontWeight.w600)),
-    );
-  }
-
-  // Snackbars (preserve your existing helpers)
-  void _showDeleteSuccess(String msg) {
-    final ctx = overlaySnackbarKey.currentContext;
-    if (ctx == null) {
-      debugPrint("Overlay NULL → Snackbar gagal ditampilkan");
-      return;
-    }
-    AppSnackbar.success(ctx, msg);
-  }
-
-  void _showDeleteError(String msg) {
-    final ctx = overlaySnackbarKey.currentContext;
-    if (ctx == null) return;
-    AppSnackbar.error(ctx, msg);
-  }
-
-  /// Ambil teks ringkas untuk header.
-  String getHeaderSummary(Map<String, dynamic> row) {
-    String p = (row['program'] as TextEditingController).text.trim();
-    String a = (row['anggaran'] as TextEditingController).text.trim();
-    String k = (row['keterangan'] as TextEditingController).text.trim();
-
-    String text = p.isNotEmpty
-        ? p
-        : a.isNotEmpty
-        ? a
-        : k.isNotEmpty
-        ? k
-        : "— kosong —";
-
-    // batas maksimal 30 karakter
-    if (text.length > 30) {
-      return text.substring(0, 30) + "…";
-    }
-
-    return text;
-  }
-
-  // -------------------------
-  // BUILD
-  // -------------------------
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // header + count
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              "TABEL PROGRAM & ANGGARAN",
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+      child: Row(
+        children: [
+          const Expanded(
+            flex: 6,
+            child: Text(
+              "JUMLAH",
+              style: TextStyle(fontWeight: FontWeight.bold),
             ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        // Baris count chip
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [_labelChip("${_rows.length} baris")],
-        ),
-        const SizedBox(height: 8),
-
-        // list program cards
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: _rows.length,
-          itemBuilder: (context, i) {
-            return _buildProgramCard(context, i, scheme);
-          },
-        ),
-
-        const SizedBox(height: 8),
-
-        // footer: add button (left) + totals (right)
-        Row(
-          children: [
-            TextButton.icon(
-              onPressed: _addRow,
-              icon: Icon(Icons.add_circle, color: scheme.primary),
-              label: Text(
-                "Tambah Baris",
-                style: TextStyle(
-                  color: scheme.primary,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              rupiah(totalAnggaran),
+              textAlign: TextAlign.end,
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        // total anggaran preview
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  "Total Anggaran",
-                  style: TextStyle(fontSize: 12, color: Colors.grey[700]),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  formatCurrency(totalAnggaran),
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        // notes
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                "Catatan: Silakan tambahkan program dan sub-program sesuai kebutuhan. Anggaran total akan dihitung otomatis.",
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  // -------------------------
-  // Build Program Card
-  // -------------------------
-  Widget _buildProgramCard(BuildContext context, int i, ColorScheme scheme) {
-    final theme = Theme.of(context).colorScheme;
-
-    final programCtrl = _rows[i]['program'] as TextEditingController;
-    final anggaranCtrl = _rows[i]['anggaran'] as TextEditingController;
-    final ketCtrl = _rows[i]['keterangan'] as TextEditingController;
-    final subList = _rows[i]['sub'] as List<Map<String, TextEditingController>>;
-
-    return Card(
-      color: const Color(0xFFBEF8FF),
-      elevation: 2,
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: AnimatedSize(
-        duration: const Duration(milliseconds: 260),
-        curve: Curves.easeInOut,
-        child: Column(
-          children: [
-            // ======= HEADER (InkWell clickable seluruh card header) =======
-            InkWell(
-              onTap: () {
-                setState(() {
-                  openIndex = (openIndex == i) ? null : i;
-                });
-              },
-              customBorder: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
-                ),
-                child: Row(
-                  children: [
-                    // Number chip
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        "${i + 1}",
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(width: 12),
-
-                    // Program title
-                    Expanded(
-                      child: Text(
-                        getHeaderSummary(_rows[i]),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-
-                    if (subList.isNotEmpty) ...[
-                      _labelChip("${subList.length} sub"),
-                      const SizedBox(width: 8),
-                    ],
-
-                    // Delete program
-                    IconButton(
-                      icon: const Icon(
-                        Icons.delete_outline,
-                        color: Color(0xFFE74C3C),
-                      ),
-                      splashRadius: 20,
-                      onPressed: () async {
-                        final ok = await showConfirmDeleteDialog(context);
-                        if (ok) _deleteRow(i);
-                      },
-                    ),
-
-                    // Expand arrow
-                    AnimatedRotation(
-                      // default: arrow miring ke kiri (−90°) → turns = -0.25
-                      // expanded: arrow menghadap bawah (0°)
-                      turns: openIndex == i ? 0.0 : 0.25,
-                      duration: const Duration(milliseconds: 260),
-                      child: const Icon(Icons.keyboard_arrow_down),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // ======= EXPANDED CONTENT =======
-            if (openIndex == i)
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _input("Program", programCtrl),
-                    const SizedBox(height: 10),
-
-                    _input("Anggaran", anggaranCtrl),
-                    const SizedBox(height: 10),
-
-                    _input("Keterangan", ketCtrl),
-                    const SizedBox(height: 12),
-
-                    Divider(color: Colors.grey.shade300),
-                    const SizedBox(height: 8),
-
-                    // ==== SUB PROGRAM LIST ====
-                    Column(
-                      children: [
-                        for (int si = 0; si < subList.length; si++)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: Column(
-                              children: [
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(10),
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey.shade100,
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: Text(
-                                        "${i + 1}.${si + 1}",
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-
-                                    Expanded(
-                                      child: _input(
-                                        "Sub Program",
-                                        subList[si]['program']!,
-                                      ),
-                                    ),
-
-                                    IconButton(
-                                      icon: const Icon(
-                                        Icons.delete_outline,
-                                        color: Colors.red,
-                                      ),
-                                      onPressed: () => _deleteSubRow(i, si),
-                                    ),
-                                  ],
-                                ),
-
-                                const SizedBox(height: 6),
-
-                                _input(
-                                  "Sub Anggaran",
-                                  subList[si]['anggaran']!,
-                                  keyboardType: TextInputType.number,
-                                ),
-
-                                const SizedBox(height: 6),
-
-                                _input(
-                                  "Sub Keterangan",
-                                  subList[si]['keterangan']!,
-                                  maxLines: 2,
-                                ),
-                              ],
-                            ),
-                          ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 6),
-
-                    // Add sub program
-                    TextButton.icon(
-                      onPressed: () => _addSubRow(i),
-                      icon: Icon(Icons.add_circle, color: scheme.primary),
-                      label: Text(
-                        "Tambah Sub Baris",
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: theme.primary,
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 6),
-
-                    // Anggaran preview
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Text(
-                          formatCurrency(_parseCurrencySafe(anggaranCtrl.text)),
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: theme.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 6),
-                    Text(
-                      "Tambahkan sub-baris jika diperlukan.",
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  // simple parser for UI preview of single anggaran
-  double _parseCurrencySafe(String text) {
-    if (text.trim().isEmpty) return 0.0;
-    final cleaned = text.replaceAll(RegExp(r'[^0-9\.,-]'), '');
-    String normalized = cleaned;
-    if (cleaned.contains(',') && cleaned.contains('.')) {
-      normalized = cleaned.replaceAll('.', '').replaceAll(',', '.');
-    } else if (cleaned.contains(',') && !cleaned.contains('.')) {
-      normalized = cleaned.replaceAll(',', '.');
-    } else {
-      normalized = cleaned.replaceAll(',', '').replaceAll('.', '');
-    }
-    return double.tryParse(normalized) ?? 0.0;
-  }
-
-  // Input widget reused
-  Widget _input(
-    String label,
-    TextEditingController ctrl, {
-    TextInputType keyboardType = TextInputType.multiline,
-    int? maxLines,
-  }) {
-    final theme = Theme.of(context).colorScheme;
-
-    return AnimatedSize(
-      duration: const Duration(milliseconds: 150),
-      curve: Curves.easeInOut,
+  // =========================
+  // INPUT
+  // =========================
+  Widget _input(String label, TextEditingController c) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
       child: TextField(
-        controller: ctrl,
-        keyboardType: keyboardType,
-        minLines: 1,
-        maxLines:
-            maxLines ?? (keyboardType == TextInputType.multiline ? null : 1),
+        controller: c,
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: const TextStyle(fontSize: 14),
-          filled: true,
-          fillColor: theme.surfaceContainerLowest,
           isDense: true,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: theme.outline.withOpacity(0.18)),
-          ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 12,
-          ),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         ),
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
         onChanged: (_) => setState(() {}),
       ),
     );
   }
 
-  // Confirm delete dialog (reused)
-  Future<bool> showConfirmDeleteDialog(BuildContext context) async {
-    final theme = Theme.of(context);
-    return await showDialog<bool>(
-          context: context,
-          barrierDismissible: true,
-          builder: (context) {
-            return AlertDialog(
-              backgroundColor: theme.colorScheme.surface,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
-              ),
-              title: Text(
-                "Hapus?",
-                style: TextStyle(color: theme.colorScheme.onSurface),
-              ),
-              content: Text(
-                "Apakah Anda yakin ingin menghapus item ini?",
-                style: TextStyle(
-                  color: theme.colorScheme.onSurface.withOpacity(0.8),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  child: Text(
-                    "Batal",
-                    style: TextStyle(color: theme.colorScheme.primary),
-                  ),
-                  onPressed: () => Navigator.pop(context, false),
-                ),
-                FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: theme.colorScheme.error,
-                    foregroundColor: theme.colorScheme.onError,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  onPressed: () => Navigator.pop(context, true),
-                  child: const Text(
-                    "Hapus",
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
-            );
-          },
-        ) ??
-        false;
+  void _success(String m) {
+    final ctx = overlaySnackbarKey.currentContext;
+    if (ctx != null) AppSnackbar.success(ctx, m);
   }
 }
+
+const TextStyle _th = TextStyle(fontWeight: FontWeight.bold, fontSize: 13);
