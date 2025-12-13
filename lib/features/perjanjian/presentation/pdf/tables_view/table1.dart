@@ -12,7 +12,7 @@ Future<PdfGrid> buildTable1(List<List<String>> table1) async {
   // Lebar kolom
   grid.columns[0].width = 30; // NO
   grid.columns[1].width = 145; // SASARAN
-  grid.columns[2].width = 145; // INDIKATOR KINERJA
+  grid.columns[2].width = 165; // INDIKATOR KINERJA
   grid.columns[3].width = 80; // SATUAN
   grid.columns[4].width = 80; // TARGET
   // === HEADER ===
@@ -31,6 +31,9 @@ Future<PdfGrid> buildTable1(List<List<String>> table1) async {
       alignment: PdfTextAlignment.center,
       lineAlignment: PdfVerticalAlignment.middle,
     )
+    ..backgroundBrush = PdfSolidBrush(
+      PdfColor(230, 230, 230), // abu abu tipis 🔥
+    )
     ..borders = PdfBorders(
       left: PdfPen(PdfColor(0, 0, 0), width: 1),
       right: PdfPen(PdfColor(0, 0, 0), width: 1),
@@ -47,14 +50,11 @@ Future<PdfGrid> buildTable1(List<List<String>> table1) async {
     final row = table1[i];
     final r = grid.rows.add();
 
-    r.cells[0].value = '${i + 1}';
-    r.cells[1].value = row.isNotEmpty ? (row[0] ?? '') : '';
-    r.cells[2].value = row.length > 1 ? (row[1] ?? '') : '';
-    r.cells[3].value = row.length > 3
-        ? (row[3] ?? '')
-        : row.length > 2
-        ? (row[2] ?? '')
-        : '';
+    r.cells[0].value = '${i + 1}'; // NO
+    r.cells[1].value = row.isNotEmpty ? row[0] : ''; // SASARAN
+    r.cells[2].value = row.length > 1 ? row[1] : ''; // INDIKATOR
+    r.cells[3].value = row.length > 2 ? row[2] : ''; // SATUAN
+    r.cells[4].value = row.length > 3 ? row[3] : ''; // TARGET
 
     // style body
     for (int c = 0; c < r.cells.count; c++) {
@@ -75,6 +75,9 @@ Future<PdfGrid> buildTable1(List<List<String>> table1) async {
     r.cells[1].stringFormat = PdfStringFormat(alignment: PdfTextAlignment.left);
     r.cells[2].stringFormat = PdfStringFormat(alignment: PdfTextAlignment.left);
     r.cells[3].stringFormat = PdfStringFormat(
+      alignment: PdfTextAlignment.center,
+    );
+    r.cells[4].stringFormat = PdfStringFormat(
       alignment: PdfTextAlignment.center,
     );
   }
