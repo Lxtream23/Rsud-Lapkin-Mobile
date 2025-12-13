@@ -118,6 +118,9 @@ class _CardTable3WidgetState extends State<CardTable3Widget> {
           itemBuilder: (_, i) => _programCard(i),
         ),
 
+        // ✅ TOMBOL TAMBAH PROGRAM UTAMA
+        _addMainProgramButton(),
+
         const SizedBox(height: 10),
         _footer(),
       ],
@@ -141,6 +144,29 @@ class _CardTable3WidgetState extends State<CardTable3Widget> {
           Expanded(flex: 2, child: Text("Anggaran", style: _th)),
           Expanded(flex: 2, child: Text("Ket", style: _th)),
         ],
+      ),
+    );
+  }
+  // =========================
+  // ADD MAIN PROGRAM BUTTON
+  // =========================
+
+  Widget _addMainProgramButton() {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: TextButton.icon(
+        icon: const Icon(Icons.add_circle_outline),
+        label: const Text(
+          "Tambah Program",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        onPressed: () {
+          _addRow();
+          setState(() {
+            openIndex = _rows.length - 1; // auto expand
+          });
+          _success("Program baru ditambahkan");
+        },
       ),
     );
   }
