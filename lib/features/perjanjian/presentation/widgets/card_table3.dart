@@ -118,9 +118,7 @@ class _CardTable3WidgetState extends State<CardTable3Widget> {
           itemBuilder: (_, i) => _programCard(i),
         ),
 
-        // ✅ TOMBOL TAMBAH PROGRAM UTAMA
         _addMainProgramButton(),
-
         const SizedBox(height: 10),
         _footer(),
       ],
@@ -147,10 +145,10 @@ class _CardTable3WidgetState extends State<CardTable3Widget> {
       ),
     );
   }
+
   // =========================
   // ADD MAIN PROGRAM BUTTON
   // =========================
-
   Widget _addMainProgramButton() {
     return Align(
       alignment: Alignment.centerLeft,
@@ -162,9 +160,7 @@ class _CardTable3WidgetState extends State<CardTable3Widget> {
         ),
         onPressed: () {
           _addRow();
-          setState(() {
-            openIndex = _rows.length - 1; // auto expand
-          });
+          setState(() => openIndex = _rows.length - 1);
           _success("Program baru ditambahkan");
         },
       ),
@@ -225,7 +221,6 @@ class _CardTable3WidgetState extends State<CardTable3Widget> {
               ),
             ),
           ),
-
           if (openIndex == i) _expanded(i, sub),
         ],
       ),
@@ -237,6 +232,7 @@ class _CardTable3WidgetState extends State<CardTable3Widget> {
   // =========================
   Widget _expanded(int i, List<Map<String, dynamic>> sub) {
     final row = _rows[i];
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
       child: Column(
@@ -248,71 +244,83 @@ class _CardTable3WidgetState extends State<CardTable3Widget> {
 
           for (int s = 0; s < sub.length; s++)
             Builder(
-              builder: (context) {
+              builder: (_) {
                 final List<Map<String, dynamic>> subSub = sub[s]["sub"];
-                return Column(
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          num([i + 1, s + 1]),
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _input("Sub Program", sub[s]["program"]),
-                        ),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.delete_outline,
-                            color: Colors.red,
+
+                return Padding(
+                  padding: const EdgeInsets.only(left: 16, bottom: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            num([i + 1, s + 1]),
+                            style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
-                          onPressed: () => _deleteSub(i, s),
-                        ),
-                      ],
-                    ),
+                          const SizedBox(width: 8),
+                          const Expanded(child: Text("Sub Program")),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.delete_outline,
+                              color: Colors.red,
+                            ),
+                            onPressed: () => _deleteSub(i, s),
+                          ),
+                        ],
+                      ),
+                      _input("Program", sub[s]["program"]),
+                      _input("Anggaran", sub[s]["anggaran"]),
+                      _input("Keterangan", sub[s]["keterangan"]),
 
-                    // SUB-SUB
-                    for (int ss = 0; ss < subSub.length; ss++)
-                      Padding(
-                        padding: const EdgeInsets.only(left: 32, bottom: 6),
-                        child: Row(
-                          children: [
-                            Text(
-                              num([i + 1, s + 1, ss + 1]),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
+                      for (int ss = 0; ss < subSub.length; ss++)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 24, bottom: 8),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    num([i + 1, s + 1, ss + 1]),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Expanded(
+                                    child: Text("Sub-Sub Program"),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.close, size: 18),
+                                    onPressed: () => _deleteSubSub(i, s, ss),
+                                  ),
+                                ],
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: _input(
-                                "Sub-Sub Program",
-                                subSub[ss]["program"],
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.close, size: 18),
-                              onPressed: () => _deleteSubSub(i, s, ss),
-                            ),
-                          ],
+                              _input("Program", subSub[ss]["program"]),
+                              _input("Anggaran", subSub[ss]["anggaran"]),
+                              _input("Keterangan", subSub[ss]["keterangan"]),
+                            ],
+                          ),
+                        ),
+
+                      Align(
+                        key: ValueKey("add-subsub-$i-$s"),
+                        alignment: Alignment.centerLeft,
+                        child: TextButton.icon(
+                          icon: const Icon(Icons.add, size: 18),
+                          label: const Text("Tambah Sub-Sub Program"),
+                          onPressed: () => _addSubSub(i, s),
                         ),
                       ),
-
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton.icon(
-                        icon: const Icon(Icons.add, size: 18),
-                        label: const Text("Tambah Sub-Sub"),
-                        onPressed: () => _addSubSub(i, s),
-                      ),
-                    ),
-                    const Divider(),
-                  ],
+                      const Divider(),
+                    ],
+                  ),
                 );
               },
             ),
 
+          // ✅ FIX UTAMA: tombol ini SELALU ada
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
