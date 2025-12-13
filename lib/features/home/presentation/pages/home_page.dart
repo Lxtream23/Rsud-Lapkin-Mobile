@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:rsud_lapkin_mobile/core/services/auth_service.dart';
 import 'package:rsud_lapkin_mobile/features/home/presentation/widgets/premium_menu_card.dart';
 import 'package:rsud_lapkin_mobile/config/app_colors.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -12,6 +13,32 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  Stream<Map<String, dynamic>> userProfileStream() {
+    final supabase = Supabase.instance.client;
+    final user = supabase.auth.currentUser;
+
+    if (user == null) {
+      throw Exception('User belum login');
+    }
+
+    return supabase
+        .from('profiles')
+        .stream(primaryKey: ['id'])
+        .eq('id', user.id)
+        .map((data) => data.first);
+  }
+
+  String getInitial(String name) {
+    if (name.isEmpty) return '?';
+    return name.trim()[0].toUpperCase();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    userProfileStream();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -169,7 +196,7 @@ class _HomePageState extends State<HomePage> {
     return Drawer(
       width: MediaQuery.of(context).size.width * 0.7,
       backgroundColor: const Color(
-        0xFFE6F7F1,
+        0xFFE6F7FB,
       ), // Warna body drawer (hijau muda)
       child: SafeArea(
         child: Column(
@@ -180,23 +207,55 @@ class _HomePageState extends State<HomePage> {
               width: double.infinity,
               color: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 20),
-              child: Column(
-                children: const [
-                  CircleAvatar(
-                    radius: 35,
-                    backgroundColor: Colors.grey,
-                    child: Icon(Icons.person, size: 45, color: Colors.white),
-                  ),
-                  SizedBox(height: 10),
-                  Text(
-                    'Nama Sesuai User yang login',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
+              child: StreamBuilder<Map<String, dynamic>>(
+                stream: userProfileStream(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) {
+                    return const CircularProgressIndicator();
+                  }
+
+                  final data = snapshot.data!;
+                  final String fullName = data['nama_lengkap'] ?? '-';
+                  final String? avatarUrl = data['foto_profil'];
+
+                  final bool hasAvatar =
+                      avatarUrl != null && avatarUrl.isNotEmpty;
+
+                  return Column(
+                    children: [
+                      CircleAvatar(
+                        radius: 45,
+                        backgroundColor: Colors.grey.shade300,
+                        backgroundImage: hasAvatar
+                            ? NetworkImage(avatarUrl!)
+                            : null,
+
+                        // 🔹 fallback
+                        child: !hasAvatar
+                            ? Text(
+                                getInitial(fullName),
+                                style: const TextStyle(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : null,
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      Text(
+                        fullName,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
 
@@ -218,6 +277,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                   _drawerItem(
                     icon: Icons.phone_outlined,
+                    iconColor: AppColors.primary,
                     text: 'Kontak',
                     onTap: () {
                       Navigator.pop(context);
@@ -286,7 +346,7 @@ class _HomePageState extends State<HomePage> {
   Widget _drawerItem({
     required IconData icon,
     required String text,
-    Color iconColor = Colors.black87,
+    Color iconColor = AppColors.primary,
     Color textColor = Colors.black87,
     required VoidCallback onTap,
   }) {

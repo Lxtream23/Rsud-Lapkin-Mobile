@@ -35,6 +35,8 @@ dependencies:
   syncfusion_flutter_datagrid: ^31.2.16
   syncfusion_flutter_pdf: ^31.2.16
 
+  cached_network_image: ^3.3.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
