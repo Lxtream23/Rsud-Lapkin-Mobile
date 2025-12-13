@@ -98,7 +98,7 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
       "program": TextEditingController(),
       "anggaran": TextEditingController(),
       "keterangan": TextEditingController(),
-      "sub": <TextEditingController>[],
+      "sub": <Map<String, TextEditingController>>[],
     };
     setState(() => _rows.add(map));
   }
@@ -153,13 +153,15 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
   // Sub-row management
   // -------------------------
   void _addSubRow(int parentIndex) {
-    if (parentIndex < 0 || parentIndex >= _rows.length) return;
+    final subList =
+        _rows[parentIndex]['sub'] as List<Map<String, TextEditingController>>;
 
-    final subList = _rows[parentIndex]['sub'] as List<TextEditingController>;
-    final ctrl = TextEditingController();
-    subList.add(ctrl);
+    subList.add({
+      "program": TextEditingController(),
+      "anggaran": TextEditingController(),
+      "keterangan": TextEditingController(),
+    });
 
-    // buka panel jika belum terbuka
     setState(() {
       openIndex = parentIndex;
     });
@@ -167,33 +169,67 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
 
   void _deleteSubRow(int parent, int index) {
     if (parent < 0 || parent >= _rows.length) return;
-    final subList = _rows[parent]['sub'] as List<TextEditingController>;
+
+    final subList =
+        _rows[parent]['sub'] as List<Map<String, TextEditingController>>;
+
     if (index < 0 || index >= subList.length) return;
 
-    // Jika sub ini kosong -> langsung hapus dan kembalikan tampilan default
-    final text = subList[index].text.trim();
-    if (text.isEmpty) {
-      // hapus controller
-      try {
-        subList[index].dispose();
-      } catch (_) {}
+    final sub = subList[index];
+
+    final programText = sub['program']?.text.trim() ?? '';
+    final anggaranText = sub['anggaran']?.text.trim() ?? '';
+    final keteranganText = sub['keterangan']?.text.trim() ?? '';
+
+    final isEmpty =
+        programText.isEmpty && anggaranText.isEmpty && keteranganText.isEmpty;
+
+    // 🔹 Jika semua field kosong → langsung hapus
+    if (isEmpty) {
+      for (final controller in sub.values) {
+        try {
+          controller.dispose();
+        } catch (_) {}
+      }
+
       subList.removeAt(index);
       setState(() {});
       _showDeleteSuccess("Sub-program dihapus");
       return;
     }
 
-    // jika tidak kosong, tanyakan konfirmasi dulu
-    showConfirmDeleteDialog(context).then((ok) {
-      if (ok) {
-        try {
-          subList[index].dispose();
-        } catch (_) {}
-        subList.removeAt(index);
-        setState(() {});
-        _showDeleteSuccess("Sub-program dihapus");
-      }
-    });
+    // 🔹 Jika ada isi → konfirmasi dulu
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Hapus Sub Program"),
+        content: const Text(
+          "Sub program ini memiliki data.\nApakah Anda yakin ingin menghapusnya?",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Batal"),
+          ),
+          TextButton(
+            onPressed: () {
+              for (final controller in sub.values) {
+                try {
+                  controller.dispose();
+                } catch (_) {}
+              }
+
+              subList.removeAt(index);
+              Navigator.pop(context);
+
+              setState(() {});
+              _showDeleteSuccess("Sub-program dihapus");
+            },
+            child: const Text("Hapus", style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
   }
 
   // -------------------------
@@ -418,7 +454,7 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
     final programCtrl = _rows[i]['program'] as TextEditingController;
     final anggaranCtrl = _rows[i]['anggaran'] as TextEditingController;
     final ketCtrl = _rows[i]['keterangan'] as TextEditingController;
-    final subList = _rows[i]['sub'] as List<TextEditingController>;
+    final subList = _rows[i]['sub'] as List<Map<String, TextEditingController>>;
 
     return Card(
       color: const Color(0xFFBEF8FF),
@@ -534,48 +570,57 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
                       children: [
                         for (int si = 0; si < subList.length; si++)
                           Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: Row(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: Column(
                               children: [
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey.shade100,
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Text(
-                                    "${i + 1}.${si + 1}",
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade100,
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Text(
+                                        "${i + 1}.${si + 1}",
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
                                     ),
-                                  ),
+                                    const SizedBox(width: 8),
+
+                                    Expanded(
+                                      child: _input(
+                                        "Sub Program",
+                                        subList[si]['program']!,
+                                      ),
+                                    ),
+
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.delete_outline,
+                                        color: Colors.red,
+                                      ),
+                                      onPressed: () => _deleteSubRow(i, si),
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(width: 8),
 
-                                Expanded(
-                                  child: _input("Sub Program", subList[si]),
+                                const SizedBox(height: 6),
+
+                                _input(
+                                  "Sub Anggaran",
+                                  subList[si]['anggaran']!,
+                                  keyboardType: TextInputType.number,
                                 ),
 
-                                const SizedBox(width: 8),
+                                const SizedBox(height: 6),
 
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.delete_outline,
-                                    color: Colors.red,
-                                  ),
-                                  onPressed: () {
-                                    final txt = subList[si].text.trim();
-                                    if (txt.isEmpty) {
-                                      _deleteSubRow(i, si);
-                                    } else {
-                                      showConfirmDeleteDialog(context).then((
-                                        ok,
-                                      ) {
-                                        if (ok) _deleteSubRow(i, si);
-                                      });
-                                    }
-                                  },
+                                _input(
+                                  "Sub Keterangan",
+                                  subList[si]['keterangan']!,
+                                  maxLines: 2,
                                 ),
                               ],
                             ),
@@ -650,19 +695,26 @@ class _CardTable3WidgetState extends State<CardTable3Widget>
   }
 
   // Input widget reused
-  Widget _input(String label, TextEditingController ctrl) {
+  Widget _input(
+    String label,
+    TextEditingController ctrl, {
+    TextInputType keyboardType = TextInputType.multiline,
+    int? maxLines,
+  }) {
     final theme = Theme.of(context).colorScheme;
+
     return AnimatedSize(
       duration: const Duration(milliseconds: 150),
       curve: Curves.easeInOut,
       child: TextField(
         controller: ctrl,
+        keyboardType: keyboardType,
         minLines: 1,
-        maxLines: null,
-        keyboardType: TextInputType.multiline,
+        maxLines:
+            maxLines ?? (keyboardType == TextInputType.multiline ? null : 1),
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: TextStyle(fontSize: 14),
+          labelStyle: const TextStyle(fontSize: 14),
           filled: true,
           fillColor: theme.surfaceContainerLowest,
           isDense: true,
