@@ -101,13 +101,109 @@ class _CardTable3WidgetState extends State<CardTable3Widget> {
     return "Rp ${b.toString()}";
   }
 
+  Future<bool> showConfirmDeleteDialog(BuildContext context) async {
+    final theme = Theme.of(context);
+
+    return await showDialog<bool>(
+          context: context,
+          barrierDismissible: true,
+          builder: (context) {
+            return AlertDialog(
+              backgroundColor: theme.colorScheme.surface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+              title: Text(
+                "Hapus Baris?",
+                style: TextStyle(color: theme.colorScheme.onSurface),
+              ),
+              content: Text(
+                "Apakah Anda yakin ingin menghapus baris ini?",
+                style: TextStyle(
+                  color: theme.colorScheme.onSurface.withOpacity(0.8),
+                ),
+              ),
+              actionsPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
+              ),
+              actions: [
+                TextButton(
+                  child: Text(
+                    "Batal",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                  onPressed: () => Navigator.pop(context, false),
+                ),
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: theme.colorScheme.error,
+                    foregroundColor: theme.colorScheme.onError,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text(
+                    "Hapus",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+  }
+
+  // SHOW DELETE SUCCESS SNACKBAR
+  void _showDeleteSuccess(String msg) {
+    final ctx = overlaySnackbarKey.currentContext;
+    if (ctx == null) {
+      debugPrint("Overlay NULL → Snackbar gagal ditampilkan");
+      return;
+    }
+
+    AppSnackbar.success(ctx, msg);
+  }
+
+  // SHOW DELETE ERROR SNACKBAR
+  void _showDeleteError(String msg) {
+    final ctx = overlaySnackbarKey.currentContext;
+    if (ctx == null) return;
+
+    AppSnackbar.error(ctx, msg);
+  }
+
   // =========================
   // UI
   // =========================
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context).colorScheme;
+
     return Column(
       children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(
+              "TABEL PROGRAM & ANGGARAN",
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        // BARIS COUNT CHIP
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [_labelChip("${_rows.length} baris")],
+        ),
+        const SizedBox(height: 8),
+
         _header(),
         const SizedBox(height: 8),
 
@@ -132,7 +228,7 @@ class _CardTable3WidgetState extends State<CardTable3Widget> {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.blueGrey.shade100,
+        color: Color(0xFFBEF8FF),
         borderRadius: BorderRadius.circular(10),
       ),
       child: const Row(
@@ -150,13 +246,18 @@ class _CardTable3WidgetState extends State<CardTable3Widget> {
   // ADD MAIN PROGRAM BUTTON
   // =========================
   Widget _addMainProgramButton() {
+    final theme = Theme.of(context).colorScheme;
     return Align(
       alignment: Alignment.centerLeft,
       child: TextButton.icon(
-        icon: const Icon(Icons.add_circle_outline),
-        label: const Text(
-          "Tambah Program",
-          style: TextStyle(fontWeight: FontWeight.bold),
+        icon: Icon(Icons.add_circle, color: theme.primary),
+        label: Text(
+          "Tambah Baris",
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: theme.primary,
+          ),
         ),
         onPressed: () {
           _addRow();
@@ -175,6 +276,7 @@ class _CardTable3WidgetState extends State<CardTable3Widget> {
     final sub = row["sub"] as List<Map<String, dynamic>>;
 
     return Card(
+      color: Color(0xFFBEF8FF),
       elevation: 2,
       margin: const EdgeInsets.only(bottom: 6),
       child: Column(
@@ -187,11 +289,24 @@ class _CardTable3WidgetState extends State<CardTable3Widget> {
                 children: [
                   SizedBox(
                     width: 40,
-                    child: Text(
-                      num([i + 1]),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          num([i + 1]),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
+
                   Expanded(
                     flex: 4,
                     child: Text(
@@ -215,7 +330,13 @@ class _CardTable3WidgetState extends State<CardTable3Widget> {
                   ),
                   IconButton(
                     icon: const Icon(Icons.delete_outline, color: Colors.red),
-                    onPressed: () => _deleteRow(i),
+                    onPressed: () async {
+                      final ok = await showConfirmDeleteDialog(context);
+                      if (!ok) return;
+
+                      _deleteRow(i);
+                      _showDeleteSuccess("Program dihapus");
+                    },
                   ),
                 ],
               ),
@@ -231,6 +352,7 @@ class _CardTable3WidgetState extends State<CardTable3Widget> {
   // EXPANDED FORM
   // =========================
   Widget _expanded(int i, List<Map<String, dynamic>> sub) {
+    final theme = Theme.of(context).colorScheme;
     final row = _rows[i];
 
     return Padding(
@@ -254,18 +376,40 @@ class _CardTable3WidgetState extends State<CardTable3Widget> {
                     children: [
                       Row(
                         children: [
-                          Text(
-                            num([i + 1, s + 1]),
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              num([i + 1, s + 1]),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
                           ),
+
                           const SizedBox(width: 8),
-                          const Expanded(child: Text("Sub Program")),
+                          const Expanded(
+                            child: Text(
+                              "Sub Program",
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ),
                           IconButton(
                             icon: const Icon(
                               Icons.delete_outline,
                               color: Colors.red,
                             ),
-                            onPressed: () => _deleteSub(i, s),
+                            onPressed: () async {
+                              final ok = await showConfirmDeleteDialog(context);
+                              if (!ok) return;
+
+                              _deleteSub(i, s);
+                              _showDeleteSuccess("Sub program dihapus");
+                            },
                           ),
                         ],
                       ),
@@ -281,18 +425,36 @@ class _CardTable3WidgetState extends State<CardTable3Widget> {
                             children: [
                               Row(
                                 children: [
-                                  Text(
-                                    num([i + 1, s + 1, ss + 1]),
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade100,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      num([i + 1, s + 1, ss + 1]),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
                                     ),
                                   ),
+
                                   const SizedBox(width: 8),
                                   const Expanded(
-                                    child: Text("Sub-Sub Program"),
+                                    child: Text(
+                                      "Sub-Sub Program",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
                                   ),
                                   IconButton(
-                                    icon: const Icon(Icons.close, size: 18),
+                                    icon: const Icon(
+                                      Icons.close,
+                                      color: Colors.red,
+                                      size: 18,
+                                    ),
                                     onPressed: () => _deleteSubSub(i, s, ss),
                                   ),
                                 ],
@@ -308,8 +470,19 @@ class _CardTable3WidgetState extends State<CardTable3Widget> {
                         key: ValueKey("add-subsub-$i-$s"),
                         alignment: Alignment.centerLeft,
                         child: TextButton.icon(
-                          icon: const Icon(Icons.add, size: 18),
-                          label: const Text("Tambah Sub-Sub Program"),
+                          icon: Icon(
+                            Icons.add_circle,
+                            color: theme.primary,
+                            size: 18,
+                          ),
+                          label: Text(
+                            "Tambah Sub-Sub Program",
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: theme.primary,
+                            ),
+                          ),
                           onPressed: () => _addSubSub(i, s),
                         ),
                       ),
@@ -324,8 +497,15 @@ class _CardTable3WidgetState extends State<CardTable3Widget> {
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
-              icon: const Icon(Icons.add),
-              label: const Text("Tambah Sub Program"),
+              icon: Icon(Icons.add_circle, color: theme.primary),
+              label: Text(
+                "Tambah Sub Program",
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: theme.primary,
+                ),
+              ),
               onPressed: () => _addSub(i),
             ),
           ),
@@ -341,7 +521,7 @@ class _CardTable3WidgetState extends State<CardTable3Widget> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.grey.shade200,
+        color: Color(0xFFBEF8FF),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
@@ -350,7 +530,7 @@ class _CardTable3WidgetState extends State<CardTable3Widget> {
             flex: 6,
             child: Text(
               "JUMLAH",
-              style: TextStyle(fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
             ),
           ),
           Expanded(
@@ -358,7 +538,7 @@ class _CardTable3WidgetState extends State<CardTable3Widget> {
             child: Text(
               rupiah(totalAnggaran),
               textAlign: TextAlign.end,
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
             ),
           ),
         ],
@@ -370,19 +550,52 @@ class _CardTable3WidgetState extends State<CardTable3Widget> {
   // INPUT
   // =========================
   Widget _input(String label, TextEditingController c) {
+    final theme = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: TextField(
-        controller: c,
-        decoration: InputDecoration(
-          labelText: label,
-          isDense: true,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+      padding: const EdgeInsets.only(bottom: 10), // 👈 JARAK ANTAR INPUT
+      child: AnimatedSize(
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeInOut,
+        child: TextField(
+          controller: c,
+          minLines: 1,
+          maxLines: null,
+          keyboardType: TextInputType.multiline,
+          decoration: InputDecoration(
+            labelText: label,
+            labelStyle: const TextStyle(fontSize: 14),
+            filled: true,
+            fillColor: theme.surfaceContainerLowest,
+            isDense: true,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: theme.outline.withOpacity(0.18)),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 12,
+            ),
+          ),
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+          onChanged: (_) => setState(() {}),
         ),
-        onChanged: (_) => setState(() {}),
       ),
     );
   }
+
+  // LABEL CHIP
+  Widget _labelChip(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Color(0xFFBEF8FF),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(text, style: const TextStyle(fontWeight: FontWeight.w600)),
+    );
+  }
+
+  // SNACKBAR
 
   void _success(String m) {
     final ctx = overlaySnackbarKey.currentContext;
