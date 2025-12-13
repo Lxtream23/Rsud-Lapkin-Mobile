@@ -118,7 +118,7 @@ class _PremiumMenuCardState extends State<PremiumMenuCard> {
                             // child: _buildIconCircle(cs),
                             child: Icon(
                               widget.icon,
-                              size: 55,
+                              size: 80,
                               color: Colors.blueAccent,
                             ),
                           )
@@ -167,6 +167,7 @@ class _PremiumMenuCardState extends State<PremiumMenuCard> {
                                       "BUKA",
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
+                                        fontSize: 14,
                                       ),
                                     ),
                                   ),

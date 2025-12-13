@@ -30,7 +30,7 @@ class _HomePageState extends State<HomePage> {
             Image.asset('assets/images/logo2.png', height: 30),
             const SizedBox(width: 8),
             const Text(
-              'LAPKIN',
+              'PERKIN',
               style: TextStyle(
                 color: AppColors.primary,
                 fontWeight: FontWeight.bold,
@@ -52,85 +52,93 @@ class _HomePageState extends State<HomePage> {
           width: double.infinity,
           color: const Color(0xFFE6F7FB),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.start,
+            //crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // Bagian Tengah (konten utama)
               Expanded(
-                child: Center(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 30,
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        const Text(
-                          'Selamat datang di Sistem\nLaporan Kinerja RSUD Bangil.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 30,
+                      ),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: constraints.maxHeight,
                         ),
-                        const SizedBox(height: 10),
-                        const Text(
-                          'Pilih menu di bawah untuk melanjutkan',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.black54),
-                        ),
-                        const SizedBox(height: 40),
-                        // PremiumMenuCard(
-                        //   //icon: Icons.description_outlined,
-                        //   icon: Icons.article_rounded,
-                        //   title: 'Perjanjian',
-                        //   onTap: () {
-                        //     Navigator.pushNamed(context, '/perjanjian');
-                        //   },
-                        // ),
-                        // const SizedBox(height: 20),
-                        // PremiumMenuCard(
-                        //   //icon: Icons.show_chart_outlined,
-                        //   icon: Icons.show_chart_rounded,
-                        //   title: 'Laporan Kinerja',
-                        //   onTap: () {
-                        //     Navigator.pushNamed(context, '/laporanKinerja');
-                        //   },
-                        // ),
-                        /// Bungkus card dengan Center agar ukurannya proporsional
-                        Center(
-                          child: PremiumMenuCard(
-                            icon: Icons.description_outlined,
-                            title: "Perjanjian",
-                            heroTag: "menu-perjanjian",
-                            maxWidth: 250, // atur lebar card di sini
-                            maxHeight: 145, // atur tinggi card di sini
-                            onTap: () {
-                              Navigator.pushNamed(context, '/perjanjian');
-                            },
-                          ),
-                        ),
+                        child: IntrinsicHeight(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              const Text(
+                                'Selamat datang di Sistem\nPerjanjian Kinerja RSUD Bangil.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              const Text(
+                                'Klik tombol menu di bawah untuk melanjutkan',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: Colors.black54),
+                              ),
+                              const Spacer(),
+                              // PremiumMenuCard(
+                              //   //icon: Icons.description_outlined,
+                              //   icon: Icons.article_rounded,
+                              //   title: 'Perjanjian',
+                              //   onTap: () {
+                              //     Navigator.pushNamed(context, '/perjanjian');
+                              //   },
+                              // ),
+                              // const SizedBox(height: 20),
+                              // PremiumMenuCard(
+                              //   //icon: Icons.show_chart_outlined,
+                              //   icon: Icons.show_chart_rounded,
+                              //   title: 'Laporan Kinerja',
+                              //   onTap: () {
+                              //     Navigator.pushNamed(context, '/laporanKinerja');
+                              //   },
+                              // ),
+                              /// Bungkus card dengan Center agar ukurannya proporsional
+                              Center(
+                                child: PremiumMenuCard(
+                                  icon: Icons.description_outlined,
+                                  title: "Perjanjian Kinerja",
+                                  heroTag: "menu-perjanjian",
+                                  maxWidth: 275, // atur lebar card di sini
+                                  maxHeight: 180, // atur tinggi card di sini
+                                  onTap: () {
+                                    Navigator.pushNamed(context, '/perjanjian');
+                                  },
+                                ),
+                              ),
 
-                        const SizedBox(height: 20),
-
-                        Center(
-                          child: PremiumMenuCard(
-                            icon: Icons.show_chart_outlined,
-                            title: "Laporan Kinerja",
-                            heroTag: "menu-kinerja",
-                            maxWidth: 250, // atur lebar card di sini
-                            maxHeight: 145, // atur tinggi card di sini
-                            onTap: () {
-                              Navigator.pushNamed(context, '/laporanKinerja');
-                            },
+                              const SizedBox(height: 20),
+                              const Spacer(),
+                              // Center(
+                              //   child: PremiumMenuCard(
+                              //     icon: Icons.show_chart_outlined,
+                              //     title: "Laporan Kinerja",
+                              //     heroTag: "menu-kinerja",
+                              //     maxWidth: 250, // atur lebar card di sini
+                              //     maxHeight: 145, // atur tinggi card di sini
+                              //     onTap: () {
+                              //       Navigator.pushNamed(context, '/laporanKinerja');
+                              //     },
+                              //   ),
+                              // ),
+                            ],
                           ),
                         ),
-                      ],
-                    ),
-                  ),
+                      ),
+                    );
+                  },
                 ),
               ),
 
