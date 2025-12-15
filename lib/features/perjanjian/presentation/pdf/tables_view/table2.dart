@@ -2,8 +2,8 @@ import 'package:syncfusion_flutter_pdf/pdf.dart';
 import '../utils/pdf_fonts.dart';
 
 Future<PdfGrid> buildTable2(List<List<String>> table2) async {
-  PdfFont poppins = await getPoppinsFont(size: 11);
-  PdfFont poppinsBold = await getPoppinsFont(size: 11, bold: true);
+  PdfFont poppins = await getPoppinsFont(size: 10);
+  PdfFont poppinsBold = await getPoppinsFont(size: 10, bold: true);
 
   final grid = PdfGrid();
 
