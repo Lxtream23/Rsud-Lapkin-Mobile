@@ -19,6 +19,8 @@ Future<PdfGrid> buildTable1(List<List<String>> table1) async {
   grid.headers.add(1);
   final header = grid.headers[0];
 
+  grid.repeatHeader = true;
+
   header.cells[0].value = 'NO';
   header.cells[1].value = 'SASARAN';
   header.cells[2].value = 'INDIKATOR KINERJA';

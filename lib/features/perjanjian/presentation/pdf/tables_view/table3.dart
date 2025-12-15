@@ -18,6 +18,8 @@ Future<PdfGrid> buildTable3(List<Map<String, dynamic>> table3) async {
   grid.headers.add(1);
   final h = grid.headers[0];
 
+  grid.repeatHeader = true;
+
   h.cells[0].value = 'No';
   h.cells[1].value = 'Program';
   h.cells[2].value = 'Anggaran';

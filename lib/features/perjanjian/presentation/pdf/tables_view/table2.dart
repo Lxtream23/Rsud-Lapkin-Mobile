@@ -25,6 +25,8 @@ Future<PdfGrid> buildTable2(List<List<String>> table2) async {
   // ============================================================
   grid.headers.add(2);
 
+  grid.repeatHeader = true;
+
   // HEADER 1
   final h1 = grid.headers[0];
 
