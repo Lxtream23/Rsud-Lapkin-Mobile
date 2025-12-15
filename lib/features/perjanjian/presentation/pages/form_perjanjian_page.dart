@@ -190,8 +190,8 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     try {
       final t3State = table3Key.currentState;
 
-      if (t3State != null && (t3State as dynamic).getRowsForPdf != null) {
-        result['table3'] = (t3State as dynamic).getRowsForPdf();
+      if (t3State != null && (t3State as dynamic).getRowsAsStrings != null) {
+        result['table3'] = (t3State as dynamic).getRowsAsStrings();
       } else {
         result['table3'] = <Map<String, dynamic>>[];
       }

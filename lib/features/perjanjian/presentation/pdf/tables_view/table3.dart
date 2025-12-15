@@ -1,167 +1,154 @@
-// lib/pdf_builder/table3.dart
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 import '../utils/format_rupiah.dart';
 import '../utils/pdf_fonts.dart';
 
 Future<PdfGrid> buildTable3(List<Map<String, dynamic>> table3) async {
-  PdfFont poppins = await getPoppinsFont(size: 12);
-  PdfFont poppinsBold = await getPoppinsFont(size: 12, bold: true);
+  final poppins = await getPoppinsFont(size: 10);
+  final poppinsBold = await getPoppinsFont(size: 10, bold: true);
 
   final grid = PdfGrid();
   grid.columns.add(count: 4);
 
-  // Lebar kolom
-  grid.columns[0].width = 30; // NO
-  grid.columns[1].width = 250; // PROGRAM
-  grid.columns[2].width = 100; // ANGGARAN
-  grid.columns[3].width = 100; // KETERANGAN
+  grid.columns[0].width = 35; // NO
+  grid.columns[1].width = 260; // PROGRAM
+  grid.columns[2].width = 130; // ANGGARAN
+  grid.columns[3].width = 75; // KET
 
-  // ---------------- HEADER ----------------
+  // ================= HEADER =================
   grid.headers.add(1);
-  final header = grid.headers[0];
-  header.cells[0].value = 'NO';
-  header.cells[1].value = 'PROGRAM';
-  header.cells[2].value = 'ANGGARAN';
-  header.cells[3].value = 'KETERANGAN';
+  final h = grid.headers[0];
 
-  final headerStyle = PdfGridCellStyle()
-    ..font = poppinsBold
-    ..stringFormat = PdfStringFormat(
-      alignment: PdfTextAlignment.center,
-      lineAlignment: PdfVerticalAlignment.middle,
-    )
-    ..backgroundBrush = PdfSolidBrush(
-      PdfColor(230, 230, 230), // abu abu tipis 🔥
-    )
-    ..borders = PdfBorders(
-      left: PdfPen(PdfColor(0, 0, 0)),
-      right: PdfPen(PdfColor(0, 0, 0)),
-      top: PdfPen(PdfColor(0, 0, 0)),
-      bottom: PdfPen(PdfColor(0, 0, 0)),
-    );
+  h.cells[0].value = 'No';
+  h.cells[1].value = 'Program';
+  h.cells[2].value = 'Anggaran';
+  h.cells[3].value = 'Ket';
 
-  for (int i = 0; i < header.cells.count; i++) {
-    header.cells[i].style = headerStyle;
-  }
-
-  int no = 1;
-  double totalAnggaran = 0;
-
-  // ---------------- BODY ----------------
-  for (final item in table3) {
-    final program = (item['program'] ?? '').toString();
-    final angRaw = (item['anggaran'] ?? '').toString();
-    final keter = (item['keterangan'] ?? '').toString();
-    final subs = (item['sub'] ?? [])
-        .cast<dynamic>()
-        .map((s) => s?.toString() ?? '')
-        .toList();
-
-    // Total hanya dari baris utama
-    final digits = angRaw.replaceAll(RegExp(r'[^0-9]'), '');
-    final numVal = double.tryParse(digits) ?? 0.0;
-    totalAnggaran += numVal;
-
-    // -------- ROW UTAMA (BOLD) --------
-    final mainRow = grid.rows.add();
-    mainRow.cells[0].value = '$no';
-    mainRow.cells[1].value = program;
-    mainRow.cells[2].value = formatRupiah(angRaw);
-    mainRow.cells[3].value = keter;
-
-    for (int i = 0; i < mainRow.cells.count; i++) {
-      final cell = mainRow.cells[i];
-      cell.style = PdfGridCellStyle()
-        ..font = poppinsBold
-        ..borders = PdfBorders(
-          left: PdfPen(PdfColor(0, 0, 0)),
-          right: PdfPen(PdfColor(0, 0, 0)),
-          top: PdfPen(PdfColor(0, 0, 0)),
-          bottom: PdfPen(PdfColor(0, 0, 0)),
-        );
-    }
-
-    mainRow.cells[0].stringFormat = PdfStringFormat(
-      alignment: PdfTextAlignment.center,
-    );
-    mainRow.cells[1].stringFormat = PdfStringFormat(
-      alignment: PdfTextAlignment.left,
-    );
-    mainRow.cells[2].stringFormat = PdfStringFormat(
-      alignment: PdfTextAlignment.right,
-    );
-    mainRow.cells[3].stringFormat = PdfStringFormat(
-      alignment: PdfTextAlignment.center,
-    );
-
-    // -------- SUB ROWS (REGULAR) --------
-    int idx = 1;
-    for (final s in subs) {
-      final r = grid.rows.add();
-
-      r.cells[0].value = '$no.$idx';
-      r.cells[1].value = '   $s';
-      r.cells[2].value = formatRupiah(angRaw); // mengikuti parent
-      r.cells[3].value = '';
-
-      for (int i = 0; i < r.cells.count; i++) {
-        final cell = r.cells[i];
-        cell.style = PdfGridCellStyle()
-          ..font = poppins
-          ..borders = PdfBorders(
-            left: PdfPen(PdfColor(0, 0, 0)),
-            right: PdfPen(PdfColor(0, 0, 0)),
-            top: PdfPen(PdfColor(0, 0, 0)),
-            bottom: PdfPen(PdfColor(0, 0, 0)),
-          );
-      }
-
-      r.cells[0].stringFormat = PdfStringFormat(
-        alignment: PdfTextAlignment.center,
-      );
-      r.cells[1].stringFormat = PdfStringFormat(
-        alignment: PdfTextAlignment.left,
-      );
-      r.cells[2].stringFormat = PdfStringFormat(
-        alignment: PdfTextAlignment.right,
-      );
-
-      idx++;
-    }
-
-    no++;
-  }
-
-  // ---------------- TOTAL ROW ----------------
-  final totalRow = grid.rows.add();
-  totalRow.cells[0].value = '';
-  totalRow.cells[1].value = 'JUMLAH';
-  totalRow.cells[2].value = formatRupiah(totalAnggaran.toInt().toString());
-  totalRow.cells[3].value = '';
-
-  for (int i = 0; i < totalRow.cells.count; i++) {
-    final cell = totalRow.cells[i];
-    cell.style = PdfGridCellStyle()
-      ..font = poppinsBold
-      ..borders = PdfBorders(
+  for (int i = 0; i < h.cells.count; i++) {
+    h.cells[i].style = PdfGridCellStyle(
+      font: poppinsBold,
+      backgroundBrush: PdfSolidBrush(
+        PdfColor(230, 230, 230), // 👈 HEADER ABU-ABU TIPIS
+      ),
+      borders: PdfBorders(
         left: PdfPen(PdfColor(0, 0, 0)),
         right: PdfPen(PdfColor(0, 0, 0)),
         top: PdfPen(PdfColor(0, 0, 0)),
         bottom: PdfPen(PdfColor(0, 0, 0)),
-      );
-  }
-  // ➜ CENTER TEXT "JUMLAH"
-  totalRow.cells[1].stringFormat = PdfStringFormat(
-    alignment: PdfTextAlignment.center,
-    lineAlignment: PdfVerticalAlignment.middle,
-  );
+      ),
+    );
 
-  // Align anggaran to right
-  totalRow.cells[2].stringFormat = PdfStringFormat(
-    alignment: PdfTextAlignment.right,
-  );
+    h.cells[i].stringFormat = PdfStringFormat(
+      alignment: PdfTextAlignment.center,
+      lineAlignment: PdfVerticalAlignment.middle,
+    );
+  }
+
+  double totalAnggaran = 0;
+
+  // ================= BODY =================
+  for (int i = 0; i < table3.length; i++) {
+    final row = table3[i];
+
+    final ang = _parse(row['anggaran']);
+    totalAnggaran += ang;
+
+    // ===== BARIS UTAMA (BOLD) =====
+    _addRow(
+      grid,
+      no: '${i + 1}',
+      program: row['program'] ?? '',
+      anggaran: row['anggaran'] ?? '',
+      ket: row['keterangan'] ?? '',
+      font: poppinsBold,
+    );
+
+    // ===== SUB & SUB-SUB (REGULAR) =====
+    _renderSub(grid, row['sub'] ?? [], parentNo: '${i + 1}', font: poppins);
+  }
+
+  // ================= TOTAL =================
+  final t = grid.rows.add();
+  t.cells[0].value = '';
+  t.cells[1].value = 'JUMLAH';
+  t.cells[2].value = formatRupiah(totalAnggaran.toInt().toString());
+  t.cells[3].value = '';
+
+  for (int i = 0; i < t.cells.count; i++) {
+    t.cells[i].style = _cellStyle(poppinsBold);
+  }
+
+  t.cells[1].stringFormat = PdfStringFormat(alignment: PdfTextAlignment.right);
+  t.cells[2].stringFormat = PdfStringFormat(alignment: PdfTextAlignment.right);
 
   grid.style.cellPadding = PdfPaddings(left: 4, right: 4, top: 3, bottom: 3);
 
   return grid;
 }
+
+// ================= SUB RENDER =================
+void _renderSub(
+  PdfGrid grid,
+  List subs, {
+  required String parentNo,
+  required PdfFont font,
+}) {
+  for (int i = 0; i < subs.length; i++) {
+    final s = subs[i];
+    final no = '$parentNo.${i + 1}';
+
+    _addRow(
+      grid,
+      no: no,
+      program: s['program'] ?? '',
+      anggaran: s['anggaran'] ?? '', // ✅ FIX
+      ket: s['keterangan'] ?? '',
+      font: font,
+    );
+
+    if (s['sub'] != null && s['sub'].isNotEmpty) {
+      _renderSub(grid, s['sub'], parentNo: no, font: font);
+    }
+  }
+}
+
+// ================= ADD ROW =================
+void _addRow(
+  PdfGrid grid, {
+  required String no,
+  required String program,
+  required String anggaran,
+  required String ket,
+  required PdfFont font,
+}) {
+  final r = grid.rows.add();
+
+  r.cells[0].value = no;
+  r.cells[1].value = program;
+  r.cells[2].value = formatRupiah(anggaran);
+  r.cells[3].value = ket;
+
+  for (int i = 0; i < r.cells.count; i++) {
+    r.cells[i].style = _cellStyle(font);
+  }
+
+  r.cells[0].stringFormat = PdfStringFormat(alignment: PdfTextAlignment.center);
+  r.cells[1].stringFormat = PdfStringFormat(alignment: PdfTextAlignment.left);
+  r.cells[2].stringFormat = PdfStringFormat(alignment: PdfTextAlignment.right);
+  r.cells[3].stringFormat = PdfStringFormat(alignment: PdfTextAlignment.center);
+}
+
+// ================= STYLE =================
+PdfGridCellStyle _cellStyle(PdfFont font) {
+  return PdfGridCellStyle(
+    font: font,
+    borders: PdfBorders(
+      left: PdfPen(PdfColor(0, 0, 0)),
+      right: PdfPen(PdfColor(0, 0, 0)),
+      top: PdfPen(PdfColor(0, 0, 0)),
+      bottom: PdfPen(PdfColor(0, 0, 0)),
+    ),
+  );
+}
+
+double _parse(String? v) =>
+    double.tryParse((v ?? '').replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
