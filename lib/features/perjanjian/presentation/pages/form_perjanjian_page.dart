@@ -6,6 +6,7 @@ import '../../../../config/app_text_style.dart';
 import '../../presentation/widgets/card_table1.dart';
 import '../../presentation/widgets/card_table2.dart';
 import '../../presentation/widgets/card_table3.dart';
+import '../../presentation/widgets/card_table4.dart';
 import 'package:rsud_lapkin_mobile/core/widgets/ui_helpers/app_snackbar.dart';
 
 import 'package:rsud_lapkin_mobile/features/perjanjian/presentation/pdf/perjanjian_pdf_generator.dart';
@@ -63,6 +64,7 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
   final GlobalKey table1Key = GlobalKey();
   final GlobalKey table2Key = GlobalKey();
   final GlobalKey table3Key = GlobalKey();
+  final GlobalKey table4Key = GlobalKey();
 
   @override
   void initState() {
@@ -780,6 +782,13 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                     CardTable2Widget(key: table2Key),
 
                     const SizedBox(height: 20),
+
+                    // === Card-based Table ANGGARAN DETAILED ===
+                    CardTable4Widget(key: table4Key),
+
+                    const SizedBox(height: 20),
+
+                    // === BUTTON SIMPAN / PREVIEW PDF ===
                     SizedBox(
                       width: 150,
                       child: ElevatedButton(
