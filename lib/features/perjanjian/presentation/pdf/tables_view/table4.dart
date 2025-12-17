@@ -74,7 +74,7 @@ Future<PdfGrid> buildTable4(List<Map<String, dynamic>> table4) async {
 
   String rupiah(double v) {
     final s = v.toStringAsFixed(0);
-    return "Rp ${s.replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => '.')}";
+    return " ${s.replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => '.')}";
   }
 
   PdfTextAlignment alignByColumn(int col) {

@@ -11,5 +11,5 @@ String formatRupiah(String angkaRaw) {
     if (pos > 1 && pos % 3 == 1) buffer.write('.');
   }
   final prefix = n < 0 ? '-' : '';
-  return 'Rp $prefix${buffer.toString()}';
+  return '$prefix${buffer.toString()}';
 }
