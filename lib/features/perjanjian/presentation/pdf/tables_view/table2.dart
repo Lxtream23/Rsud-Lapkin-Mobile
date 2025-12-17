@@ -107,8 +107,13 @@ Future<PdfGrid> buildTable2(List<List<String>> table2) async {
       row.cells[i].style = PdfGridCellStyle()
         ..font = poppins
         ..stringFormat = PdfStringFormat(
-          alignment: PdfTextAlignment.center,
-          lineAlignment: PdfVerticalAlignment.middle,
+          alignment: (i == 1 || i == 2)
+              ? PdfTextAlignment
+                    .left // Sasaran & Indikator
+              : PdfTextAlignment.center,
+          lineAlignment: (i == 1 || i == 2)
+              ? PdfVerticalAlignment.top
+              : PdfVerticalAlignment.middle,
         )
         ..borders = PdfBorders(
           left: PdfPen(PdfColor(0, 0, 0)),
@@ -117,17 +122,6 @@ Future<PdfGrid> buildTable2(List<List<String>> table2) async {
           bottom: PdfPen(PdfColor(0, 0, 0)),
         );
     }
-
-    // Perbaiki alignment sasaran + indikator
-    row.cells[1].stringFormat = PdfStringFormat(
-      alignment: PdfTextAlignment.left,
-      lineAlignment: PdfVerticalAlignment.top,
-    );
-
-    row.cells[2].stringFormat = PdfStringFormat(
-      alignment: PdfTextAlignment.left,
-      lineAlignment: PdfVerticalAlignment.top,
-    );
   }
 
   grid.style.cellPadding = PdfPaddings(left: 4, right: 4, top: 5, bottom: 5);

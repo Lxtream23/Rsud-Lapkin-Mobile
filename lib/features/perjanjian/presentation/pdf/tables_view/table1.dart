@@ -76,12 +76,8 @@ Future<PdfGrid> buildTable1(List<List<String>> table1) async {
     );
     r.cells[1].stringFormat = PdfStringFormat(alignment: PdfTextAlignment.left);
     r.cells[2].stringFormat = PdfStringFormat(alignment: PdfTextAlignment.left);
-    r.cells[3].stringFormat = PdfStringFormat(
-      alignment: PdfTextAlignment.center,
-    );
-    r.cells[4].stringFormat = PdfStringFormat(
-      alignment: PdfTextAlignment.center,
-    );
+    r.cells[3].stringFormat = PdfStringFormat(alignment: PdfTextAlignment.left);
+    r.cells[4].stringFormat = PdfStringFormat(alignment: PdfTextAlignment.left);
   }
 
   // Cell padding
