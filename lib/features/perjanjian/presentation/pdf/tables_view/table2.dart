@@ -116,10 +116,10 @@ Future<PdfGrid> buildTable2(List<List<String>> table2) async {
               : PdfVerticalAlignment.middle,
         )
         ..borders = PdfBorders(
-          left: PdfPen(PdfColor(0, 0, 0)),
-          right: PdfPen(PdfColor(0, 0, 0)),
-          top: PdfPen(PdfColor(0, 0, 0)),
-          bottom: PdfPen(PdfColor(0, 0, 0)),
+          left: PdfPen(PdfColor(0, 0, 0), width: 0.5),
+          right: PdfPen(PdfColor(0, 0, 0), width: 0.5),
+          top: PdfPen(PdfColor(0, 0, 0), width: 0.5),
+          bottom: PdfPen(PdfColor(0, 0, 0), width: 0.5),
         );
     }
   }
