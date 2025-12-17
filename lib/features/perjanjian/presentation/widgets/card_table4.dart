@@ -18,33 +18,54 @@ class _CardTable4WidgetState extends State<CardTable4Widget> {
     _addRow();
   }
 
-  // =========================================================
-  // PUBLIC → PDF
-  // =========================================================
+  // =========================
+  // GET DATA AS STRINGS (TABLE 4)
+  // =========================
   List<Map<String, dynamic>> getRowsAsStrings() {
-    return _rows
-        .asMap()
-        .entries
-        .map((e) => _mapRow(e.value, [e.key + 1]))
-        .toList();
+    final List<Map<String, dynamic>> result = [];
+
+    for (int i = 0; i < _rows.length; i++) {
+      final row = _rows[i];
+
+      result.add({
+        "no": "${i + 1}",
+        "program": row["program"].text.trim(),
+        "anggaran": row["anggaran"].text.trim(),
+        "tw1": row["tw1"].text.trim(),
+        "tw2": row["tw2"].text.trim(),
+        "tw3": row["tw3"].text.trim(),
+        "tw4": row["tw4"].text.trim(),
+        "sisa": _sisa(row).toString(),
+        "keterangan": row["keterangan"].text.trim(),
+        "sub": _mapSubTable4(row["sub"], [i + 1]),
+      });
+    }
+
+    return result;
   }
 
-  Map<String, dynamic> _mapRow(Map<String, dynamic> r, List<int> path) {
-    return {
-      "no": num(path),
-      "program": r["program"].text,
-      "anggaran": r["anggaran"].text,
-      "tw1": r["tw1"].text,
-      "tw2": r["tw2"].text,
-      "tw3": r["tw3"].text,
-      "tw4": r["tw4"].text,
-      "keterangan": r["keterangan"].text,
-      "sub": (r["sub"] as List)
-          .asMap()
-          .entries
-          .map((e) => _mapRow(e.value, [...path, e.key + 1]))
-          .toList(),
-    };
+  List<Map<String, dynamic>> _mapSubTable4(List subs, List<int> path) {
+    final List<Map<String, dynamic>> result = [];
+
+    for (int i = 0; i < subs.length; i++) {
+      final sub = subs[i];
+      final newPath = [...path, i + 1];
+
+      result.add({
+        "no": newPath.join("."),
+        "program": sub["program"].text.trim(),
+        "anggaran": sub["anggaran"].text.trim(),
+        "tw1": sub["tw1"].text.trim(),
+        "tw2": sub["tw2"].text.trim(),
+        "tw3": sub["tw3"].text.trim(),
+        "tw4": sub["tw4"].text.trim(),
+        "sisa": _sisa(sub).toString(),
+        "keterangan": sub["keterangan"].text.trim(),
+        "sub": _mapSubTable4(sub["sub"], newPath),
+      });
+    }
+
+    return result;
   }
 
   // =========================================================

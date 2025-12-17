@@ -10,6 +10,7 @@ import 'dart:math';
 import 'tables_view/table1.dart';
 import 'tables_view/table2.dart';
 import 'tables_view/table3.dart';
+import 'tables_view/table4.dart';
 
 /// Generate PDF yang tahan terhadap layout dinamis.
 /// signatureRightBytes: nullable — jika null, tidak ada gambar (tetap gambar garis & teks)
@@ -21,6 +22,7 @@ Future<Uint8List> generatePerjanjianPdf({
   required List<List<String>> tabel1,
   required List<List<String>> tabel2,
   required List<Map<String, dynamic>> tabel3,
+  required List<Map<String, dynamic>> tabel4,
   required Uint8List? signatureRightBytes,
 
   String? pangkatPihak1,
@@ -943,6 +945,20 @@ Future<Uint8List> generatePerjanjianPdf({
 
   if (layout2 != null) {
     yy3 = layout2.bounds.bottom + 12;
+  } else {
+    yy3 += 12;
+  }
+
+  // --- TABEL 4 ---
+  final grid4 = await buildTable4(tabel4);
+
+  final layout4 = grid4.draw(
+    page: page3,
+    bounds: Rect.fromLTWH(16, yy3, page3.getClientSize().width - 32, 0),
+  );
+
+  if (layout4 != null) {
+    yy3 = layout4.bounds.bottom + 12;
   }
 
   // ---------------------------

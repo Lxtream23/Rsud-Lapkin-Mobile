@@ -202,6 +202,20 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
       result['table3_error'] = e.toString();
     }
 
+    // --- TABEL 4 ---
+    try {
+      final t4State = table4Key.currentState;
+
+      if (t4State != null && (t4State as dynamic).getRowsAsStrings != null) {
+        result['table4'] = (t4State as dynamic).getRowsAsStrings();
+      } else {
+        result['table4'] = <Map<String, dynamic>>[];
+      }
+    } catch (e) {
+      result['table4'] = <Map<String, dynamic>>[];
+      result['table4_error'] = e.toString();
+    }
+
     // --- FORM NORMAL ---
     result['namaPihakPertama'] = namaPihakPertamaController.text.trim();
     result['jabatanPihakPertama'] = jabatanPihakPertamaController.text.trim();
@@ -228,6 +242,7 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     data['table1'] = (data['table1'] ?? []).cast<List<String>>();
     data['table2'] = (data['table2'] ?? []).cast<List<String>>();
     data['table3'] = (data['table3'] as List).cast<Map<String, dynamic>>();
+    data['table4'] = (data['table4'] ?? []).cast<Map<String, dynamic>>();
 
     data['fungsi'] = fungsiControllers.map((c) => c.text).toList();
 
@@ -253,9 +268,12 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
         namaPihak2: data['namaPihakKedua'],
         jabatanPihak2: data['jabatanPihakKedua'],
         pangkatPihak2: null, // ← benar
+
         tabel1: data['table1'],
         tabel2: data['table2'],
         tabel3: data['table3'],
+        tabel4: data['table4'],
+
         signatureRightBytes: signatureRightBytes,
 
         tugasDetail: data['tugasDetail'],
