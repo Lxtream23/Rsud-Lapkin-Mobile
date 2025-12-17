@@ -217,8 +217,14 @@ class _CardTable4WidgetState extends State<CardTable4Widget> {
     return Column(
       children: [
         const Text(
-          "TABEL TARGET TRIWULAN",
+          "TABEL TARGET ANGGARAN",
           style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [_labelChip("${_rows.length} baris")],
         ),
         const SizedBox(height: 8),
 
@@ -508,6 +514,17 @@ class _CardTable4WidgetState extends State<CardTable4Widget> {
         ),
         onChanged: (_) => setState(() {}),
       ),
+    );
+  }
+
+  Widget _labelChip(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Color(0xFFBEF8FF),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(text, style: const TextStyle(fontWeight: FontWeight.w600)),
     );
   }
 
