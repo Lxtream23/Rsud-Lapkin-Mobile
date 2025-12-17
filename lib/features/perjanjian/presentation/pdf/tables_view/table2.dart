@@ -89,7 +89,7 @@ Future<PdfGrid> buildTable2(List<List<String>> table2) async {
     row.cells[0].style = PdfGridCellStyle()
       ..font = poppins
       ..stringFormat = PdfStringFormat(
-        alignment: PdfTextAlignment.center,
+        alignment: PdfTextAlignment.right,
         lineAlignment: PdfVerticalAlignment.middle,
       )
       ..borders = PdfBorders(

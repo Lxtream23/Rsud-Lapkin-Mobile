@@ -133,7 +133,7 @@ void _addRow(
     r.cells[i].style = _cellStyle(font);
   }
 
-  r.cells[0].stringFormat = PdfStringFormat(alignment: PdfTextAlignment.center);
+  r.cells[0].stringFormat = PdfStringFormat(alignment: PdfTextAlignment.right);
   r.cells[1].stringFormat = PdfStringFormat(alignment: PdfTextAlignment.left);
   r.cells[2].stringFormat = PdfStringFormat(alignment: PdfTextAlignment.right);
   r.cells[3].stringFormat = PdfStringFormat(alignment: PdfTextAlignment.center);

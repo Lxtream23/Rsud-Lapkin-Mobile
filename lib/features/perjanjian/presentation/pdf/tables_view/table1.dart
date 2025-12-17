@@ -72,7 +72,7 @@ Future<PdfGrid> buildTable1(List<List<String>> table1) async {
 
     // Cell alignment
     r.cells[0].stringFormat = PdfStringFormat(
-      alignment: PdfTextAlignment.center,
+      alignment: PdfTextAlignment.right,
     );
     r.cells[1].stringFormat = PdfStringFormat(alignment: PdfTextAlignment.left);
     r.cells[2].stringFormat = PdfStringFormat(alignment: PdfTextAlignment.left);
