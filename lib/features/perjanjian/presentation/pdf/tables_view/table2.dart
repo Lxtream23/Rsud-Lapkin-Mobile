@@ -60,7 +60,7 @@ Future<PdfGrid> buildTable2(List<List<String>> table2) async {
       lineAlignment: PdfVerticalAlignment.middle,
     )
     ..backgroundBrush = PdfSolidBrush(
-      PdfColor(230, 230, 230), // abu abu tipis 🔥
+      PdfColor(245, 245, 245), // abu abu tipis 🔥
     )
     ..borders = PdfBorders(
       left: PdfPen(PdfColor(0, 0, 0), width: 0.5),

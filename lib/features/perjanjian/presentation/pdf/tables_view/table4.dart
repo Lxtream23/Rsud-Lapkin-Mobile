@@ -45,7 +45,7 @@ Future<PdfGrid> buildTable4(List<Map<String, dynamic>> table4) async {
 
   final headerStyle = PdfGridCellStyle(
     font: poppinsBold,
-    backgroundBrush: PdfSolidBrush(PdfColor(230, 230, 230)),
+    backgroundBrush: PdfSolidBrush(PdfColor(245, 245, 245)),
     borders: PdfBorders(
       left: PdfPen(PdfColor(0, 0, 0), width: 0.5),
       right: PdfPen(PdfColor(0, 0, 0), width: 0.5),

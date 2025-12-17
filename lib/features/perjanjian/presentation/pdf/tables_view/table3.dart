@@ -29,7 +29,7 @@ Future<PdfGrid> buildTable3(List<Map<String, dynamic>> table3) async {
     h.cells[i].style = PdfGridCellStyle(
       font: poppinsBold,
       backgroundBrush: PdfSolidBrush(
-        PdfColor(230, 230, 230), // 👈 HEADER ABU-ABU TIPIS
+        PdfColor(245, 245, 245), // 👈 HEADER ABU-ABU TIPIS
       ),
       borders: PdfBorders(
         left: PdfPen(PdfColor(0, 0, 0), width: 0.5),
