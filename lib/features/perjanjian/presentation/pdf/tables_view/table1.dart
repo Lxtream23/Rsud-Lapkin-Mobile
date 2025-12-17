@@ -37,10 +37,10 @@ Future<PdfGrid> buildTable1(List<List<String>> table1) async {
       PdfColor(230, 230, 230), // abu abu tipis 🔥
     )
     ..borders = PdfBorders(
-      left: PdfPen(PdfColor(0, 0, 0), width: 1),
-      right: PdfPen(PdfColor(0, 0, 0), width: 1),
-      top: PdfPen(PdfColor(0, 0, 0), width: 1),
-      bottom: PdfPen(PdfColor(0, 0, 0), width: 1),
+      left: PdfPen(PdfColor(0, 0, 0), width: 0.5),
+      right: PdfPen(PdfColor(0, 0, 0), width: 0.5),
+      top: PdfPen(PdfColor(0, 0, 0), width: 0.5),
+      bottom: PdfPen(PdfColor(0, 0, 0), width: 0.5),
     );
 
   for (int i = 0; i < header.cells.count; i++) {
@@ -63,10 +63,10 @@ Future<PdfGrid> buildTable1(List<List<String>> table1) async {
       r.cells[c].style = PdfGridCellStyle()
         ..font = poppinsBold
         ..borders = PdfBorders(
-          left: PdfPen(PdfColor(0, 0, 0), width: 1),
-          right: PdfPen(PdfColor(0, 0, 0), width: 1),
-          top: PdfPen(PdfColor(0, 0, 0), width: 1),
-          bottom: PdfPen(PdfColor(0, 0, 0), width: 1),
+          left: PdfPen(PdfColor(0, 0, 0), width: 0.5),
+          right: PdfPen(PdfColor(0, 0, 0), width: 0.5),
+          top: PdfPen(PdfColor(0, 0, 0), width: 0.5),
+          bottom: PdfPen(PdfColor(0, 0, 0), width: 0.5),
         );
     }
 

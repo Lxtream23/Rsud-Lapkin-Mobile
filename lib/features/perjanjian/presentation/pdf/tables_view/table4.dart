@@ -47,10 +47,10 @@ Future<PdfGrid> buildTable4(List<Map<String, dynamic>> table4) async {
     font: poppinsBold,
     backgroundBrush: PdfSolidBrush(PdfColor(230, 230, 230)),
     borders: PdfBorders(
-      left: PdfPen(PdfColor(0, 0, 0)),
-      right: PdfPen(PdfColor(0, 0, 0)),
-      top: PdfPen(PdfColor(0, 0, 0)),
-      bottom: PdfPen(PdfColor(0, 0, 0)),
+      left: PdfPen(PdfColor(0, 0, 0), width: 0.5),
+      right: PdfPen(PdfColor(0, 0, 0), width: 0.5),
+      top: PdfPen(PdfColor(0, 0, 0), width: 0.5),
+      bottom: PdfPen(PdfColor(0, 0, 0), width: 0.5),
     ),
   );
 
@@ -85,10 +85,10 @@ Future<PdfGrid> buildTable4(List<Map<String, dynamic>> table4) async {
   PdfGridCellStyle bodyStyle(bool bold) => PdfGridCellStyle(
     font: bold ? poppinsBold : poppins,
     borders: PdfBorders(
-      left: PdfPen(PdfColor(0, 0, 0)),
-      right: PdfPen(PdfColor(0, 0, 0)),
-      top: PdfPen(PdfColor(0, 0, 0)),
-      bottom: PdfPen(PdfColor(0, 0, 0)),
+      left: PdfPen(PdfColor(0, 0, 0), width: 0.5),
+      right: PdfPen(PdfColor(0, 0, 0), width: 0.5),
+      top: PdfPen(PdfColor(0, 0, 0), width: 0.5),
+      bottom: PdfPen(PdfColor(0, 0, 0), width: 0.5),
     ),
   );
 
@@ -170,10 +170,10 @@ Future<PdfGrid> buildTable4(List<Map<String, dynamic>> table4) async {
     totalRow.cells[i].style = PdfGridCellStyle(
       font: poppinsBold,
       borders: PdfBorders(
-        left: PdfPen(PdfColor(0, 0, 0)),
-        right: PdfPen(PdfColor(0, 0, 0)),
-        top: PdfPen(PdfColor(0, 0, 0), width: 1.5), // garis atas tebal
-        bottom: PdfPen(PdfColor(0, 0, 0)),
+        left: PdfPen(PdfColor(0, 0, 0), width: 0.5), // garis kiri tebal
+        right: PdfPen(PdfColor(0, 0, 0), width: 0.5),
+        top: PdfPen(PdfColor(0, 0, 0), width: 0.5), // garis atas tebal
+        bottom: PdfPen(PdfColor(0, 0, 0), width: 0.5),
       ),
     );
 

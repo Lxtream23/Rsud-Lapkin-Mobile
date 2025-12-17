@@ -63,10 +63,10 @@ Future<PdfGrid> buildTable2(List<List<String>> table2) async {
       PdfColor(230, 230, 230), // abu abu tipis 🔥
     )
     ..borders = PdfBorders(
-      left: PdfPen(PdfColor(0, 0, 0)),
-      right: PdfPen(PdfColor(0, 0, 0)),
-      top: PdfPen(PdfColor(0, 0, 0)),
-      bottom: PdfPen(PdfColor(0, 0, 0)),
+      left: PdfPen(PdfColor(0, 0, 0), width: 0.5),
+      right: PdfPen(PdfColor(0, 0, 0), width: 0.5),
+      top: PdfPen(PdfColor(0, 0, 0), width: 0.5),
+      bottom: PdfPen(PdfColor(0, 0, 0), width: 0.5),
     );
 
   for (int r = 0; r < grid.headers.count; r++) {
@@ -93,10 +93,10 @@ Future<PdfGrid> buildTable2(List<List<String>> table2) async {
         lineAlignment: PdfVerticalAlignment.middle,
       )
       ..borders = PdfBorders(
-        left: PdfPen(PdfColor(0, 0, 0)),
-        right: PdfPen(PdfColor(0, 0, 0)),
-        top: PdfPen(PdfColor(0, 0, 0)),
-        bottom: PdfPen(PdfColor(0, 0, 0)),
+        left: PdfPen(PdfColor(0, 0, 0), width: 0.5),
+        right: PdfPen(PdfColor(0, 0, 0), width: 0.5),
+        top: PdfPen(PdfColor(0, 0, 0), width: 0.5),
+        bottom: PdfPen(PdfColor(0, 0, 0), width: 0.5),
       );
 
     // --- Kolom lain ---

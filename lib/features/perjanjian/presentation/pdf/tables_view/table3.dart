@@ -32,10 +32,10 @@ Future<PdfGrid> buildTable3(List<Map<String, dynamic>> table3) async {
         PdfColor(230, 230, 230), // 👈 HEADER ABU-ABU TIPIS
       ),
       borders: PdfBorders(
-        left: PdfPen(PdfColor(0, 0, 0)),
-        right: PdfPen(PdfColor(0, 0, 0)),
-        top: PdfPen(PdfColor(0, 0, 0)),
-        bottom: PdfPen(PdfColor(0, 0, 0)),
+        left: PdfPen(PdfColor(0, 0, 0), width: 0.5),
+        right: PdfPen(PdfColor(0, 0, 0), width: 0.5),
+        top: PdfPen(PdfColor(0, 0, 0), width: 0.5),
+        bottom: PdfPen(PdfColor(0, 0, 0), width: 0.5),
       ),
     );
 
@@ -144,10 +144,10 @@ PdfGridCellStyle _cellStyle(PdfFont font) {
   return PdfGridCellStyle(
     font: font,
     borders: PdfBorders(
-      left: PdfPen(PdfColor(0, 0, 0)),
-      right: PdfPen(PdfColor(0, 0, 0)),
-      top: PdfPen(PdfColor(0, 0, 0)),
-      bottom: PdfPen(PdfColor(0, 0, 0)),
+      left: PdfPen(PdfColor(0, 0, 0), width: 0.5),
+      right: PdfPen(PdfColor(0, 0, 0), width: 0.5),
+      top: PdfPen(PdfColor(0, 0, 0), width: 0.5),
+      bottom: PdfPen(PdfColor(0, 0, 0), width: 0.5),
     ),
   );
 }
