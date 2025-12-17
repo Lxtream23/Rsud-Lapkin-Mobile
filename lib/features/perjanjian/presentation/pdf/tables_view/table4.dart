@@ -1,11 +1,11 @@
 import 'dart:ui';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
-import '../utils/pdf_fonts.dart';
 
-Future<PdfGrid> buildTable4(List<Map<String, dynamic>> table4) async {
-  final poppins = await getPoppinsFont(size: 10);
-  final poppinsBold = await getPoppinsFont(size: 10, bold: true);
-
+PdfGrid buildTable4(
+  List<Map<String, dynamic>> table4,
+  PdfFont fontBody,
+  PdfFont fontBold,
+) {
   final grid = PdfGrid();
   grid.columns.add(count: 7);
   grid.repeatHeader = true;
@@ -44,14 +44,9 @@ Future<PdfGrid> buildTable4(List<Map<String, dynamic>> table4) async {
   h2.cells[6].value = "Triwulan IV";
 
   final headerStyle = PdfGridCellStyle(
-    font: poppinsBold,
+    font: fontBold,
     backgroundBrush: PdfSolidBrush(PdfColor(245, 245, 245)),
-    borders: PdfBorders(
-      left: PdfPen(PdfColor(0, 0, 0), width: 0.5),
-      right: PdfPen(PdfColor(0, 0, 0), width: 0.5),
-      top: PdfPen(PdfColor(0, 0, 0), width: 0.5),
-      bottom: PdfPen(PdfColor(0, 0, 0), width: 0.5),
-    ),
+    borders: _borders(),
   );
 
   for (int r = 0; r < grid.headers.count; r++) {
@@ -78,19 +73,12 @@ Future<PdfGrid> buildTable4(List<Map<String, dynamic>> table4) async {
   }
 
   PdfTextAlignment alignByColumn(int col) {
-    if (col == 1) return PdfTextAlignment.left; // Program
-    return PdfTextAlignment.right; // Angka + No
+    if (col == 1) return PdfTextAlignment.left;
+    return PdfTextAlignment.right;
   }
 
-  PdfGridCellStyle bodyStyle(bool bold) => PdfGridCellStyle(
-    font: bold ? poppinsBold : poppins,
-    borders: PdfBorders(
-      left: PdfPen(PdfColor(0, 0, 0), width: 0.5),
-      right: PdfPen(PdfColor(0, 0, 0), width: 0.5),
-      top: PdfPen(PdfColor(0, 0, 0), width: 0.5),
-      bottom: PdfPen(PdfColor(0, 0, 0), width: 0.5),
-    ),
-  );
+  PdfGridCellStyle bodyStyle(bool bold) =>
+      PdfGridCellStyle(font: bold ? fontBold : fontBody, borders: _borders());
 
   // ===============================
   // TOTAL (HANYA BARIS UTAMA)
@@ -153,32 +141,23 @@ Future<PdfGrid> buildTable4(List<Map<String, dynamic>> table4) async {
   // ===============================
   final totalRow = grid.rows.add();
 
-  // Gabungkan kolom NO + PROGRAM
   totalRow.cells[0].columnSpan = 2;
   totalRow.cells[0].value = "JUMLAH";
   totalRow.cells[1].value = "";
 
-  // Isi nilai total
   totalRow.cells[2].value = rupiah(totalAnggaran);
   totalRow.cells[3].value = rupiah(totalT1);
   totalRow.cells[4].value = rupiah(totalT2);
   totalRow.cells[5].value = rupiah(totalT3);
   totalRow.cells[6].value = rupiah(totalT4);
 
-  // Style + Alignment
   for (int i = 0; i < totalRow.cells.count; i++) {
     totalRow.cells[i].style = PdfGridCellStyle(
-      font: poppinsBold,
-      borders: PdfBorders(
-        left: PdfPen(PdfColor(0, 0, 0), width: 0.5), // garis kiri tebal
-        right: PdfPen(PdfColor(0, 0, 0), width: 0.5),
-        top: PdfPen(PdfColor(0, 0, 0), width: 0.5), // garis atas tebal
-        bottom: PdfPen(PdfColor(0, 0, 0), width: 0.5),
-      ),
+      font: fontBold,
+      borders: _borders(),
     );
-
     totalRow.cells[i].stringFormat = PdfStringFormat(
-      alignment: PdfTextAlignment.right, // semua ke kanan
+      alignment: PdfTextAlignment.right,
       lineAlignment: PdfVerticalAlignment.middle,
     );
   }
@@ -187,3 +166,13 @@ Future<PdfGrid> buildTable4(List<Map<String, dynamic>> table4) async {
 
   return grid;
 }
+
+// ===============================
+// COMMON BORDERS
+// ===============================
+PdfBorders _borders() => PdfBorders(
+  left: PdfPen(PdfColor(0, 0, 0), width: 0.5),
+  right: PdfPen(PdfColor(0, 0, 0), width: 0.5),
+  top: PdfPen(PdfColor(0, 0, 0), width: 0.5),
+  bottom: PdfPen(PdfColor(0, 0, 0), width: 0.5),
+);

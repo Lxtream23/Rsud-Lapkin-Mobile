@@ -39,6 +39,7 @@ Future<Uint8List> generatePerjanjianPdf({
   // Load Poppins fonts (TTF) dari assets
   // ---------------------------
   PdfFont poppins12, poppins12Bold, poppins14Bold;
+  PdfFont poppins10, poppins10Bold;
   try {
     final reg = (await rootBundle.load(
       'assets/fonts/Poppins-Regular.ttf',
@@ -50,6 +51,9 @@ Future<Uint8List> generatePerjanjianPdf({
     poppins12 = PdfTrueTypeFont(reg, 12);
     poppins12Bold = PdfTrueTypeFont(bold, 12);
     poppins14Bold = PdfTrueTypeFont(bold, 14);
+
+    poppins10 = PdfTrueTypeFont(reg, 10);
+    poppins10Bold = PdfTrueTypeFont(bold, 10);
   } catch (e) {
     // fallback ke standard font kalau gagal load
     poppins12 = PdfStandardFont(PdfFontFamily.helvetica, 12);
@@ -61,6 +65,12 @@ Future<Uint8List> generatePerjanjianPdf({
     poppins14Bold = PdfStandardFont(
       PdfFontFamily.helvetica,
       14,
+      style: PdfFontStyle.bold,
+    );
+    poppins10 = PdfStandardFont(PdfFontFamily.helvetica, 10);
+    poppins10Bold = PdfStandardFont(
+      PdfFontFamily.helvetica,
+      10,
       style: PdfFontStyle.bold,
     );
     print('❌ Warning: gagal load Poppins font, memakai fallback: $e');
@@ -566,6 +576,8 @@ Future<Uint8List> generatePerjanjianPdf({
   final PdfPage page2 = sectionPortrait.pages.add();
 
   double yy = 16;
+
+  const double tableSpacing = 32; // mengatur jarak antar tabel
   // header page 2
   final h2res = await _drawTextElement(
     page: page2,
@@ -712,26 +724,26 @@ Future<Uint8List> generatePerjanjianPdf({
   yy += 20;
 
   // build tables (builders may be async)
-  final grid1 = await buildTable1(
-    tabel1,
-  ); // if your buildTable1 is synchronous, it's fine too
+  final grid1 = buildTable1(tabel1, poppins10, poppins10Bold);
+
   final layout1 = grid1.draw(
     page: page2,
     bounds: Rect.fromLTWH(16, yy, page2.getClientSize().width - 32, 0),
   );
+
   if (layout1 != null) {
-    yy = layout1.bounds.bottom + 12;
+    yy = layout1.bounds.bottom + tableSpacing;
   } else {
-    yy += 12;
+    yy += tableSpacing;
   }
 
-  final grid3 = await buildTable3(tabel3);
+  final grid3 = buildTable3(tabel3, poppins10, poppins10Bold);
   final layout3 = grid3.draw(
     page: page2,
     bounds: Rect.fromLTWH(16, yy, page2.getClientSize().width - 32, 0),
   );
   if (layout3 != null) {
-    yy = layout3.bounds.bottom + 12;
+    yy = layout3.bounds.bottom + tableSpacing;
   }
 
   // =============================
@@ -924,6 +936,8 @@ Future<Uint8List> generatePerjanjianPdf({
 
   double yy3 = 16;
 
+  //const double tableSpacing = 32; // mengatur jarak antar tabel
+
   final h3res = await _drawTextElement(
     page: page3,
     text:
@@ -935,8 +949,8 @@ Future<Uint8List> generatePerjanjianPdf({
 
   yy3 = (h3res['y'] as double) + 8;
 
-  // --- TABEL ---
-  final grid2 = await buildTable2(tabel2);
+  // --- TABEL 2 ---
+  final grid2 = buildTable2(tabel2, poppins10, poppins10Bold);
 
   final layout2 = grid2.draw(
     page: page3,
@@ -944,13 +958,13 @@ Future<Uint8List> generatePerjanjianPdf({
   );
 
   if (layout2 != null) {
-    yy3 = layout2.bounds.bottom + 12;
+    yy3 = layout2.bounds.bottom + tableSpacing;
   } else {
-    yy3 += 12;
+    yy3 += tableSpacing;
   }
 
   // --- TABEL 4 ---
-  final grid4 = await buildTable4(tabel4);
+  final grid4 = buildTable4(tabel4, poppins10, poppins10Bold);
 
   final layout4 = grid4.draw(
     page: page3,
@@ -958,7 +972,7 @@ Future<Uint8List> generatePerjanjianPdf({
   );
 
   if (layout4 != null) {
-    yy3 = layout4.bounds.bottom + 12;
+    yy3 = layout4.bounds.bottom + tableSpacing;
   }
 
   // ---------------------------

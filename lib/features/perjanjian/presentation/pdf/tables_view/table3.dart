@@ -1,11 +1,12 @@
+// lib/pdf_builder/table3.dart
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 import '../utils/format_rupiah.dart';
-import '../utils/pdf_fonts.dart';
 
-Future<PdfGrid> buildTable3(List<Map<String, dynamic>> table3) async {
-  final poppins = await getPoppinsFont(size: 10);
-  final poppinsBold = await getPoppinsFont(size: 10, bold: true);
-
+PdfGrid buildTable3(
+  List<Map<String, dynamic>> table3,
+  PdfFont fontBody,
+  PdfFont fontBold,
+) {
   final grid = PdfGrid();
   grid.columns.add(count: 4);
 
@@ -16,10 +17,9 @@ Future<PdfGrid> buildTable3(List<Map<String, dynamic>> table3) async {
 
   // ================= HEADER =================
   grid.headers.add(1);
-  final h = grid.headers[0];
-
   grid.repeatHeader = true;
 
+  final h = grid.headers[0];
   h.cells[0].value = 'No';
   h.cells[1].value = 'Program';
   h.cells[2].value = 'Anggaran';
@@ -27,16 +27,9 @@ Future<PdfGrid> buildTable3(List<Map<String, dynamic>> table3) async {
 
   for (int i = 0; i < h.cells.count; i++) {
     h.cells[i].style = PdfGridCellStyle(
-      font: poppinsBold,
-      backgroundBrush: PdfSolidBrush(
-        PdfColor(245, 245, 245), // 👈 HEADER ABU-ABU TIPIS
-      ),
-      borders: PdfBorders(
-        left: PdfPen(PdfColor(0, 0, 0), width: 0.5),
-        right: PdfPen(PdfColor(0, 0, 0), width: 0.5),
-        top: PdfPen(PdfColor(0, 0, 0), width: 0.5),
-        bottom: PdfPen(PdfColor(0, 0, 0), width: 0.5),
-      ),
+      font: fontBold,
+      backgroundBrush: PdfSolidBrush(PdfColor(245, 245, 245)),
+      borders: _borders(),
     );
 
     h.cells[i].stringFormat = PdfStringFormat(
@@ -61,11 +54,11 @@ Future<PdfGrid> buildTable3(List<Map<String, dynamic>> table3) async {
       program: row['program'] ?? '',
       anggaran: row['anggaran'] ?? '',
       ket: row['keterangan'] ?? '',
-      font: poppinsBold,
+      font: fontBold,
     );
 
     // ===== SUB & SUB-SUB (REGULAR) =====
-    _renderSub(grid, row['sub'] ?? [], parentNo: '${i + 1}', font: poppins);
+    _renderSub(grid, row['sub'] ?? [], parentNo: '${i + 1}', font: fontBody);
   }
 
   // ================= TOTAL =================
@@ -76,7 +69,7 @@ Future<PdfGrid> buildTable3(List<Map<String, dynamic>> table3) async {
   t.cells[3].value = '';
 
   for (int i = 0; i < t.cells.count; i++) {
-    t.cells[i].style = _cellStyle(poppinsBold);
+    t.cells[i].style = _cellStyle(fontBold);
   }
 
   t.cells[1].stringFormat = PdfStringFormat(alignment: PdfTextAlignment.right);
@@ -102,7 +95,7 @@ void _renderSub(
       grid,
       no: no,
       program: s['program'] ?? '',
-      anggaran: s['anggaran'] ?? '', // ✅ FIX
+      anggaran: s['anggaran'] ?? '',
       ket: s['keterangan'] ?? '',
       font: font,
     );
@@ -141,16 +134,15 @@ void _addRow(
 
 // ================= STYLE =================
 PdfGridCellStyle _cellStyle(PdfFont font) {
-  return PdfGridCellStyle(
-    font: font,
-    borders: PdfBorders(
-      left: PdfPen(PdfColor(0, 0, 0), width: 0.5),
-      right: PdfPen(PdfColor(0, 0, 0), width: 0.5),
-      top: PdfPen(PdfColor(0, 0, 0), width: 0.5),
-      bottom: PdfPen(PdfColor(0, 0, 0), width: 0.5),
-    ),
-  );
+  return PdfGridCellStyle(font: font, borders: _borders());
 }
+
+PdfBorders _borders() => PdfBorders(
+  left: PdfPen(PdfColor(0, 0, 0), width: 0.5),
+  right: PdfPen(PdfColor(0, 0, 0), width: 0.5),
+  top: PdfPen(PdfColor(0, 0, 0), width: 0.5),
+  bottom: PdfPen(PdfColor(0, 0, 0), width: 0.5),
+);
 
 double _parse(String? v) =>
     double.tryParse((v ?? '').replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
