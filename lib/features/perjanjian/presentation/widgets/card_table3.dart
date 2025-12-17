@@ -231,7 +231,7 @@ class _CardTable3WidgetState extends State<CardTable3Widget> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Text(
-              "TABEL PROGRAM & ANGGARAN",
+              "TABEL PROGRAM",
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
             ),
           ],

@@ -269,7 +269,7 @@ class _CardTable1WidgetState extends State<CardTable1Widget>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Text(
-              "TABEL SASARAN & INDIKATOR",
+              "TABEL SASARAN",
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
             ),
           ],

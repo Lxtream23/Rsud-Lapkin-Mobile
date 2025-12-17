@@ -271,7 +271,7 @@ class _CardTable2WidgetState extends State<CardTable2Widget>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Text(
-              "TABEL TARGET TRIWULAN",
+              "TABEL TARGET SASARAN",
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
             ),
           ],
