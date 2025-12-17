@@ -130,7 +130,7 @@ Future<PdfGrid> buildTable2(List<List<String>> table2) async {
     );
   }
 
-  grid.style.cellPadding = PdfPaddings(left: 4, right: 4, top: 4, bottom: 4);
+  grid.style.cellPadding = PdfPaddings(left: 4, right: 4, top: 5, bottom: 5);
 
   return grid;
 }

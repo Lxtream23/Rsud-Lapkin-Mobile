@@ -82,7 +82,7 @@ Future<PdfGrid> buildTable3(List<Map<String, dynamic>> table3) async {
   t.cells[1].stringFormat = PdfStringFormat(alignment: PdfTextAlignment.right);
   t.cells[2].stringFormat = PdfStringFormat(alignment: PdfTextAlignment.right);
 
-  grid.style.cellPadding = PdfPaddings(left: 4, right: 4, top: 3, bottom: 3);
+  grid.style.cellPadding = PdfPaddings(left: 4, right: 4, top: 5, bottom: 5);
 
   return grid;
 }
