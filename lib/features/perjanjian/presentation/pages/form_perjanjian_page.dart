@@ -25,6 +25,7 @@ class FormPerjanjianPage extends StatefulWidget {
 Map<String, dynamic>? userProfile;
 Uint8List? signatureRightBytes;
 String? pangkatUser;
+String? nipUser;
 
 class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
   final supabase = Supabase.instance.client;
@@ -72,6 +73,7 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     _loadUserData();
     loadUserSignature();
     getPangkatUser();
+    getNipUser();
 
     if (fungsiControllers.isEmpty) {
       _addFungsiField();
@@ -155,6 +157,24 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
         .maybeSingle();
 
     return response?['pangkat'] as String?;
+  }
+
+  Future<String?> getNipUser() async {
+    try {
+      final user = supabase.auth.currentUser;
+      if (user == null) return null;
+
+      final response = await supabase
+          .from('profiles')
+          .select('nip')
+          .eq('id', user.id)
+          .maybeSingle();
+
+      return response?['nip'] as String?;
+    } catch (e) {
+      debugPrint('❌ getNipUser error: $e');
+      return null;
+    }
   }
 
   /// Ambil data dari setiap tabel dengan memanggil method yang tersedia di state widget.
@@ -259,6 +279,9 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
       // 🔥 Ambil pangkat user dari Supabase
       final pangkatUser = await getPangkatUser();
       debugPrint("Pangkat user: $pangkatUser");
+      // 🔥 Ambil NIP user dari Supabase
+      final nipUser = await getNipUser();
+      debugPrint("NIP user: $nipUser");
 
       // 🔥 GENERATE PDF
       final result = await generatePerjanjianPdf(
@@ -278,6 +301,7 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
 
         tugasDetail: data['tugasDetail'],
         fungsiList: List<String>.from(data['fungsiList']),
+        nipPihak1: nipUser,
       );
 
       Navigator.pop(context); // tutup loading

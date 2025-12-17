@@ -29,6 +29,9 @@ Future<Uint8List> generatePerjanjianPdf({
   String? pangkatPihak2,
   required String tugasDetail,
   required List<String> fungsiList,
+  required nipPihak1,
+
+  //required nipPihak2,
 }) async {
   final doc = PdfDocument();
   // Set ukuran F4 / Folio
@@ -556,13 +559,14 @@ Future<Uint8List> generatePerjanjianPdf({
   // --- NIP
   final kananNip = await _drawTextElement(
     page: pageForSignature,
-    text: "NIP. -",
+    text: 'NIP : ${nipPihak1 ?? '-'}',
     font: poppins12,
     top: yKanan,
     left: rightX,
     width: colWidth,
     format: PdfStringFormat(alignment: PdfTextAlignment.center),
   );
+
   pageForSignature = kananNip['page'] as PdfPage;
   yKanan = (kananNip['y'] as double) + 16;
 
@@ -913,7 +917,7 @@ Future<Uint8List> generatePerjanjianPdf({
   // nip
   final kananNip2 = await _drawTextElement(
     page: pageForSignature2,
-    text: "NIP. -",
+    text: 'NIP : ${nipPihak1 ?? '-'}',
     font: poppins12,
     top: yKanan2,
     left: rightX2,
@@ -974,6 +978,109 @@ Future<Uint8List> generatePerjanjianPdf({
   if (layout4 != null) {
     yy3 = layout4.bounds.bottom + tableSpacing;
   }
+
+  // =============================
+  //       TANGGAL + BLOK TTD HALAMAN 2
+  // =============================
+
+  // posisi dasar
+  final double pageWidth3 = page3.getClientSize().width;
+  const double marginLeft3 = 20.0;
+  const double marginRight3 = 40.0;
+  const double colWidth3 = 180.0;
+
+  final double rightX3 = pageWidth3 - marginRight3 - colWidth3;
+
+  // pastikan Y melanjutkan posisi terakhir tabel
+  yy3 += 12;
+
+  // ======================================
+  //               TANGGAL
+  // ======================================
+  final dateRes3 = await _drawTextElement(
+    page: page3,
+    text: "Pasuruan, $tanggal",
+    font: poppins12,
+    top: yy3,
+    left: marginLeft3,
+    width: colWidth3,
+    format: PdfStringFormat(alignment: PdfTextAlignment.center),
+  );
+
+  yy3 = (dateRes3['y'] as double) + 6;
+
+  // ======================================
+  //         VARIABEL KHUSUS HALAMAN 3
+  // ======================================
+  double yKiri3 = yy3;
+  double yKanan3 = yy3;
+
+  PdfPage pageForSignature3 = page3;
+
+  // ======================================
+  //    KOLOM KIRI – PIHAK PERTAMA
+  // ======================================
+
+  // final kiriJabatan3 = await _drawTextElement(
+  //   page: pageForSignature3,
+  //   text: "PIHAK PERTAMA",
+  //   font: poppins12,
+  //   top: yKiri3,
+  //   left: marginLeft3,
+  //   width: colWidth3,
+  //   format: PdfStringFormat(alignment: PdfTextAlignment.center),
+  // );
+
+  // pageForSignature3 = kiriJabatan3['page'] as PdfPage;
+  // yKiri3 = (kiriJabatan3['y'] as double) + 60;
+
+  final kiriNama3 = await _drawTextElement(
+    page: pageForSignature3,
+    text: namaPihak1,
+    font: poppins12,
+    top: yKiri3,
+    left: marginLeft3,
+    width: colWidth3,
+    format: PdfStringFormat(alignment: PdfTextAlignment.center),
+  );
+  pageForSignature3 = kiriNama3['page'] as PdfPage;
+  yKiri3 = (kiriNama3['y'] as double) + 4;
+
+  // garis bawah
+  final namaWidthKiri3 = poppins12.measureString(namaPihak1).width;
+
+  pageForSignature3.graphics.drawLine(
+    PdfPen(PdfColor(0, 0, 0)),
+    Offset(marginLeft3 + (colWidth3 - namaWidthKiri3) / 2, yKiri3 - 2),
+    Offset(marginLeft3 + (colWidth3 + namaWidthKiri3) / 2, yKiri3 - 2),
+  );
+
+  // pangkat
+  final kiriPangkat3 = await _drawTextElement(
+    page: pageForSignature3,
+    text: pangkatPihak1 ?? "-",
+    font: poppins12,
+    top: yKiri3,
+    left: marginLeft3,
+    width: colWidth3,
+    format: PdfStringFormat(alignment: PdfTextAlignment.center),
+  );
+  pageForSignature3 = kiriPangkat3['page'] as PdfPage;
+  yKiri3 = (kiriPangkat3['y'] as double) + 6;
+
+  // nip
+  final kiriNip3 = await _drawTextElement(
+    page: pageForSignature3,
+    text: 'NIP : ${nipPihak1 ?? '-'}',
+
+    font: poppins12,
+    top: yKiri3,
+    left: marginLeft3,
+    width: colWidth3,
+    format: PdfStringFormat(alignment: PdfTextAlignment.center),
+  );
+  pageForSignature3 = kiriNip3['page'] as PdfPage;
+  yKiri3 = (kiriNip3['y'] as double) + 16;
 
   // ---------------------------
   // Finish
