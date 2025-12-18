@@ -61,6 +61,13 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     'Admin/Staf',
   ];
 
+  // ================= TABLE 1 & 2 SHARED =================
+  late final SharedRowControllers sharedRows;
+
+  // khusus table 2 (triwulan I–IV)
+  final List<List<TextEditingController>> triwulanRows = [];
+  // ======================================================
+
   // Keys untuk mengakses method/state widget tabel (dynamic-cast dipakai)
   final GlobalKey table1Key = GlobalKey();
   final GlobalKey table2Key = GlobalKey();
@@ -75,11 +82,51 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     getPangkatUser();
     getNipUser();
 
+    // 🔥 init minimal 1 row tabel
+    sharedRows = SharedRowControllers();
+    sharedRows.addRow(); // minimal 1 row
+
     if (fungsiControllers.isEmpty) {
       _addFungsiField();
     } else {
       _attachListener(0);
     }
+  }
+
+  void addRow() {
+    setState(() {
+      sharedRows.addRow();
+      triwulanRows.add(List.generate(4, (_) => TextEditingController()));
+    });
+  }
+
+  void deleteRow(int index) {
+    if (index < 0 || index >= sharedRows.length) return;
+
+    setState(() {
+      // KASUS: HANYA 1 BARIS → CLEAR SAJA
+      if (sharedRows.length == 1) {
+        for (final c in sharedRows[0]) {
+          c.clear();
+        }
+        for (final c in triwulanRows[0]) {
+          c.clear();
+        }
+        return;
+      }
+
+      // NORMAL DELETE
+      sharedRows.deleteRow(index);
+
+      for (final c in triwulanRows[index]) {
+        c.dispose();
+      }
+      triwulanRows.removeAt(index);
+    });
+    assert(
+      sharedRows.length == triwulanRows.length,
+      'Row length mismatch between Table 1 & Table 2',
+    );
   }
 
   @override
@@ -811,7 +858,13 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                     const SizedBox(height: 20),
 
                     // === Card-based Table SASARAN & INDIKATOR ===
-                    CardTable1Widget(key: table1Key),
+                    CardTable1Widget(
+                      key: table1Key,
+                      rows: sharedRows, // ✅ SATU object
+                      onAddRow: sharedRows.addRow,
+                      onDeleteRow: sharedRows.deleteRow,
+                      onRowsChanged: () => setState(() {}), // 🔥 INI KUNCI
+                    ),
 
                     const SizedBox(height: 20),
 
@@ -821,7 +874,15 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                     const SizedBox(height: 20),
 
                     // === Card-based Table TARGET TRIWULAN ===
-                    CardTable2Widget(key: table2Key),
+                    CardTable2Widget(
+                      key: table2Key,
+                      sharedRows: sharedRows, // ✅ NAMA BENAR
+                      triwulanRows: triwulanRows, // ✅
+                      onAddRow:
+                          addRow, // atau sharedRows.addRow (kalau sinkron)
+                      onDeleteRow: deleteRow, // Function(int)
+                      onRowsChanged: () => setState(() {}), // 🔥 INI KUNCI
+                    ),
 
                     const SizedBox(height: 20),
 
@@ -881,6 +942,43 @@ extension SafeController on TextEditingController {
       return false;
     } catch (_) {
       return true;
+    }
+  }
+}
+
+class SharedRowControllers {
+  final List<List<TextEditingController>> _rows = [];
+
+  List<List<TextEditingController>> get rows => _rows;
+
+  int get length => _rows.length;
+
+  /// ⬅️ INI YANG WAJIB
+  List<TextEditingController> operator [](int index) => _rows[index];
+
+  void addRow() {
+    _rows.add(List.generate(4, (_) => TextEditingController()));
+  }
+
+  void deleteRow(int index) {
+    if (_rows.length == 1) {
+      for (final c in _rows.first) {
+        c.clear();
+      }
+      return;
+    }
+
+    for (final c in _rows[index]) {
+      c.dispose();
+    }
+    _rows.removeAt(index);
+  }
+
+  void dispose() {
+    for (final row in _rows) {
+      for (final c in row) {
+        c.dispose();
+      }
     }
   }
 }

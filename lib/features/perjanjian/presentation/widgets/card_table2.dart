@@ -1,9 +1,25 @@
 // lib/presentation/widgets/card_table2.dart
 import 'package:flutter/material.dart';
 import 'package:rsud_lapkin_mobile/core/widgets/ui_helpers/app_snackbar.dart';
+import 'package:rsud_lapkin_mobile/features/perjanjian/presentation/pages/form_perjanjian_page.dart';
 
 class CardTable2Widget extends StatefulWidget {
-  const CardTable2Widget({super.key});
+  final SharedRowControllers sharedRows;
+  final List<List<TextEditingController>> triwulanRows;
+
+  final VoidCallback onAddRow;
+  final Function(int) onDeleteRow;
+
+  final VoidCallback onRowsChanged;
+
+  const CardTable2Widget({
+    super.key,
+    required this.sharedRows,
+    required this.triwulanRows,
+    required this.onAddRow,
+    required this.onDeleteRow,
+    required this.onRowsChanged,
+  });
 
   @override
   State<CardTable2Widget> createState() => _CardTable2WidgetState();
@@ -12,26 +28,39 @@ class CardTable2Widget extends StatefulWidget {
 class _CardTable2WidgetState extends State<CardTable2Widget>
     with TickerProviderStateMixin {
   /// setiap baris: 7 kolom
-  final List<List<TextEditingController>> _rows = [];
+  // final List<List<TextEditingController>> _rows = [];
 
   /// index card yang terbuka (accordion mode)
   int? _openIndex;
 
+  bool _autoRowAdded = false; // ✅ WAJIB
+
+  List<List<TextEditingController>> get _rows => widget.triwulanRows;
+
   @override
   void initState() {
     super.initState();
-    _addRow();
+    //_addRow();
   }
 
   List<List<String>> getRowsAsStrings() {
     final result = <List<String>>[];
 
-    for (final row in _rows) {
-      final cells = <String>[];
-      for (final ctrl in row) {
-        cells.add(ctrl.text.trim());
-      }
-      result.add(cells);
+    final rowCount = widget.sharedRows.length;
+
+    for (int i = 0; i < rowCount; i++) {
+      final shared = widget.sharedRows[i]; // 3 kolom
+      final triwulan = widget.triwulanRows[i]; // 4 kolom
+
+      result.add([
+        shared[0].text.trim(), // Sasaran
+        shared[1].text.trim(), // Indikator
+        shared[3].text.trim(), // Target
+        triwulan[0].text.trim(), // TW I
+        triwulan[1].text.trim(), // TW II
+        triwulan[2].text.trim(), // TW III
+        triwulan[3].text.trim(), // TW IV
+      ]);
     }
 
     return result;
@@ -39,9 +68,6 @@ class _CardTable2WidgetState extends State<CardTable2Widget>
 
   @override
   void dispose() {
-    for (final r in _rows) {
-      for (final c in r) c.dispose();
-    }
     super.dispose();
   }
 
@@ -49,119 +75,135 @@ class _CardTable2WidgetState extends State<CardTable2Widget>
   // ROW MANAGEMENT
   // ===================================================================
   // ADD ROW
-  void _addRow() {
-    setState(() {
-      _rows.add(List.generate(7, (_) => TextEditingController()));
-    });
-  }
+  // void _addRow() {
+  //   setState(() {
+  //     _rows.add(List.generate(7, (_) => TextEditingController()));
+  //   });
+  // }
 
-  // DELETE ROW
-  void _deleteRow(int index) {
-    debugPrint(
-      "🗑 DELETE REQUEST [TABEL2] → index: $index, total rows: ${_rows.length}",
-    );
+  // void _addRow() {
+  //   final newRow = List.generate(7, (_) => TextEditingController());
 
-    // --- Validasi Index ---
-    if (index < 0 || index >= _rows.length) {
-      debugPrint(
-        "❌ DELETE FAILED [TABEL2] → index out of range. Tidak jadi hapus.",
-      );
-      _showDeleteError("Gagal menghapus: index tidak valid");
-      return;
-    }
+  //   // Listener hanya cek perubahan
+  //   for (final ctrl in newRow) {
+  //     ctrl.addListener(_onRowChanged);
+  //   }
 
-    // ---- Ambil summary row untuk pesan snackbar ----
-    final deletedSummary = _summary(_rows[index]);
+  //   setState(() {
+  //     _rows.add(newRow);
+  //     _autoRowAdded = false; // reset flag setiap row baru
+  //   });
+  // }
 
-    // --- Kasus: hanya ada 1 baris, jangan hapus hanya kosongkan ---
-    if (_rows.length == 1) {
-      debugPrint("🗑 DELETE [TABEL2] → Hanya satu baris. Membersihkan saja...");
-      for (final c in _rows.first) {
-        if (!c.isClosed)
-          c.clear();
-        else {
-          debugPrint("⚠ Controller [TABEL2] sudah closed, skip clear");
-        }
-      }
+  // void _onRowChanged() {
+  //   if (_rows.isEmpty) return;
 
-      setState(() {});
+  //   final lastRow = _rows.last;
 
-      debugPrint(
-        "🗑 DELETE [TABEL2] → Menghapus row ke-$index "
-        "(kolom: ${_rows.first.length} controller).",
-      );
+  //   final hasData = lastRow.any((c) => c.text.trim().isNotEmpty);
 
-      _showDeleteSuccess("Baris 1 telah dikosongkan");
-      return;
-    }
+  //   // 🔒 hanya add sekali
+  //   if (hasData && !_autoRowAdded) {
+  //     _autoRowAdded = true;
+  //     _addRow();
+  //   }
 
-    // ---- Hapus controller dengan aman ----
-    for (final c in _rows[index]) {
-      if (!c.isClosed) {
-        c.dispose();
-      } else {
-        debugPrint("⚠ [TABEL2]Controller sudah closed, skip dispose");
-      }
-    }
+  //   setState(() {}); // update summary / header
+  // }
 
-    // ---- Update UI ----
-    setState(() {
-      _rows.removeAt(index);
+  // // DELETE ROW
+  // void _deleteRow(int index) {
+  //   debugPrint(
+  //     "🗑 DELETE REQUEST [TABEL2] → index: $index, total rows: ${_rows.length}",
+  //   );
 
-      // Tutup accordion jika row yang dihapus adalah row terbuka
-      if (_openIndex == index) {
-        _openIndex = null;
-      }
+  //   // --- Validasi Index ---
+  //   if (index < 0 || index >= _rows.length) {
+  //     debugPrint(
+  //       "❌ DELETE FAILED [TABEL2] → index out of range. Tidak jadi hapus.",
+  //     );
+  //     _showDeleteError("Gagal menghapus: index tidak valid");
+  //     return;
+  //   }
 
-      // Jika openIndex melebihi panjang list setelah delete → geser
-      if (_openIndex != null && _openIndex! >= _rows.length) {
-        _openIndex = _rows.length - 1;
-      }
-    });
+  //   // ---- Ambil summary row untuk pesan snackbar ----
+  //   final deletedSummary = _summary(_rows[index]);
 
-    debugPrint("✅ DELETE SUCCESS [TABEL2] → removed row index: $index");
+  //   // --- Kasus: hanya ada 1 baris, jangan hapus hanya kosongkan ---
+  //   if (_rows.length == 1) {
+  //     debugPrint("🗑 DELETE [TABEL2] → Hanya satu baris. Membersihkan saja...");
+  //     for (final c in _rows.first) {
+  //       if (!c.isClosed)
+  //         c.clear();
+  //       else {
+  //         debugPrint("⚠ Controller [TABEL2] sudah closed, skip clear");
+  //       }
+  //     }
 
-    // ---- Snackbar sukses ----
-    _showDeleteSuccess("Baris ${index + 1} dihapus: \"$deletedSummary\"");
-  }
+  //     setState(() {});
+
+  //     debugPrint(
+  //       "🗑 DELETE [TABEL2] → Menghapus row ke-$index "
+  //       "(kolom: ${_rows.first.length} controller).",
+  //     );
+
+  //     _showDeleteSuccess("Baris 1 telah dikosongkan");
+  //     return;
+  //   }
+
+  //   // ---- Hapus controller dengan aman ----
+  //   for (final c in _rows[index]) {
+  //     if (!c.isClosed) {
+  //       c.dispose();
+  //     } else {
+  //       debugPrint("⚠ [TABEL2]Controller sudah closed, skip dispose");
+  //     }
+  //   }
+
+  //   // ---- Update UI ----
+  //   setState(() {
+  //     _rows.removeAt(index);
+
+  //     // Tutup accordion jika row yang dihapus adalah row terbuka
+  //     if (_openIndex == index) {
+  //       _openIndex = null;
+  //     }
+
+  //     // Jika openIndex melebihi panjang list setelah delete → geser
+  //     if (_openIndex != null && _openIndex! >= _rows.length) {
+  //       _openIndex = _rows.length - 1;
+  //     }
+  //   });
+
+  //   debugPrint("✅ DELETE SUCCESS [TABEL2] → removed row index: $index");
+
+  //   // ---- Snackbar sukses ----
+  //   _showDeleteSuccess("Baris ${index + 1} dihapus: \"$deletedSummary\"");
+  // }
 
   // CEK APAKAH ROW KOSONG
-  bool _rowIsEmpty(List<TextEditingController> row) =>
-      row.every((c) => c.text.trim().isEmpty);
+  bool _rowIsEmpty(int i) {
+    final shared = widget.sharedRows[i];
+    final triwulan = widget.triwulanRows[i];
+
+    return [...shared, ...triwulan].every((c) => c.text.trim().isEmpty);
+  }
 
   // SUMMARY TEXT
-  String _summary(List<TextEditingController> row) {
-    // Cari kolom pertama yang tidak kosong
-    for (final c in row) {
-      final text = c.text.trim();
-      if (text.isNotEmpty) {
-        // Batasi 30 karakter
-        return text.length > 30 ? '${text.substring(0, 30)}…' : text;
+  String _summary(int i) {
+    final shared = widget.sharedRows[i];
+
+    for (final c in shared) {
+      final t = c.text.trim();
+      if (t.isNotEmpty) {
+        return t.length > 30 ? '${t.substring(0, 30)}…' : t;
       }
     }
-
     return '— kosong —';
   }
 
   // TOGGLE CARD
   void _toggleCard(int index) {
-    final current = _openIndex;
-
-    // Jika sedang buka card lain
-    if (current != null && current != index) {
-      final isOtherEmpty = _rowIsEmpty(_rows[current]);
-
-      if (isOtherEmpty) {
-        // tutup otomatis
-        setState(() => _openIndex = index);
-      } else {
-        // jangan tutup card berisi data
-        setState(() => _openIndex = index);
-      }
-      return;
-    }
-
-    // Jika buka/tutup card yang sama
     setState(() {
       _openIndex = (_openIndex == index) ? null : index;
     });
@@ -262,6 +304,16 @@ class _CardTable2WidgetState extends State<CardTable2Widget>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context).colorScheme;
+
+    final rowCount = widget.sharedRows.length;
+
+    // ✅ PAKSA SINKRON
+    while (widget.triwulanRows.length < rowCount) {
+      widget.triwulanRows.add(List.generate(4, (_) => TextEditingController()));
+    }
+
+    // lanjut render normal
+
     // LABELS
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -281,7 +333,7 @@ class _CardTable2WidgetState extends State<CardTable2Widget>
         // BARIS COUNT CHIP
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
-          children: [_labelChip("${_rows.length} baris")],
+          children: [_labelChip("$rowCount baris")],
         ),
         const SizedBox(height: 8),
 
@@ -289,53 +341,31 @@ class _CardTable2WidgetState extends State<CardTable2Widget>
         ListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          itemCount: _rows.length,
+          itemCount: rowCount,
           itemBuilder: (context, i) {
-            final row = _rows[i];
-            final ctrl = row[0];
+            final shared = widget.sharedRows[i];
+            final triwulan = widget.triwulanRows[i];
 
-            // AUTO ADD ROW WHEN LAST ROW TYPED
-            for (final ctrl in row) {
-              ctrl.addListener(() {
-                final isLastRow = i == _rows.length - 1;
-                final rowData = _rows[i];
-
-                // Jika baris terakhir dan ADA kolom yg terisi → auto-add-row
-                if (isLastRow && rowData.any((c) => c.text.trim().isNotEmpty)) {
-                  // Cek row terakhir yg asli juga ada isi → baru tambah row
-                  if (_rows.last.any((c) => c.text.trim().isNotEmpty)) {
-                    _addRow();
-                  }
-                }
-
-                setState(() {}); // refresh UI & summary
-              });
-            }
-
-            // TOGGLE CARD
             return _TriwulanCardItem(
               index: i,
               isOpen: _openIndex == i,
-              isEmpty: _rowIsEmpty(row),
-              headerSummary: _summary(row),
+              isEmpty: _rowIsEmpty(i),
+              headerSummary: _summary(i),
               onToggle: () => _toggleCard(i),
-              onDelete: () => _deleteRow(i),
+              onDelete: () {
+                widget.onDeleteRow(i);
+                setState(() {}); // 🔥 refresh langsung
+              },
+              onConfirmDelete: () => showConfirmDeleteDialog(context),
               child: Column(
                 children: [
-                  _input("Sasaran", row[0]), // Sasaran
-                  const SizedBox(height: 8),
-                  _input("Indikator", row[1]), // Indikator
-                  const SizedBox(height: 8),
-                  _input("Target", row[2]), // Target
-                  const SizedBox(height: 8),
-                  _input("Triwulan I", row[3]), // Triwulan I
-                  const SizedBox(height: 8),
-                  _input("Triwulan II", row[4]), // Triwulan II
-                  const SizedBox(height: 8),
-                  _input("Triwulan III", row[5]), // Triwulan III
-                  const SizedBox(height: 8),
-                  _input("Triwulan IV", row[6]), // Triwulan IV
-                  const SizedBox(height: 8),
+                  _input("Sasaran", shared[0]), // shared[0] = sasaran
+                  _input("Indikator", shared[1]), // shared[1] = indikator
+                  _input("Target", shared[3]), // shared[3] = target
+                  _input("Triwulan I", triwulan[0]), // triwulan[0] = TW I
+                  _input("Triwulan II", triwulan[1]), // triwulan[1] = TW II
+                  _input("Triwulan III", triwulan[2]), // triwulan[2] = TW III
+                  _input("Triwulan IV", triwulan[3]), // triwulan[3] = TW IV
                 ],
               ),
             );
@@ -346,7 +376,10 @@ class _CardTable2WidgetState extends State<CardTable2Widget>
 
         // ADD ROW BUTTON
         TextButton.icon(
-          onPressed: _addRow,
+          onPressed: () {
+            widget.onAddRow();
+            widget.onRowsChanged(); // ⬅️ PAKSA REBUILD
+          },
           icon: Icon(Icons.add_circle, color: theme.primary),
           label: Text(
             "Tambah Baris",
@@ -433,6 +466,8 @@ class _TriwulanCardItem extends StatefulWidget {
   final VoidCallback onDelete;
   final Widget child;
 
+  final Future<bool> Function() onConfirmDelete;
+
   const _TriwulanCardItem({
     required this.index,
     required this.headerSummary,
@@ -441,6 +476,7 @@ class _TriwulanCardItem extends StatefulWidget {
     required this.onToggle,
     required this.onDelete,
     required this.child,
+    required this.onConfirmDelete, // ✅
   });
 
   @override
@@ -531,25 +567,37 @@ class _TriwulanCardItemState extends State<_TriwulanCardItem>
                     ),
 
                     // DELETE BUTTON
-                    // if (widget.isEmpty)
                     IconButton(
                       onPressed: () async {
-                        final ok =
-                            await (context
-                                    .findAncestorStateOfType<
-                                      _CardTable2WidgetState
-                                    >()
-                                    ?.showConfirmDeleteDialog(context) ??
-                                Future.value(false));
-
+                        final ok = await widget.onConfirmDelete();
                         if (ok) widget.onDelete();
                       },
-                      icon: Icon(
+                      icon: const Icon(
                         Icons.delete_outline,
                         color: Color(0xFFE74C3C),
                       ),
                       splashRadius: 20,
                     ),
+
+                    // if (widget.isEmpty)
+                    // IconButton(
+                    //   onPressed: () async {
+                    //     final ok =
+                    //         await (context
+                    //                 .findAncestorStateOfType<
+                    //                   _CardTable2WidgetState
+                    //                 >()
+                    //                 ?.showConfirmDeleteDialog(context) ??
+                    //             Future.value(false));
+
+                    //     if (ok) widget.onDelete();
+                    //   },
+                    //   icon: Icon(
+                    //     Icons.delete_outline,
+                    //     color: Color(0xFFE74C3C),
+                    //   ),
+                    //   splashRadius: 20,
+                    // ),
 
                     // ARROW ICON
                     RotationTransition(
