@@ -103,19 +103,21 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
   void deleteRow(int index) {
     if (index < 0 || index >= sharedRows.length) return;
 
-    setState(() {
-      // KASUS: HANYA 1 BARIS → CLEAR SAJA
-      if (sharedRows.length == 1) {
+    // 🔒 KASUS: TINGGAL 1 BARIS → CLEAR SAJA
+    if (sharedRows.length == 1) {
+      setState(() {
         for (final c in sharedRows[0]) {
           c.clear();
         }
         for (final c in triwulanRows[0]) {
           c.clear();
         }
-        return;
-      }
+      });
+      return; // ⛔ STOP, JANGAN LANJUT KE ASSERT
+    }
 
-      // NORMAL DELETE
+    // 🗑 NORMAL DELETE
+    setState(() {
       sharedRows.deleteRow(index);
 
       for (final c in triwulanRows[index]) {
@@ -123,6 +125,8 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
       }
       triwulanRows.removeAt(index);
     });
+
+    // ✅ ASSERT HANYA UNTUK NORMAL DELETE
     assert(
       sharedRows.length == triwulanRows.length,
       'Row length mismatch between Table 1 & Table 2',
@@ -861,8 +865,8 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                     CardTable1Widget(
                       key: table1Key,
                       rows: sharedRows, // ✅ SATU object
-                      onAddRow: sharedRows.addRow,
-                      onDeleteRow: sharedRows.deleteRow,
+                      onAddRow: addRow,
+                      onDeleteRow: deleteRow,
                       onRowsChanged: () => setState(() {}), // 🔥 INI KUNCI
                     ),
 
