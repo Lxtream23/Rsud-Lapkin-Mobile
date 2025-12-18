@@ -49,13 +49,19 @@ class _CardTable2WidgetState extends State<CardTable2Widget>
     final rowCount = widget.sharedRows.length;
 
     for (int i = 0; i < rowCount; i++) {
-      final shared = widget.sharedRows[i]; // 3 kolom
-      final triwulan = widget.triwulanRows[i]; // 4 kolom
+      final shared = widget.sharedRows[i];
+      final triwulan = widget.triwulanRows[i];
+
+      final target = shared[3].text.trim();
+      final satuan = shared[2].text.trim();
+
+      // 👉 Gabungkan target + satuan
+      final targetWithSatuan = satuan.isNotEmpty ? "$target $satuan" : target;
 
       result.add([
         shared[0].text.trim(), // Sasaran
         shared[1].text.trim(), // Indikator
-        shared[3].text.trim(), // Target
+        targetWithSatuan, // ✅ Target + Satuan
         triwulan[0].text.trim(), // TW I
         triwulan[1].text.trim(), // TW II
         triwulan[2].text.trim(), // TW III
@@ -360,12 +366,22 @@ class _CardTable2WidgetState extends State<CardTable2Widget>
               child: Column(
                 children: [
                   _input("Sasaran", shared[0]), // shared[0] = sasaran
+                  const SizedBox(height: 8),
                   _input("Indikator", shared[1]), // shared[1] = indikator
-                  _input("Target", shared[3]), // shared[3] = target
+                  const SizedBox(height: 8),
+                  _targetWithSatuan(
+                    shared[3], // target
+                    shared[2], // satuan
+                  ), // shared[3] = target
+                  const SizedBox(height: 8),
                   _input("Triwulan I", triwulan[0]), // triwulan[0] = TW I
+                  const SizedBox(height: 8),
                   _input("Triwulan II", triwulan[1]), // triwulan[1] = TW II
+                  const SizedBox(height: 8),
                   _input("Triwulan III", triwulan[2]), // triwulan[2] = TW III
+                  const SizedBox(height: 8),
                   _input("Triwulan IV", triwulan[3]), // triwulan[3] = TW IV
+                  const SizedBox(height: 8),
                 ],
               ),
             );
@@ -439,6 +455,55 @@ class _CardTable2WidgetState extends State<CardTable2Widget>
       ),
     );
   }
+
+  Widget _targetWithSatuan(
+    TextEditingController targetCtrl,
+    TextEditingController satuanCtrl,
+  ) {
+    final theme = Theme.of(context).colorScheme;
+
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 150),
+      curve: Curves.easeInOut,
+      child: AnimatedBuilder(
+        animation: Listenable.merge([targetCtrl, satuanCtrl]),
+        builder: (context, _) {
+          final target = targetCtrl.text.trim();
+          final satuan = satuanCtrl.text.trim();
+
+          final value = target.isEmpty && satuan.isEmpty
+              ? ""
+              : "$target $satuan";
+
+          return TextField(
+            controller: TextEditingController(text: value),
+            enabled: false, // 🔒 read-only (mirroring)
+            minLines: 1,
+            maxLines: null,
+            keyboardType: TextInputType.multiline,
+            decoration: InputDecoration(
+              labelText: "Target",
+              labelStyle: const TextStyle(fontSize: 14),
+              filled: true,
+              fillColor: theme.surfaceContainerLowest,
+              isDense: true,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: theme.outline.withOpacity(0.18)),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 12,
+              ),
+            ),
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+          );
+        },
+      ),
+    );
+  }
+
+  // ===================================================================
 }
 
 //
