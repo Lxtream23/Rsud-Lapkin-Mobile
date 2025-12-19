@@ -1,21 +1,41 @@
 import 'package:flutter/material.dart';
 import 'package:rsud_lapkin_mobile/core/widgets/ui_helpers/app_snackbar.dart';
+import 'package:rsud_lapkin_mobile/features/perjanjian/presentation/pages/form_perjanjian_page.dart';
 
 class CardTable4Widget extends StatefulWidget {
-  const CardTable4Widget({super.key});
+  final List<ProgramAnggaranRow> rows;
+  final VoidCallback onAddProgram;
+  final void Function(int index) onDeleteProgram;
+
+  final void Function(List<int> parentPath) onAddSub;
+  final void Function(List<int> parentPath) onAddSubSub;
+
+  final void Function(List<int> path) onDeleteSub;
+  final void Function(List<int> path) onDeleteSubSub;
+
+  const CardTable4Widget({
+    super.key,
+    required this.rows,
+    required this.onAddProgram,
+    required this.onDeleteProgram,
+    required this.onAddSub,
+    required this.onAddSubSub,
+    required this.onDeleteSub,
+    required this.onDeleteSubSub,
+  });
 
   @override
   State<CardTable4Widget> createState() => _CardTable4WidgetState();
 }
 
 class _CardTable4WidgetState extends State<CardTable4Widget> {
-  final List<Map<String, dynamic>> _rows = [];
+  //final List<Map<String, dynamic>> _rows = [];
   int? openIndex;
 
   @override
   void initState() {
     super.initState();
-    _addRow();
+    //_addRow();
   }
 
   // =========================
@@ -24,48 +44,29 @@ class _CardTable4WidgetState extends State<CardTable4Widget> {
   List<Map<String, dynamic>> getRowsAsStrings() {
     final List<Map<String, dynamic>> result = [];
 
-    for (int i = 0; i < _rows.length; i++) {
-      final row = _rows[i];
-
-      result.add({
-        "no": "${i + 1}",
-        "program": row["program"].text.trim(),
-        "anggaran": row["anggaran"].text.trim(),
-        "tw1": row["tw1"].text.trim(),
-        "tw2": row["tw2"].text.trim(),
-        "tw3": row["tw3"].text.trim(),
-        "tw4": row["tw4"].text.trim(),
-        "sisa": _sisa(row).toString(),
-        "keterangan": row["keterangan"].text.trim(),
-        "sub": _mapSubTable4(row["sub"], [i + 1]),
-      });
+    for (int i = 0; i < widget.rows.length; i++) {
+      final row = widget.rows[i];
+      result.add(_mapRowTable4(row, [i + 1]));
     }
 
     return result;
   }
 
-  List<Map<String, dynamic>> _mapSubTable4(List subs, List<int> path) {
-    final List<Map<String, dynamic>> result = [];
-
-    for (int i = 0; i < subs.length; i++) {
-      final sub = subs[i];
-      final newPath = [...path, i + 1];
-
-      result.add({
-        "no": newPath.join("."),
-        "program": sub["program"].text.trim(),
-        "anggaran": sub["anggaran"].text.trim(),
-        "tw1": sub["tw1"].text.trim(),
-        "tw2": sub["tw2"].text.trim(),
-        "tw3": sub["tw3"].text.trim(),
-        "tw4": sub["tw4"].text.trim(),
-        "sisa": _sisa(sub).toString(),
-        "keterangan": sub["keterangan"].text.trim(),
-        "sub": _mapSubTable4(sub["sub"], newPath),
-      });
-    }
-
-    return result;
+  Map<String, dynamic> _mapRowTable4(ProgramAnggaranRow row, List<int> path) {
+    return {
+      "no": path.join("."),
+      "program": row.program.text.trim(),
+      "anggaran": row.anggaran.text.trim(),
+      "tw1": row.tw1.text.trim(),
+      "tw2": row.tw2.text.trim(),
+      "tw3": row.tw3.text.trim(),
+      "tw4": row.tw4.text.trim(),
+      "sub": row.children
+          .asMap()
+          .entries
+          .map((e) => _mapRowTable4(e.value, [...path, e.key + 1]))
+          .toList(),
+    };
   }
 
   // =========================================================
@@ -100,56 +101,56 @@ class _CardTable4WidgetState extends State<CardTable4Widget> {
   // =========================================================
   // DATA
   // =========================================================
-  Map<String, dynamic> _newRow() => {
-    "program": TextEditingController(),
-    "anggaran": TextEditingController(),
-    "tw1": TextEditingController(),
-    "tw2": TextEditingController(),
-    "tw3": TextEditingController(),
-    "tw4": TextEditingController(),
-    "keterangan": TextEditingController(),
-    "sub": <Map<String, dynamic>>[],
-  };
+  // Map<String, dynamic> _newRow() => {
+  //   "program": TextEditingController(),
+  //   "anggaran": TextEditingController(),
+  //   "tw1": TextEditingController(),
+  //   "tw2": TextEditingController(),
+  //   "tw3": TextEditingController(),
+  //   "tw4": TextEditingController(),
+  //   "keterangan": TextEditingController(),
+  //   "sub": <Map<String, dynamic>>[],
+  // };
 
-  void _addRow() => setState(() => _rows.add(_newRow()));
-  void _addSub(int p) =>
-      setState(() => (_rows[p]["sub"] as List).add(_newRow()));
-  void _addSubSub(int p, int s) =>
-      setState(() => (_rows[p]["sub"][s]["sub"] as List).add(_newRow()));
+  // void _addRow() => setState(() => _rows.add(_newRow()));
+  // void _addSub(int p) =>
+  //     setState(() => (_rows[p]["sub"] as List).add(_newRow()));
+  // void _addSubSub(int p, int s) =>
+  //     setState(() => (_rows[p]["sub"][s]["sub"] as List).add(_newRow()));
 
-  void _deleteRow(int i) {
-    if (_rows.length == 1) {
-      final r = _rows.first;
+  // void _deleteRow(int i) {
+  //   if (_rows.length == 1) {
+  //     final r = _rows.first;
 
-      r["program"].clear();
-      r["anggaran"].clear();
-      r["tw1"].clear();
-      r["tw2"].clear();
-      r["tw3"].clear();
-      r["tw4"].clear();
-      r["keterangan"].clear();
+  //     r["program"].clear();
+  //     r["anggaran"].clear();
+  //     r["tw1"].clear();
+  //     r["tw2"].clear();
+  //     r["tw3"].clear();
+  //     r["tw4"].clear();
+  //     r["keterangan"].clear();
 
-      (r["sub"] as List).clear();
+  //     (r["sub"] as List).clear();
 
-      setState(() {});
-      return;
-    }
+  //     setState(() {});
+  //     return;
+  //   }
 
-    _rows.removeAt(i);
-    setState(() {});
-  }
+  //   _rows.removeAt(i);
+  //   setState(() {});
+  // }
 
-  void _deleteSub(int p, int s) {
-    (_rows[p]["sub"] as List).removeAt(s);
-    setState(() {});
-    _success("Sub program dihapus");
-  }
+  // void _deleteSub(int p, int s) {
+  //   (_rows[p]["sub"] as List).removeAt(s);
+  //   setState(() {});
+  //   _success("Sub program dihapus");
+  // }
 
-  void _deleteSubSub(int p, int s, int ss) {
-    (_rows[p]["sub"][s]["sub"] as List).removeAt(ss);
-    setState(() {});
-    _success("Sub-sub program dihapus");
-  }
+  // void _deleteSubSub(int p, int s, int ss) {
+  //   (_rows[p]["sub"][s]["sub"] as List).removeAt(ss);
+  //   setState(() {});
+  //   _success("Sub-sub program dihapus");
+  // }
 
   Future<bool> showConfirmDeleteDialog(BuildContext context) async {
     final theme = Theme.of(context);
@@ -245,15 +246,18 @@ class _CardTable4WidgetState extends State<CardTable4Widget> {
 
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
-          children: [_labelChip("${_rows.length} baris")],
+          children: [_labelChip("${widget.rows.length} baris")],
         ),
         const SizedBox(height: 8),
 
         ListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          itemCount: _rows.length,
-          itemBuilder: (_, i) => _programCard(i),
+          itemCount: widget.rows.length,
+          itemBuilder: (_, i) {
+            final row = widget.rows[i];
+            return _programCard(row, [i + 1]);
+          },
         ),
 
         Align(
@@ -268,8 +272,11 @@ class _CardTable4WidgetState extends State<CardTable4Widget> {
               ),
             ),
             onPressed: () {
-              _addRow();
-              setState(() => openIndex = _rows.length - 1);
+              widget.onAddProgram();
+              setState(() {
+                openIndex = widget.rows.length - 1;
+              });
+              _success("Program baru ditambahkan");
             },
           ),
         ),
@@ -280,35 +287,35 @@ class _CardTable4WidgetState extends State<CardTable4Widget> {
   // =========================================================
   // CARD
   // =========================================================
-  Widget _programCard(int i) {
-    final row = _rows[i];
-    final sub = row["sub"] as List<Map<String, dynamic>>;
-
+  Widget _programCard(ProgramAnggaranRow row, List<int> path) {
+    final index = path.last - 1;
     return Card(
       color: const Color(0xFFBEF8FF),
       margin: const EdgeInsets.only(bottom: 8),
       child: Column(
         children: [
           InkWell(
-            onTap: () => setState(() => openIndex = openIndex == i ? null : i),
+            onTap: () {
+              setState(() {
+                openIndex = openIndex == index ? null : index;
+              });
+            },
             child: Padding(
               padding: const EdgeInsets.all(10),
               child: Row(
                 children: [
-                  _numBox(num([i + 1])),
-                  const SizedBox(width: 8),
+                  _numBox(path.join(".")),
 
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          row["program"].text.isEmpty
+                          row.program.text.isEmpty
                               ? "— Program —"
-                              : row["program"].text,
+                              : row.program.text,
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
-                        _sisaText(row),
                       ],
                     ),
                   ),
@@ -319,13 +326,13 @@ class _CardTable4WidgetState extends State<CardTable4Widget> {
                       final ok = await showConfirmDeleteDialog(context);
                       if (!ok) return;
 
-                      _deleteRow(i);
+                      widget.onDeleteProgram(index);
                       _showDeleteSuccess("Program dihapus");
                     },
                   ),
 
                   AnimatedRotation(
-                    turns: openIndex == i ? -0.25 : 0,
+                    turns: openIndex == index ? -0.25 : 0,
                     duration: const Duration(milliseconds: 250),
                     child: const Icon(Icons.chevron_left),
                   ),
@@ -333,7 +340,9 @@ class _CardTable4WidgetState extends State<CardTable4Widget> {
               ),
             ),
           ),
-          if (openIndex == i) _expanded(i, sub),
+
+          /// ⬇️ EXPANDED
+          if (openIndex == index) _expanded(row, path),
         ],
       ),
     );
@@ -342,24 +351,33 @@ class _CardTable4WidgetState extends State<CardTable4Widget> {
   // =========================================================
   // EXPANDED
   // =========================================================
-  Widget _expanded(int i, List<Map<String, dynamic>> sub) {
-    final r = _rows[i];
+  Widget _expanded(ProgramAnggaranRow row, List<int> path) {
     final theme = Theme.of(context).colorScheme;
+    //final r = widget.rows[i];
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
       child: Column(
         children: [
-          _input("Program", r["program"]),
-          _input("Anggaran", r["anggaran"], isNumber: true),
-          _input("Triwulan I", r["tw1"], isNumber: true),
-          _input("Triwulan II", r["tw2"], isNumber: true),
-          _input("Triwulan III", r["tw3"], isNumber: true),
-          _input("Triwulan IV", r["tw4"], isNumber: true),
-          _input("Keterangan", r["keterangan"]),
+          /// HEADER (READONLY)
+          _readonly("Program", row.program),
+          _readonly("Anggaran", row.anggaran),
+
+          /// INPUT TRIWULAN
+          _input("TW I", row.tw1, isNumber: true),
+          _input("TW II", row.tw2, isNumber: true),
+          _input("TW III", row.tw3, isNumber: true),
+          _input("TW IV", row.tw4, isNumber: true),
+
+          const SizedBox(height: 8),
           const Divider(),
 
-          for (int s = 0; s < sub.length; s++) _subBlock(i, s, sub[s]),
+          /// 🔽 SUB PROGRAM (RECURSIVE)
+          for (int i = 0; i < row.children.length; i++)
+            Padding(
+              padding: const EdgeInsets.only(left: 16),
+              child: _programCard(row.children[i], [...path, i + 1]),
+            ),
 
           Align(
             alignment: Alignment.centerLeft,
@@ -372,7 +390,7 @@ class _CardTable4WidgetState extends State<CardTable4Widget> {
                   color: theme.primary,
                 ),
               ),
-              onPressed: () => _addSub(i),
+              onPressed: () => widget.onAddSub(path),
             ),
           ),
         ],
@@ -380,8 +398,13 @@ class _CardTable4WidgetState extends State<CardTable4Widget> {
     );
   }
 
-  Widget _subBlock(int i, int s, Map<String, dynamic> r) {
-    final subSub = r["sub"] as List<Map<String, dynamic>>;
+  Widget _subBlock(
+    ProgramAnggaranRow parent,
+    int s,
+    ProgramAnggaranRow r,
+    List<int> path,
+  ) {
+    //final subSub = r["sub"] as List<Map<String, dynamic>>;
     final theme = Theme.of(context).colorScheme;
 
     return Padding(
@@ -390,26 +413,33 @@ class _CardTable4WidgetState extends State<CardTable4Widget> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _rowHeader(
-            num([i + 1, s + 1]),
+            num(path),
             "Sub Program",
             r,
-            onDelete: () => _deleteSub(i, s),
+            onDelete: () {
+              widget.onDeleteSub(path);
+            },
           ),
 
-          _input("Program", r["program"]),
-          _input("Anggaran", r["anggaran"], isNumber: true),
-          _input("Triwulan I", r["tw1"], isNumber: true),
-          _input("Triwulan II", r["tw2"], isNumber: true),
-          _input("Triwulan III", r["tw3"], isNumber: true),
-          _input("Triwulan IV", r["tw4"], isNumber: true),
-          _input("Keterangan", r["keterangan"]),
+          _readonly("Program", r.program),
+          _readonly("Anggaran", r.anggaran, isNumber: true),
+          _input("Triwulan I", r.tw1, isNumber: true),
+          _input("Triwulan II", r.tw2, isNumber: true),
+          _input("Triwulan III", r.tw3, isNumber: true),
+          _input("Triwulan IV", r.tw4, isNumber: true),
 
-          for (int ss = 0; ss < subSub.length; ss++)
+          for (int ss = 0; ss < r.children.length; ss++)
             Padding(
               padding: const EdgeInsets.only(left: 24),
-              child: _subSubBlock(i, s, ss, subSub[ss]),
+              child: _subSubBlock(
+                r, // parent
+                ss, // index
+                r.children[ss], // row
+                [...path, ss + 1], // path
+              ),
             ),
 
+          //const Divider(),
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
@@ -421,7 +451,9 @@ class _CardTable4WidgetState extends State<CardTable4Widget> {
                   color: theme.primary,
                 ),
               ),
-              onPressed: () => _addSubSub(i, s),
+              onPressed: () {
+                widget.onAddSubSub(path);
+              },
             ),
           ),
           const Divider(),
@@ -430,23 +462,29 @@ class _CardTable4WidgetState extends State<CardTable4Widget> {
     );
   }
 
-  Widget _subSubBlock(int i, int s, int ss, Map<String, dynamic> r) {
+  Widget _subSubBlock(
+    ProgramAnggaranRow parent,
+    int ss,
+    ProgramAnggaranRow r,
+    List<int> path,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _rowHeader(
-          num([i + 1, s + 1, ss + 1]),
+          num(path),
           "Sub-Sub Program",
           r,
-          onDelete: () => _deleteSubSub(i, s, ss),
+          onDelete: () {
+            widget.onDeleteSubSub(path);
+          },
         ),
-        _input("Program", r["program"]),
-        _input("Anggaran", r["anggaran"], isNumber: true),
-        _input("Triwulan I", r["tw1"], isNumber: true),
-        _input("Triwulan II", r["tw2"], isNumber: true),
-        _input("Triwulan III", r["tw3"], isNumber: true),
-        _input("Triwulan IV", r["tw4"], isNumber: true),
-        _input("Keterangan", r["keterangan"]),
+        _readonly("Program", r.program),
+        _readonly("Anggaran", r.anggaran, isNumber: true),
+        _input("Triwulan I", r.tw1, isNumber: true),
+        _input("Triwulan II", r.tw2, isNumber: true),
+        _input("Triwulan III", r.tw3, isNumber: true),
+        _input("Triwulan IV", r.tw4, isNumber: true),
       ],
     );
   }
@@ -457,7 +495,7 @@ class _CardTable4WidgetState extends State<CardTable4Widget> {
   Widget _rowHeader(
     String no,
     String title,
-    Map<String, dynamic> r, {
+    ProgramAnggaranRow r, {
     required VoidCallback onDelete,
   }) {
     return Row(
@@ -469,7 +507,6 @@ class _CardTable4WidgetState extends State<CardTable4Widget> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-              _sisaText(r),
             ],
           ),
         ),
@@ -487,19 +524,30 @@ class _CardTable4WidgetState extends State<CardTable4Widget> {
     );
   }
 
-  Widget _sisaText(Map<String, dynamic> r) {
-    final sisa = _sisa(r);
-    final warn = sisa < 0;
+  // Widget _sisaText(ProgramAnggaranRow r) {
+  //   final sisa = _sisaRow(r);
+  //   final warn = sisa < 0;
 
-    return Text(
-      warn ? "⚠ Kelebihan: ${rupiah(sisa.abs())}" : "Sisa: ${rupiah(sisa)}",
-      style: TextStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
-        color: warn ? Colors.red : Colors.green,
-      ),
-    );
-  }
+  //   return Text(
+  //     warn ? "⚠ Kelebihan: ${rupiah(sisa.abs())}" : "Sisa: ${rupiah(sisa)}",
+  //     style: TextStyle(
+  //       fontSize: 12,
+  //       fontWeight: FontWeight.w600,
+  //       color: warn ? Colors.red : Colors.green,
+  //     ),
+  //   );
+  // }
+
+  // int _totalTWRow(ProgramAnggaranRow r) {
+  //   return _parse(r.tw1.text) +
+  //       _parse(r.tw2.text) +
+  //       _parse(r.tw3.text) +
+  //       _parse(r.tw4.text);
+  // }
+
+  // int _sisaRow(ProgramAnggaranRow r) {
+  //   return _parse(r.anggaran.text) - _totalTWRow(r);
+  // }
 
   Widget _numBox(String text) {
     return Container(
@@ -546,6 +594,30 @@ class _CardTable4WidgetState extends State<CardTable4Widget> {
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(text, style: const TextStyle(fontWeight: FontWeight.w600)),
+    );
+  }
+
+  Widget _readonly(
+    String label,
+    TextEditingController c, {
+    bool isNumber = false,
+  }) {
+    final theme = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: TextField(
+        controller: c,
+        readOnly: true,
+        keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+        decoration: InputDecoration(
+          labelText: label,
+          filled: true,
+          fillColor: theme.surfaceContainerLowest,
+          isDense: true,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+      ),
     );
   }
 

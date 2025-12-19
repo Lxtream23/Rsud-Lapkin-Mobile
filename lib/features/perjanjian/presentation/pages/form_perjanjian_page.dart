@@ -68,6 +68,11 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
   final List<List<TextEditingController>> triwulanRows = [];
   // ======================================================
 
+  // ================= TABLE 3 & 4 DATA =================
+
+  final List<ProgramAnggaranRow> programRows = [];
+  // ======================================================
+
   // Keys untuk mengakses method/state widget tabel (dynamic-cast dipakai)
   final GlobalKey table1Key = GlobalKey();
   final GlobalKey table2Key = GlobalKey();
@@ -82,10 +87,24 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     getPangkatUser();
     getNipUser();
 
-    // 🔥 init minimal 1 row tabel
+    // =========================
+    // TABLE 1 & 2 (SHARED)
+    // =========================
     sharedRows = SharedRowControllers();
     sharedRows.addRow(); // minimal 1 row
 
+    //triwulanRows.add(List.generate(4, (_) => TextEditingController()));
+
+    // =========================
+    // TABLE 3 & 4 (PROGRAM & ANGGARAN)
+    // =========================
+    if (programRows.isEmpty) {
+      programRows.add(ProgramAnggaranRow());
+    }
+
+    // =========================
+    // FUNGSI
+    // =========================
     if (fungsiControllers.isEmpty) {
       _addFungsiField();
     } else {
@@ -93,14 +112,17 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     }
   }
 
-  void addRow() {
+  // =========================================================
+  // Management Table 1 & 2
+  // =========================================================
+  void addRow1() {
     setState(() {
       sharedRows.addRow();
       triwulanRows.add(List.generate(4, (_) => TextEditingController()));
     });
   }
 
-  void deleteRow(int index) {
+  void deleteRow1(int index) {
     if (index < 0 || index >= sharedRows.length) return;
 
     // 🔒 KASUS: TINGGAL 1 BARIS → CLEAR SAJA
@@ -132,11 +154,104 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
       'Row length mismatch between Table 1 & Table 2',
     );
   }
+  // =========================================================
+
+  // =========================================================
+  // Management Table 3 & 4
+  // =========================================================
+  ProgramAnggaranRow _getRowByPath(List<int> path) {
+    ProgramAnggaranRow current = programRows[path[0] - 1];
+
+    for (int i = 1; i < path.length; i++) {
+      current = current.children[path[i] - 1];
+    }
+
+    return current;
+  }
+
+  void _addProgram() {
+    setState(() {
+      programRows.add(ProgramAnggaranRow());
+    });
+  }
+
+  void _addSub(List<int> parentPath) {
+    setState(() {
+      final program = _getRowByPath(parentPath);
+      program.children.add(ProgramAnggaranRow());
+    });
+  }
+
+  void _addSubSub(List<int> parentPath) {
+    setState(() {
+      if (parentPath.length < 2) return;
+
+      final subPath = parentPath.sublist(0, parentPath.length);
+      final sub = _getRowByPath(subPath);
+      sub.children.add(ProgramAnggaranRow());
+    });
+  }
+
+  void _deleteProgram(int index) {
+    setState(() {
+      if (programRows.length == 1) {
+        programRows.first.program.clear();
+        programRows.first.anggaran.clear();
+        programRows.first.keterangan.clear();
+        programRows.first.children.clear();
+        return;
+      }
+
+      programRows.removeAt(index);
+    });
+  }
+
+  void _deleteSub(List<int> path) {
+    if (path.length < 2) return;
+
+    setState(() {
+      final parentPath = path.sublist(0, path.length - 1);
+      final parent = _getRowByPath(parentPath);
+      final index = path.last - 1;
+
+      parent.children[index].dispose();
+      parent.children.removeAt(index);
+    });
+  }
+
+  void _deleteSubSub(List<int> path) {
+    if (path.length < 3) return;
+
+    setState(() {
+      final parentPath = path.sublist(0, path.length - 1);
+      final parent = _getRowByPath(parentPath);
+      final index = path.last - 1;
+
+      parent.children[index].dispose();
+      parent.children.removeAt(index);
+    });
+  }
+
+  // =========================================================
 
   @override
   void dispose() {
     namaPihakPertamaController.dispose();
     namaPihakKeduaController.dispose();
+    jabatanPihakPertamaController.dispose();
+    jabatanController.dispose();
+    tugasController.dispose();
+
+    for (final c in fungsiControllers) {
+      if (!c.isDisposed) c.dispose();
+    }
+
+    sharedRows.dispose();
+
+    for (final row in programRows) {
+      row.dispose();
+    }
+
     super.dispose();
   }
 
@@ -865,15 +980,24 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                     CardTable1Widget(
                       key: table1Key,
                       rows: sharedRows, // ✅ SATU object
-                      onAddRow: addRow,
-                      onDeleteRow: deleteRow,
+                      onAddRow: addRow1,
+                      onDeleteRow: deleteRow1,
                       onRowsChanged: () => setState(() {}), // 🔥 INI KUNCI
                     ),
 
                     const SizedBox(height: 20),
 
                     // === Card-based Table PROGRAM & ANGGARAN ===
-                    CardTable3Widget(key: table3Key),
+                    CardTable3Widget(
+                      key: table3Key,
+                      rows: programRows,
+                      onAddProgram: _addProgram,
+                      onDeleteProgram: _deleteProgram,
+                      onAddSub: _addSub,
+                      onAddSubSub: _addSubSub,
+                      onDeleteSub: _deleteSub,
+                      onDeleteSubSub: _deleteSubSub,
+                    ),
 
                     const SizedBox(height: 20),
 
@@ -883,15 +1007,24 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                       sharedRows: sharedRows, // ✅ NAMA BENAR
                       triwulanRows: triwulanRows, // ✅
                       onAddRow:
-                          addRow, // atau sharedRows.addRow (kalau sinkron)
-                      onDeleteRow: deleteRow, // Function(int)
+                          addRow1, // atau sharedRows.addRow (kalau sinkron)
+                      onDeleteRow: deleteRow1, // Function(int)
                       onRowsChanged: () => setState(() {}), // 🔥 INI KUNCI
                     ),
 
                     const SizedBox(height: 20),
 
                     // === Card-based Table ANGGARAN DETAILED ===
-                    CardTable4Widget(key: table4Key),
+                    CardTable4Widget(
+                      key: table4Key,
+                      rows: programRows, // 🔥 SAME LIST
+                      onAddProgram: _addProgram,
+                      onDeleteProgram: _deleteProgram,
+                      onAddSub: _addSub,
+                      onAddSubSub: _addSubSub,
+                      onDeleteSub: _deleteSub,
+                      onDeleteSubSub: _deleteSubSub,
+                    ),
 
                     const SizedBox(height: 20),
 
@@ -983,6 +1116,53 @@ class SharedRowControllers {
       for (final c in row) {
         c.dispose();
       }
+    }
+  }
+}
+
+class ProgramAnggaranRow {
+  final TextEditingController program;
+  final TextEditingController anggaran;
+
+  final TextEditingController tw1;
+  final TextEditingController tw2;
+  final TextEditingController tw3;
+  final TextEditingController tw4;
+
+  final TextEditingController keterangan;
+
+  final List<ProgramAnggaranRow> children;
+
+  ProgramAnggaranRow({
+    TextEditingController? program,
+    TextEditingController? anggaran,
+    TextEditingController? tw1,
+    TextEditingController? tw2,
+    TextEditingController? tw3,
+    TextEditingController? tw4,
+    TextEditingController? keterangan,
+    List<ProgramAnggaranRow>? children,
+  }) : program = program ?? TextEditingController(),
+       anggaran = anggaran ?? TextEditingController(),
+       tw1 = tw1 ?? TextEditingController(),
+       tw2 = tw2 ?? TextEditingController(),
+       tw3 = tw3 ?? TextEditingController(),
+       tw4 = tw4 ?? TextEditingController(),
+       keterangan = keterangan ?? TextEditingController(),
+       children = children ?? [];
+
+  /// 🔥 WAJIB
+  void dispose() {
+    program.dispose();
+    anggaran.dispose();
+    tw1.dispose();
+    tw2.dispose();
+    tw3.dispose();
+    tw4.dispose();
+    keterangan.dispose();
+
+    for (final c in children) {
+      c.dispose();
     }
   }
 }
