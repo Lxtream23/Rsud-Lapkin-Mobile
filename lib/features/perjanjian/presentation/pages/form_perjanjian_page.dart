@@ -182,13 +182,12 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     });
   }
 
-  void _addSubSub(List<int> parentPath) {
+  void _addSubSub(List<int> path) {
     setState(() {
-      if (parentPath.length < 2) return;
+      if (path.length < 2) return;
 
-      final subPath = parentPath.sublist(0, parentPath.length);
-      final sub = _getRowByPath(subPath);
-      sub.children.add(ProgramAnggaranRow());
+      final parent = _getRowByPath(path);
+      parent.children.add(ProgramAnggaranRow());
     });
   }
 
@@ -214,6 +213,14 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
       final parent = _getRowByPath(parentPath);
       final index = path.last - 1;
 
+      if (parent.children.length == 1) {
+        parent.children.first.program.clear();
+        parent.children.first.anggaran.clear();
+        parent.children.first.keterangan.clear();
+        parent.children.first.children.clear();
+        return;
+      }
+
       parent.children[index].dispose();
       parent.children.removeAt(index);
     });
@@ -226,6 +233,14 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
       final parentPath = path.sublist(0, path.length - 1);
       final parent = _getRowByPath(parentPath);
       final index = path.last - 1;
+
+      if (parent.children.length == 1) {
+        parent.children.first.program.clear();
+        parent.children.first.anggaran.clear();
+        parent.children.first.keterangan.clear();
+        parent.children.first.children.clear();
+        return;
+      }
 
       parent.children[index].dispose();
       parent.children.removeAt(index);

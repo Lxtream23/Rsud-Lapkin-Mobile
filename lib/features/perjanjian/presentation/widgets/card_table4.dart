@@ -30,13 +30,15 @@ class CardTable4Widget extends StatefulWidget {
 
 class _CardTable4WidgetState extends State<CardTable4Widget> {
   //final List<Map<String, dynamic>> _rows = [];
-  int? openIndex;
+  final Set<String> _openPaths = {};
 
   @override
   void initState() {
     super.initState();
     //_addRow();
   }
+
+  String _pathKey(List<int> path) => path.join(".");
 
   // =========================
   // GET DATA AS STRINGS (TABLE 4)
@@ -77,16 +79,17 @@ class _CardTable4WidgetState extends State<CardTable4Widget> {
   int _parse(String v) =>
       int.tryParse(v.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
 
-  int _totalTW(Map<String, dynamic> r) =>
-      _parse(r["tw1"].text) +
-      _parse(r["tw2"].text) +
-      _parse(r["tw3"].text) +
-      _parse(r["tw4"].text);
+  int _totalTWRow(ProgramAnggaranRow r) =>
+      _parse(r.tw1.text) +
+      _parse(r.tw2.text) +
+      _parse(r.tw3.text) +
+      _parse(r.tw4.text);
 
-  int _sisa(Map<String, dynamic> r) => _parse(r["anggaran"].text) - _totalTW(r);
+  int _sisaRow(ProgramAnggaranRow r) =>
+      _parse(r.anggaran.text) - _totalTWRow(r);
 
-  bool _warning(Map<String, dynamic> r) =>
-      _totalTW(r) > _parse(r["anggaran"].text);
+  // bool _warning(ProgramAnggaranRow r) =>
+  //     _totalTWRow(r) > _parse(r["anggaran"].text);
 
   String rupiah(int v) {
     final s = v.abs().toString();
@@ -273,9 +276,11 @@ class _CardTable4WidgetState extends State<CardTable4Widget> {
             ),
             onPressed: () {
               widget.onAddProgram();
+
               setState(() {
-                openIndex = widget.rows.length - 1;
+                _openPaths.add(_pathKey([widget.rows.length]));
               });
+
               _success("Program baru ditambahkan");
             },
           ),
@@ -288,7 +293,10 @@ class _CardTable4WidgetState extends State<CardTable4Widget> {
   // CARD
   // =========================================================
   Widget _programCard(ProgramAnggaranRow row, List<int> path) {
-    final index = path.last - 1;
+    final key = _pathKey(path);
+    final isOpen = _openPaths.contains(key);
+    final rootIndex = path.first - 1;
+
     return Card(
       color: const Color(0xFFBEF8FF),
       margin: const EdgeInsets.only(bottom: 8),
@@ -297,9 +305,14 @@ class _CardTable4WidgetState extends State<CardTable4Widget> {
           InkWell(
             onTap: () {
               setState(() {
-                openIndex = openIndex == index ? null : index;
+                if (isOpen) {
+                  _openPaths.remove(key);
+                } else {
+                  _openPaths.add(key);
+                }
               });
             },
+
             child: Padding(
               padding: const EdgeInsets.all(10),
               child: Row(
@@ -326,13 +339,24 @@ class _CardTable4WidgetState extends State<CardTable4Widget> {
                       final ok = await showConfirmDeleteDialog(context);
                       if (!ok) return;
 
-                      widget.onDeleteProgram(index);
-                      _showDeleteSuccess("Program dihapus");
+                      if (path.length == 1) {
+                        widget.onDeleteProgram(rootIndex);
+                        _openPaths.removeWhere((p) => p.startsWith(key));
+                        _showDeleteSuccess("Program dihapus");
+                      } else if (path.length == 2) {
+                        widget.onDeleteSub(path);
+                        _openPaths.removeWhere((p) => p.startsWith(key));
+                        _showDeleteSuccess("Sub Program dihapus");
+                      } else {
+                        widget.onDeleteSubSub(path);
+                        _openPaths.removeWhere((p) => p.startsWith(key));
+                        _showDeleteSuccess("Sub-Sub Program dihapus");
+                      }
                     },
                   ),
 
                   AnimatedRotation(
-                    turns: openIndex == index ? -0.25 : 0,
+                    turns: isOpen ? -0.25 : 0,
                     duration: const Duration(milliseconds: 250),
                     child: const Icon(Icons.chevron_left),
                   ),
@@ -342,7 +366,7 @@ class _CardTable4WidgetState extends State<CardTable4Widget> {
           ),
 
           /// ⬇️ EXPANDED
-          if (openIndex == index) _expanded(row, path),
+          if (isOpen) _expanded(row, path),
         ],
       ),
     );
@@ -398,131 +422,131 @@ class _CardTable4WidgetState extends State<CardTable4Widget> {
     );
   }
 
-  Widget _subBlock(
-    ProgramAnggaranRow parent,
-    int s,
-    ProgramAnggaranRow r,
-    List<int> path,
-  ) {
-    //final subSub = r["sub"] as List<Map<String, dynamic>>;
-    final theme = Theme.of(context).colorScheme;
+  // Widget _subBlock(
+  //   ProgramAnggaranRow parent,
+  //   int s,
+  //   ProgramAnggaranRow r,
+  //   List<int> path,
+  // ) {
+  //   //final subSub = r["sub"] as List<Map<String, dynamic>>;
+  //   final theme = Theme.of(context).colorScheme;
 
-    return Padding(
-      padding: const EdgeInsets.only(left: 16, bottom: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _rowHeader(
-            num(path),
-            "Sub Program",
-            r,
-            onDelete: () {
-              widget.onDeleteSub(path);
-            },
-          ),
+  //   return Padding(
+  //     padding: const EdgeInsets.only(left: 16, bottom: 12),
+  //     child: Column(
+  //       crossAxisAlignment: CrossAxisAlignment.start,
+  //       children: [
+  //         _rowHeader(
+  //           num(path),
+  //           "Sub Program",
+  //           r,
+  //           onDelete: () {
+  //             widget.onDeleteSub(path);
+  //           },
+  //         ),
 
-          _readonly("Program", r.program),
-          _readonly("Anggaran", r.anggaran, isNumber: true),
-          _input("Triwulan I", r.tw1, isNumber: true),
-          _input("Triwulan II", r.tw2, isNumber: true),
-          _input("Triwulan III", r.tw3, isNumber: true),
-          _input("Triwulan IV", r.tw4, isNumber: true),
+  //         _readonly("Program", r.program),
+  //         _readonly("Anggaran", r.anggaran, isNumber: true),
+  //         _input("Triwulan I", r.tw1, isNumber: true),
+  //         _input("Triwulan II", r.tw2, isNumber: true),
+  //         _input("Triwulan III", r.tw3, isNumber: true),
+  //         _input("Triwulan IV", r.tw4, isNumber: true),
 
-          for (int ss = 0; ss < r.children.length; ss++)
-            Padding(
-              padding: const EdgeInsets.only(left: 24),
-              child: _subSubBlock(
-                r, // parent
-                ss, // index
-                r.children[ss], // row
-                [...path, ss + 1], // path
-              ),
-            ),
+  //         for (int ss = 0; ss < r.children.length; ss++)
+  //           Padding(
+  //             padding: const EdgeInsets.only(left: 24),
+  //             child: _subSubBlock(
+  //               r, // parent
+  //               ss, // index
+  //               r.children[ss], // row
+  //               [...path, ss + 1], // path
+  //             ),
+  //           ),
 
-          //const Divider(),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              icon: Icon(Icons.add_circle, color: theme.primary, size: 18),
-              label: Text(
-                "Tambah Sub-Sub Program",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: theme.primary,
-                ),
-              ),
-              onPressed: () {
-                widget.onAddSubSub(path);
-              },
-            ),
-          ),
-          const Divider(),
-        ],
-      ),
-    );
-  }
+  //         //const Divider(),
+  //         Align(
+  //           alignment: Alignment.centerLeft,
+  //           child: TextButton.icon(
+  //             icon: Icon(Icons.add_circle, color: theme.primary, size: 18),
+  //             label: Text(
+  //               "Tambah Sub-Sub Program",
+  //               style: TextStyle(
+  //                 fontWeight: FontWeight.bold,
+  //                 color: theme.primary,
+  //               ),
+  //             ),
+  //             onPressed: () {
+  //               widget.onAddSubSub(path);
+  //             },
+  //           ),
+  //         ),
+  //         const Divider(),
+  //       ],
+  //     ),
+  //   );
+  // }
 
-  Widget _subSubBlock(
-    ProgramAnggaranRow parent,
-    int ss,
-    ProgramAnggaranRow r,
-    List<int> path,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _rowHeader(
-          num(path),
-          "Sub-Sub Program",
-          r,
-          onDelete: () {
-            widget.onDeleteSubSub(path);
-          },
-        ),
-        _readonly("Program", r.program),
-        _readonly("Anggaran", r.anggaran, isNumber: true),
-        _input("Triwulan I", r.tw1, isNumber: true),
-        _input("Triwulan II", r.tw2, isNumber: true),
-        _input("Triwulan III", r.tw3, isNumber: true),
-        _input("Triwulan IV", r.tw4, isNumber: true),
-      ],
-    );
-  }
+  // Widget _subSubBlock(
+  //   ProgramAnggaranRow parent,
+  //   int ss,
+  //   ProgramAnggaranRow r,
+  //   List<int> path,
+  // ) {
+  //   return Column(
+  //     crossAxisAlignment: CrossAxisAlignment.start,
+  //     children: [
+  //       _rowHeader(
+  //         num(path),
+  //         "Sub-Sub Program",
+  //         r,
+  //         onDelete: () {
+  //           widget.onDeleteSubSub(path);
+  //         },
+  //       ),
+  //       _readonly("Program", r.program),
+  //       _readonly("Anggaran", r.anggaran, isNumber: true),
+  //       _input("Triwulan I", r.tw1, isNumber: true),
+  //       _input("Triwulan II", r.tw2, isNumber: true),
+  //       _input("Triwulan III", r.tw3, isNumber: true),
+  //       _input("Triwulan IV", r.tw4, isNumber: true),
+  //     ],
+  //   );
+  // }
 
-  // =========================================================
-  // COMPONENTS
-  // =========================================================
-  Widget _rowHeader(
-    String no,
-    String title,
-    ProgramAnggaranRow r, {
-    required VoidCallback onDelete,
-  }) {
-    return Row(
-      children: [
-        _numBox(no),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-            ],
-          ),
-        ),
-        IconButton(
-          icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
-          onPressed: () async {
-            final ok = await showConfirmDeleteDialog(context);
-            if (!ok) return;
+  // // =========================================================
+  // // COMPONENTS
+  // // =========================================================
+  // Widget _rowHeader(
+  //   String no,
+  //   String title,
+  //   ProgramAnggaranRow r, {
+  //   required VoidCallback onDelete,
+  // }) {
+  //   return Row(
+  //     children: [
+  //       _numBox(no),
+  //       const SizedBox(width: 8),
+  //       Expanded(
+  //         child: Column(
+  //           crossAxisAlignment: CrossAxisAlignment.start,
+  //           children: [
+  //             Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+  //           ],
+  //         ),
+  //       ),
+  //       IconButton(
+  //         icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+  //         onPressed: () async {
+  //           final ok = await showConfirmDeleteDialog(context);
+  //           if (!ok) return;
 
-            onDelete();
-            _showDeleteSuccess("$title dihapus");
-          },
-        ),
-      ],
-    );
-  }
+  //           onDelete();
+  //           _showDeleteSuccess("$title dihapus");
+  //         },
+  //       ),
+  //     ],
+  //   );
+  // }
 
   // Widget _sisaText(ProgramAnggaranRow r) {
   //   final sisa = _sisaRow(r);

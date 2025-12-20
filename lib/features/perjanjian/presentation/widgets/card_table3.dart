@@ -558,7 +558,13 @@ class _CardTable3WidgetState extends State<CardTable3Widget> {
             ),
             IconButton(
               icon: const Icon(Icons.delete_outline, color: Colors.red),
-              onPressed: () => widget.onDeleteSub(path),
+              onPressed: () async {
+                final ok = await showConfirmDeleteDialog(context);
+                if (!ok) return;
+
+                widget.onDeleteSub(path);
+                _showDeleteSuccess("Sub Program dihapus");
+              },
             ),
           ],
         ),
