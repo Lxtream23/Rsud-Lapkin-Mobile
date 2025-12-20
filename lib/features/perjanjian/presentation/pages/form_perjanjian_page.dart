@@ -1000,7 +1000,20 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                       onRowsChanged: () => setState(() {}), // 🔥 INI KUNCI
                     ),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 30),
+
+                    // === Card-based Table TARGET TRIWULAN ===
+                    CardTable2Widget(
+                      key: table2Key,
+                      sharedRows: sharedRows, // ✅ NAMA BENAR
+                      triwulanRows: triwulanRows, // ✅
+                      onAddRow:
+                          addRow1, // atau sharedRows.addRow (kalau sinkron)
+                      onDeleteRow: deleteRow1, // Function(int)
+                      onRowsChanged: () => setState(() {}), // 🔥 INI KUNCI
+                    ),
+
+                    const SizedBox(height: 30),
 
                     // === Card-based Table PROGRAM & ANGGARAN ===
                     CardTable3Widget(
@@ -1014,20 +1027,7 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                       onDeleteSubSub: _deleteSubSub,
                     ),
 
-                    const SizedBox(height: 20),
-
-                    // === Card-based Table TARGET TRIWULAN ===
-                    CardTable2Widget(
-                      key: table2Key,
-                      sharedRows: sharedRows, // ✅ NAMA BENAR
-                      triwulanRows: triwulanRows, // ✅
-                      onAddRow:
-                          addRow1, // atau sharedRows.addRow (kalau sinkron)
-                      onDeleteRow: deleteRow1, // Function(int)
-                      onRowsChanged: () => setState(() {}), // 🔥 INI KUNCI
-                    ),
-
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 30),
 
                     // === Card-based Table ANGGARAN DETAILED ===
                     CardTable4Widget(
@@ -1041,7 +1041,7 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                       onDeleteSubSub: _deleteSubSub,
                     ),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 30),
 
                     // === BUTTON SIMPAN / PREVIEW PDF ===
                     SizedBox(
