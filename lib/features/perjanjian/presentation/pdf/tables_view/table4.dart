@@ -124,7 +124,7 @@ PdfGrid buildTable4(
         row.cells[i].style = bodyStyle(isMain);
         row.cells[i].stringFormat = PdfStringFormat(
           alignment: alignByColumn(i),
-          lineAlignment: PdfVerticalAlignment.middle,
+          lineAlignment: PdfVerticalAlignment.top,
         );
       }
 

@@ -124,6 +124,10 @@ void _addRow(
 
   for (int i = 0; i < r.cells.count; i++) {
     r.cells[i].style = _cellStyle(font);
+
+    r.cells[i].stringFormat = PdfStringFormat(
+      lineAlignment: PdfVerticalAlignment.top, // ✅ INI KUNCINYA
+    );
   }
 
   r.cells[0].stringFormat = PdfStringFormat(alignment: PdfTextAlignment.right);

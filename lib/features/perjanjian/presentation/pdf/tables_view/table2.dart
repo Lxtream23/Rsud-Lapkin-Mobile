@@ -63,7 +63,7 @@ PdfGrid buildTable2(
       grid.headers[r].cells[c].style = headerStyle;
       grid.headers[r].cells[c].stringFormat = PdfStringFormat(
         alignment: PdfTextAlignment.center,
-        lineAlignment: PdfVerticalAlignment.middle,
+        lineAlignment: PdfVerticalAlignment.top,
       );
     }
   }

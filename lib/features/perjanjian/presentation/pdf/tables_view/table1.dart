@@ -76,7 +76,7 @@ PdfGrid buildTable1(
 
       row.cells[c].stringFormat = PdfStringFormat(
         alignment: c == 0 ? PdfTextAlignment.right : PdfTextAlignment.left,
-        lineAlignment: PdfVerticalAlignment.middle,
+        lineAlignment: PdfVerticalAlignment.top,
       );
     }
   }
