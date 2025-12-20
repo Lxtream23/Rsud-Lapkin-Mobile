@@ -87,6 +87,12 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     getPangkatUser();
     getNipUser();
 
+    // Default Nama Lengkap
+    namaPihakKeduaController.text = "Direktur";
+
+    // Default Jabatan
+    selectedJabatanPihakKedua = "Direktur";
+
     // =========================
     // TABLE 1 & 2 (SHARED)
     // =========================
