@@ -13,6 +13,8 @@ class CardTable4Widget extends StatefulWidget {
   final void Function(List<int> path) onDeleteSub;
   final void Function(List<int> path) onDeleteSubSub;
 
+  final VoidCallback onRowsChanged;
+
   const CardTable4Widget({
     super.key,
     required this.rows,
@@ -22,6 +24,7 @@ class CardTable4Widget extends StatefulWidget {
     required this.onAddSubSub,
     required this.onDeleteSub,
     required this.onDeleteSubSub,
+    required this.onRowsChanged,
   });
 
   @override
@@ -276,6 +279,7 @@ class _CardTable4WidgetState extends State<CardTable4Widget> {
             ),
             onPressed: () {
               widget.onAddProgram();
+              widget.onRowsChanged();
 
               setState(() {
                 _openPaths.add(_pathKey([widget.rows.length]));
@@ -341,14 +345,17 @@ class _CardTable4WidgetState extends State<CardTable4Widget> {
 
                       if (path.length == 1) {
                         widget.onDeleteProgram(rootIndex);
+                        widget.onRowsChanged();
                         _openPaths.removeWhere((p) => p.startsWith(key));
                         _showDeleteSuccess("Program dihapus");
                       } else if (path.length == 2) {
                         widget.onDeleteSub(path);
+                        widget.onRowsChanged();
                         _openPaths.removeWhere((p) => p.startsWith(key));
                         _showDeleteSuccess("Sub Program dihapus");
                       } else {
                         widget.onDeleteSubSub(path);
+                        widget.onRowsChanged();
                         _openPaths.removeWhere((p) => p.startsWith(key));
                         _showDeleteSuccess("Sub-Sub Program dihapus");
                       }
@@ -384,8 +391,8 @@ class _CardTable4WidgetState extends State<CardTable4Widget> {
       child: Column(
         children: [
           /// HEADER (READONLY)
-          _readonly("Program", row.program),
-          _readonly("Anggaran", row.anggaran),
+          _input("Program", row.program),
+          _input("Anggaran", row.anggaran),
 
           /// INPUT TRIWULAN
           _input("TW I", row.tw1, isNumber: true),
@@ -414,7 +421,10 @@ class _CardTable4WidgetState extends State<CardTable4Widget> {
                   color: theme.primary,
                 ),
               ),
-              onPressed: () => widget.onAddSub(path),
+              onPressed: () {
+                widget.onAddSub(path);
+                widget.onRowsChanged();
+              },
             ),
           ),
         ],
@@ -595,17 +605,35 @@ class _CardTable4WidgetState extends State<CardTable4Widget> {
     final theme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: TextField(
-        controller: c,
-        keyboardType: isNumber ? TextInputType.number : TextInputType.multiline,
-        decoration: InputDecoration(
-          labelText: label,
-          filled: true,
-          fillColor: theme.surfaceContainerLowest,
-          isDense: true,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+      child: AnimatedSize(
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeInOut,
+        child: TextField(
+          controller: c,
+          keyboardType: isNumber
+              ? TextInputType.number
+              : TextInputType.multiline,
+          decoration: InputDecoration(
+            labelText: label,
+            labelStyle: const TextStyle(fontSize: 14),
+            filled: true,
+            fillColor: theme.surfaceContainerLowest,
+            isDense: true,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: theme.outline.withOpacity(0.18)),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 12,
+            ),
+          ),
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+          onChanged: (_) {
+            widget.onRowsChanged();
+            setState(() {});
+          },
         ),
-        onChanged: (_) => setState(() {}),
       ),
     );
   }
@@ -621,29 +649,29 @@ class _CardTable4WidgetState extends State<CardTable4Widget> {
     );
   }
 
-  Widget _readonly(
-    String label,
-    TextEditingController c, {
-    bool isNumber = false,
-  }) {
-    final theme = Theme.of(context).colorScheme;
+  // Widget _readonly(
+  //   String label,
+  //   TextEditingController c, {
+  //   bool isNumber = false,
+  // }) {
+  //   final theme = Theme.of(context).colorScheme;
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: TextField(
-        controller: c,
-        readOnly: true,
-        keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-        decoration: InputDecoration(
-          labelText: label,
-          filled: true,
-          fillColor: theme.surfaceContainerLowest,
-          isDense: true,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-      ),
-    );
-  }
+  //   return Padding(
+  //     padding: const EdgeInsets.only(bottom: 10),
+  //     child: TextField(
+  //       controller: c,
+  //       readOnly: true,
+  //       keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+  //       decoration: InputDecoration(
+  //         labelText: label,
+  //         filled: true,
+  //         fillColor: theme.surfaceContainerLowest,
+  //         isDense: true,
+  //         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+  //       ),
+  //     ),
+  //   );
+  // }
 
   void _success(String m) {
     final ctx = overlaySnackbarKey.currentContext;

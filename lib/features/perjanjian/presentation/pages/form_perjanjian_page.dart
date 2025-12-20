@@ -1025,6 +1025,7 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                       onAddSubSub: _addSubSub,
                       onDeleteSub: _deleteSub,
                       onDeleteSubSub: _deleteSubSub,
+                      onRowsChanged: () => setState(() {}), // 🔥 INI KUNCI
                     ),
 
                     const SizedBox(height: 30),
@@ -1039,6 +1040,7 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                       onAddSubSub: _addSubSub,
                       onDeleteSub: _deleteSub,
                       onDeleteSubSub: _deleteSubSub,
+                      onRowsChanged: () => setState(() {}), // 🔥 INI KUNCI
                     ),
 
                     const SizedBox(height: 30),

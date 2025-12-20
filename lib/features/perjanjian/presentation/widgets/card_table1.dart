@@ -400,6 +400,10 @@ class _CardTable1WidgetState extends State<CardTable1Widget>
           ),
         ),
         style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        onChanged: (_) {
+          widget.onRowsChanged();
+          setState(() {});
+        },
       ),
     );
   }

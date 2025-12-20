@@ -452,6 +452,10 @@ class _CardTable2WidgetState extends State<CardTable2Widget>
           ),
         ),
         style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        onChanged: (_) {
+          widget.onRowsChanged();
+          setState(() {});
+        },
       ),
     );
   }

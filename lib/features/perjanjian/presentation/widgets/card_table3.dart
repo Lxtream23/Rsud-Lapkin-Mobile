@@ -14,6 +14,8 @@ class CardTable3Widget extends StatefulWidget {
   final void Function(List<int> path) onDeleteSub;
   final void Function(List<int> path) onDeleteSubSub;
 
+  final VoidCallback onRowsChanged;
+
   const CardTable3Widget({
     super.key,
     required this.rows,
@@ -23,6 +25,7 @@ class CardTable3Widget extends StatefulWidget {
     required this.onAddSubSub,
     required this.onDeleteSub,
     required this.onDeleteSubSub,
+    required this.onRowsChanged,
   });
 
   @override
@@ -351,6 +354,7 @@ class _CardTable3WidgetState extends State<CardTable3Widget> {
         ),
         onPressed: () {
           widget.onAddProgram();
+          widget.onRowsChanged();
           setState(() {
             openIndex = widget.rows.length - 1;
           });
@@ -443,6 +447,8 @@ class _CardTable3WidgetState extends State<CardTable3Widget> {
                           if (!ok) return;
 
                           widget.onDeleteProgram(index);
+                          widget.onRowsChanged();
+
                           _showDeleteSuccess("Program dihapus");
                         },
                       ),
@@ -515,6 +521,7 @@ class _CardTable3WidgetState extends State<CardTable3Widget> {
               ),
               onPressed: () {
                 widget.onAddSub(path);
+                widget.onRowsChanged();
               },
             ),
           ),
@@ -563,6 +570,7 @@ class _CardTable3WidgetState extends State<CardTable3Widget> {
                 if (!ok) return;
 
                 widget.onDeleteSub(path);
+                widget.onRowsChanged();
                 _showDeleteSuccess("Sub Program dihapus");
               },
             ),
@@ -598,6 +606,7 @@ class _CardTable3WidgetState extends State<CardTable3Widget> {
             ),
             onPressed: () {
               widget.onAddSubSub(path);
+              widget.onRowsChanged();
             },
           ),
         ),
@@ -670,7 +679,10 @@ class _CardTable3WidgetState extends State<CardTable3Widget> {
             ),
           ),
           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-          onChanged: (_) => setState(() {}),
+          onChanged: (_) {
+            widget.onRowsChanged();
+            setState(() {});
+          },
         ),
       ),
     );
