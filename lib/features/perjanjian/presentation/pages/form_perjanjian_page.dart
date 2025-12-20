@@ -15,6 +15,9 @@ import 'package:printing/printing.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:http/http.dart' as http;
 
+import '../pdf/pdf_preview_page.dart';
+import '..//controllers/services/perjanjian_service.dart';
+
 class FormPerjanjianPage extends StatefulWidget {
   const FormPerjanjianPage({Key? key}) : super(key: key);
 
@@ -460,45 +463,58 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     );
 
     try {
-      // 🔥 AMBIL TTD USER DARI SUPABASE
       final signatureRightBytes = await loadUserSignature();
-
-      // 🔥 Ambil pangkat user dari Supabase
       final pangkatUser = await getPangkatUser();
-      debugPrint("Pangkat user: $pangkatUser");
-      // 🔥 Ambil NIP user dari Supabase
       final nipUser = await getNipUser();
-      debugPrint("NIP user: $nipUser");
 
-      // 🔥 GENERATE PDF
-      final result = await generatePerjanjianPdf(
+      // 1️⃣ GENERATE PDF (BELUM SIMPAN)
+      final Uint8List pdfBytes = await generatePerjanjianPdf(
         namaPihak1: data['namaPihakPertama'],
         jabatanPihak1: data['jabatanPihakPertama'],
-        pangkatPihak1: pangkatUser, // ← benar
+        pangkatPihak1: pangkatUser,
         namaPihak2: data['namaPihakKedua'],
         jabatanPihak2: data['jabatanPihakKedua'],
-        pangkatPihak2: null, // ← benar
-
+        pangkatPihak2: null,
         tabel1: data['table1'],
         tabel2: data['table2'],
         tabel3: data['table3'],
         tabel4: data['table4'],
-
         signatureRightBytes: signatureRightBytes,
-
         tugasDetail: data['tugasDetail'],
         fungsiList: List<String>.from(data['fungsiList']),
         nipPihak1: nipUser,
       );
 
       Navigator.pop(context); // tutup loading
-      debugPrint("✅ PDF GENERATED successfully");
 
-      await Printing.layoutPdf(onLayout: (format) async => result);
+      // 2️⃣ BUKA PREVIEW SCREEN
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PdfPreviewPage(
+            pdfBytes: pdfBytes,
+            onSave: () async {
+              final perjanjianService = PerjanjianService();
+
+              await perjanjianService.savePerjanjian(
+                data: {
+                  ...data,
+                  'pangkatPihak1': pangkatUser,
+                  'nipPihak1': nipUser,
+                },
+                pdfBytes: pdfBytes,
+              );
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('✅ Perjanjian berhasil disimpan')),
+              );
+            },
+          ),
+        ),
+      );
     } catch (e) {
       Navigator.pop(context);
       _showDeleteError("Gagal membuat PDF: $e");
-      debugPrint("❌ PDF GENERATION ERROR: $e");
     }
   }
 

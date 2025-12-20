@@ -1,9 +1,29 @@
 import 'package:flutter/material.dart';
 import '../../../../config/app_colors.dart';
 import '../../../../config/app_text_style.dart';
+import '../pages/list_perjanjian/page_list_perjanjian.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class PagePerjanjian extends StatelessWidget {
   const PagePerjanjian({super.key});
+
+  Future<List<Map<String, dynamic>>> _fetchPerjanjian() async {
+    final supabase = Supabase.instance.client;
+    final user = supabase.auth.currentUser;
+    if (user == null) throw Exception('User belum login');
+
+    final data = await supabase
+        .from('perjanjian_kinerja')
+        .select('id, status')
+        .eq('user_id', user.id);
+
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  int _countByStatus(List<Map<String, dynamic>> data, String? status) {
+    if (status == null) return data.length;
+    return data.where((e) => e['status'] == status).length;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,51 +72,90 @@ class PagePerjanjian extends StatelessWidget {
                     const SizedBox(height: 20),
 
                     // Statistik cards
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        children: [
-                          Row(
+                    FutureBuilder<List<Map<String, dynamic>>>(
+                      future: _fetchPerjanjian(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Padding(
+                            padding: EdgeInsets.all(24),
+                            child: CircularProgressIndicator(),
+                          );
+                        }
+
+                        if (snapshot.hasError) {
+                          return const Text('Gagal memuat data');
+                        }
+
+                        final data = snapshot.data ?? [];
+
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Column(
                             children: [
-                              Expanded(
-                                child: _buildCardStatus(
-                                  "0",
-                                  "Laporan Dikirim",
-                                  Colors.green,
-                                ),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildCardStatus(
+                                      context: context,
+                                      number: _countByStatus(
+                                        data,
+                                        null,
+                                      ).toString(),
+                                      label: "Laporan Dikirim",
+                                      btnColor: Colors.green,
+                                      status: null,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: _buildCardStatus(
+                                      context: context,
+                                      number: _countByStatus(
+                                        data,
+                                        'Disetujui',
+                                      ).toString(),
+                                      label: "Disetujui",
+                                      btnColor: Colors.amber,
+                                      status: 'Disetujui',
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: _buildCardStatus(
-                                  "0",
-                                  "Disetujui",
-                                  Colors.amber,
-                                ),
+                              const SizedBox(height: 16),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildCardStatus(
+                                      context: context,
+                                      number: _countByStatus(
+                                        data,
+                                        'Ditolak',
+                                      ).toString(),
+                                      label: "Ditolak",
+                                      btnColor: Colors.red,
+                                      status: 'Ditolak',
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: _buildCardStatus(
+                                      context: context,
+                                      number: _countByStatus(
+                                        data,
+                                        'Proses',
+                                      ).toString(),
+                                      label: "Menunggu",
+                                      btnColor: Colors.blue,
+                                      status: 'Proses',
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
-                          const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildCardStatus(
-                                  "0",
-                                  "Ditolak",
-                                  Colors.red,
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: _buildCardStatus(
-                                  "0",
-                                  "Menunggu",
-                                  Colors.blue,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
+                        );
+                      },
                     ),
 
                     const SizedBox(height: 30),
@@ -149,19 +208,33 @@ class PagePerjanjian extends StatelessWidget {
     );
   }
 
+  void _openList(BuildContext context, String? status) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PageListPerjanjian(
+          status: status,
+          showAppBar: true, // 🔥 INI KUNCI-NYA
+        ),
+      ),
+    );
+  }
+
   // Widget Card Statistik
-  Widget _buildCardStatus(String number, String label, Color btnColor) {
+  Widget _buildCardStatus({
+    required BuildContext context,
+    required String number,
+    required String label,
+    required Color btnColor,
+    required String? status,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 8),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
+        boxShadow: const [
+          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
         ],
       ),
       child: Column(
@@ -175,7 +248,7 @@ class PagePerjanjian extends StatelessWidget {
           Text(label, textAlign: TextAlign.center),
           const SizedBox(height: 8),
           ElevatedButton(
-            onPressed: () {},
+            onPressed: () => _openList(context, status),
             style: ElevatedButton.styleFrom(
               backgroundColor: btnColor,
               minimumSize: const Size(80, 32),
