@@ -226,6 +226,60 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
     );
   }
 
+  Widget _highlightTextFade({
+    required String text,
+    required String query,
+    TextStyle? normalStyle,
+    TextStyle? highlightStyle,
+  }) {
+    if (query.isEmpty) {
+      return Text(text, style: normalStyle);
+    }
+
+    final lowerText = text.toLowerCase();
+    final lowerQuery = query.toLowerCase();
+
+    if (!lowerText.contains(lowerQuery)) {
+      return Text(text, style: normalStyle);
+    }
+
+    final spans = <TextSpan>[];
+    int start = 0;
+
+    while (true) {
+      final index = lowerText.indexOf(lowerQuery, start);
+      if (index < 0) {
+        spans.add(TextSpan(text: text.substring(start), style: normalStyle));
+        break;
+      }
+
+      if (index > start) {
+        spans.add(
+          TextSpan(text: text.substring(start, index), style: normalStyle),
+        );
+      }
+
+      spans.add(
+        TextSpan(
+          text: text.substring(index, index + query.length),
+          style:
+              highlightStyle ??
+              const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
+        ),
+      );
+
+      start = index + query.length;
+    }
+
+    return AnimatedOpacity(
+      key: ValueKey(query), // 🔥 trigger animasi saat search berubah
+      opacity: 1,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      child: RichText(text: TextSpan(children: spans)),
+    );
+  }
+
   Future<void> _pickDateRange() async {
     final result = await showDateRangePicker(
       context: context,
@@ -291,18 +345,27 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
         leading: const Icon(Icons.picture_as_pdf, color: Colors.red, size: 32),
-        title: const Text(
-          'Perjanjian Kinerja',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: _highlightTextFade(
+          text: 'Perjanjian Kinerja',
+          query: _searchQuery,
+          normalStyle: const TextStyle(fontWeight: FontWeight.bold),
         ),
+
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 4),
-            Text(
-              '${item['nama_pihak_kedua']} • Versi ${item['version']}',
-              style: const TextStyle(fontSize: 13, color: Colors.black54),
+            _highlightTextFade(
+              text: '${item['nama_pihak_kedua']} • Versi ${item['version']}',
+              query: _searchQuery,
+              normalStyle: const TextStyle(fontSize: 13, color: Colors.black54),
+              highlightStyle: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: Colors.blue,
+              ),
             ),
+
             const SizedBox(height: 6),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
