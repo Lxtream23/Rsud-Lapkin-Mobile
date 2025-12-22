@@ -60,7 +60,10 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
 
     // SEARCH (Supabase)
     if (_searchQuery.isNotEmpty) {
-      query = query.ilike('nama_pihak_kedua', '%$_searchQuery%');
+      query = query.or(
+        'nama_pihak_kedua.ilike.%$_searchQuery%,'
+        'status.ilike.%$_searchQuery%',
+      );
     }
 
     // STATUS
@@ -171,7 +174,7 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
           TextField(
             controller: _searchController,
             decoration: InputDecoration(
-              hintText: 'Cari nama pihak kedua...',
+              hintText: 'Cari nama pihak kedua / status...',
               prefixIcon: const Icon(Icons.search),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -373,12 +376,19 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
                 color: _statusBg(item['status']),
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: Text(
-                item['status'],
-                style: TextStyle(
+              child: _highlightTextFade(
+                text: item['status'],
+                query: _searchQuery,
+                normalStyle: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
                   color: _statusText(item['status']),
+                ),
+                highlightStyle: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                  backgroundColor: Colors.yellow,
                 ),
               ),
             ),
