@@ -413,6 +413,11 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
     final user = supabase.auth.currentUser;
     final bool editable = user != null && item['user_id'] == user.id;
 
+    // ===================== STATUS LOGIC (BARU) =====================
+    final String status = item['status'] as String;
+    final bool canSave = status == 'Proses' || status == 'Ditolak';
+    final bool isSaved = !canSave;
+
     final createdAtUtc = item['created_at'] is DateTime
         ? item['created_at'] as DateTime
         : DateTime.parse(item['created_at']);
@@ -429,7 +434,6 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
           query: _searchQuery,
           normalStyle: const TextStyle(fontWeight: FontWeight.bold),
         ),
-
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -438,33 +442,20 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
               text: '${item['nama_pihak_kedua']} • Versi ${item['version']}',
               query: _searchQuery,
               normalStyle: const TextStyle(fontSize: 13, color: Colors.black54),
-              highlightStyle: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: Colors.blue,
-              ),
             ),
-
             const SizedBox(height: 6),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: _statusBg(item['status']),
+                color: _statusBg(status),
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: _highlightTextFade(
-                text: item['status'],
-                query: _searchQuery,
-                normalStyle: TextStyle(
+              child: Text(
+                status,
+                style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
-                  color: _statusText(item['status']),
-                ),
-                highlightStyle: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                  backgroundColor: Colors.yellow,
+                  color: _statusText(status),
                 ),
               ),
             ),
@@ -476,6 +467,8 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
           ],
         ),
         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+
+        // ===================== TAP =====================
         onTap: () async {
           try {
             final pdfBytes = await _loadPdf(item);
@@ -485,13 +478,17 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
               MaterialPageRoute(
                 builder: (_) => PdfPreviewPage(
                   pdfBytes: pdfBytes,
-                  onSave: editable
+
+                  // 🔥 kirim status ke preview
+                  isSaved: isSaved,
+
+                  // 🔥 hanya boleh save jika status sesuai
+                  onSave: (editable && canSave)
                       ? () async {
                           await _saveAuditLog(
                             perjanjianId: item['id'],
                             aksi: 'UPDATE',
-                            keterangan:
-                                'Dokumen dibuka & disimpan oleh pembuat',
+                            keterangan: 'Dokumen disimpan',
                           );
                         }
                       : () async {},
@@ -508,6 +505,7 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
             ).showSnackBar(SnackBar(content: Text(e.toString())));
           }
         },
+
         onLongPress: () {
           Navigator.push(
             context,
