@@ -493,6 +493,12 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
         MaterialPageRoute(
           builder: (_) => PdfPreviewPage(
             pdfBytes: pdfBytes,
+
+            // 🔥 TAMBAHKAN INI
+            status: 'Proses',
+
+            isSaved: false,
+
             onSave: () async {
               final perjanjianService = PerjanjianService();
 

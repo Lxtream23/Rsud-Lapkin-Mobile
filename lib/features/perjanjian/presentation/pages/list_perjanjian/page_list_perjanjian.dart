@@ -479,10 +479,13 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
                 builder: (_) => PdfPreviewPage(
                   pdfBytes: pdfBytes,
 
-                  // 🔥 kirim status ke preview
+                  // 🔥 WAJIB dikirim
+                  status: status,
+
+                  // 🔥 read-only logic
                   isSaved: isSaved,
 
-                  // 🔥 hanya boleh save jika status sesuai
+                  // 🔥 hanya boleh save jika editable & canSave
                   onSave: (editable && canSave)
                       ? () async {
                           await _saveAuditLog(
