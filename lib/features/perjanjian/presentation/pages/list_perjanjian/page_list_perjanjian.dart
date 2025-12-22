@@ -283,6 +283,35 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
     );
   }
 
+  Widget _animatedEmptyState(String message) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeOut,
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, 20 * (1 - value)),
+            child: child,
+          ),
+        );
+      },
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.search_off_rounded, size: 72, color: Colors.grey.shade400),
+          const SizedBox(height: 12),
+          Text(
+            message,
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _pickDateRange() async {
     final result = await showDateRangePicker(
       context: context,
@@ -319,7 +348,13 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
 
         final data = snapshot.data ?? [];
         if (data.isEmpty) {
-          return const Center(child: Text('Data belum ada'));
+          return Center(
+            child: _animatedEmptyState(
+              _searchQuery.isNotEmpty
+                  ? 'Data tidak ditemukan'
+                  : 'Belum ada perjanjian',
+            ),
+          );
         }
 
         return ListView.separated(
