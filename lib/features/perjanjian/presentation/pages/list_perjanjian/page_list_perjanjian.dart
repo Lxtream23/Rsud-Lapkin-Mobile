@@ -33,6 +33,15 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
   bool _sortDesc = true;
   Timer? _debounce;
 
+  // ===================== SCROLL STATE =====================
+  static const int _pageSize = 10;
+  final List<Map<String, dynamic>> _items = [];
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
+  int _page = 0;
+
+  final ScrollController _scrollController = ScrollController();
+
   @override
   bool get wantKeepAlive => true;
 
@@ -45,20 +54,44 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
       _selectedStatus = widget.status!;
     }
 
-    _future = _loadData();
+    _loadData(reset: true); // 🔥 LOAD AWAL
+
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels >=
+              _scrollController.position.maxScrollExtent - 200 &&
+          !_isLoadingMore &&
+          _hasMore) {
+        _loadMore();
+      }
+    });
   }
 
   // ===================== LOAD DATA =====================
-  Future<List<Map<String, dynamic>>> _loadData() async {
+  Future<void> _loadData({bool reset = false}) async {
+    if (_isLoadingMore) return; // 🔥 safet
+
+    if (reset) {
+      _items.clear();
+      _page = 0;
+      _hasMore = true;
+    }
+
+    if (!_hasMore) return;
+
     final user = supabase.auth.currentUser;
-    if (user == null) throw Exception('User belum login');
+    if (user == null) return;
+
+    setState(() => _isLoadingMore = true);
+
+    final from = _page * _pageSize;
+    final to = from + _pageSize - 1;
 
     var query = supabase
         .from('perjanjian_kinerja')
         .select()
         .eq('user_id', user.id);
 
-    // SEARCH (Supabase)
+    // SEARCH MULTI KOLOM
     if (_searchQuery.isNotEmpty) {
       query = query.or(
         'nama_pihak_kedua.ilike.%$_searchQuery%,'
@@ -71,7 +104,7 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
       query = query.eq('status', _selectedStatus);
     }
 
-    // FILTER TANGGAL
+    // DATE FILTER
     if (_startDate != null) {
       query = query.gte('created_at', _startDate!.toIso8601String());
     }
@@ -82,9 +115,22 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
       );
     }
 
-    final result = await query.order('created_at', ascending: !_sortDesc);
+    final result = await query
+        .order('created_at', ascending: !_sortDesc)
+        .range(from, to);
 
-    return List<Map<String, dynamic>>.from(result);
+    final newItems = List<Map<String, dynamic>>.from(result);
+
+    setState(() {
+      _items.addAll(newItems);
+      _page++;
+      _hasMore = newItems.length == _pageSize;
+      _isLoadingMore = false;
+    });
+  }
+
+  Future<void> _loadMore() async {
+    await _loadData();
   }
 
   // ===================== LOAD PDF =====================
@@ -124,8 +170,8 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
     _debounce = Timer(const Duration(milliseconds: 500), () {
       setState(() {
         _searchQuery = value;
-        _future = _loadData();
       });
+      _loadData(reset: true);
     });
   }
 
@@ -133,6 +179,7 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
   void dispose() {
     _debounce?.cancel();
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -195,8 +242,8 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
                     onSelected: (_) {
                       setState(() {
                         _selectedStatus = s;
-                        _future = _loadData();
                       });
+                      _loadData(reset: true);
                     },
                   ),
                 )
@@ -213,8 +260,8 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
                 onSelected: (_) {
                   setState(() {
                     _sortDesc = !_sortDesc;
-                    _future = _loadData();
                   });
+                  _loadData(reset: true);
                 },
               ),
               const Spacer(),
@@ -323,46 +370,40 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
       setState(() {
         _startDate = result.start;
         _endDate = result.end;
-        _future = _loadData();
       });
+      _loadData(reset: true);
     }
   }
 
   // ===================== LIST =====================
   Widget _buildList() {
-    return FutureBuilder<List<Map<String, dynamic>>>(
-      future: _future,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
+    if (_items.isEmpty && _isLoadingMore) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-        if (snapshot.hasError) {
-          return Center(
-            child: Text(
-              'Gagal memuat data\n${snapshot.error}',
-              textAlign: TextAlign.center,
-            ),
+    if (_items.isEmpty) {
+      return Center(
+        child: _animatedEmptyState(
+          _searchQuery.isNotEmpty
+              ? 'Data tidak ditemukan'
+              : 'Belum ada perjanjian',
+        ),
+      );
+    }
+
+    return ListView.separated(
+      controller: _scrollController,
+      padding: const EdgeInsets.all(16),
+      itemCount: _items.length + (_hasMore ? 1 : 0),
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        if (index >= _items.length) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Center(child: CircularProgressIndicator()),
           );
         }
-
-        final data = snapshot.data ?? [];
-        if (data.isEmpty) {
-          return Center(
-            child: _animatedEmptyState(
-              _searchQuery.isNotEmpty
-                  ? 'Data tidak ditemukan'
-                  : 'Belum ada perjanjian',
-            ),
-          );
-        }
-
-        return ListView.separated(
-          padding: const EdgeInsets.all(16),
-          itemCount: data.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 12),
-          itemBuilder: (context, index) => _buildItem(context, data[index]),
-        );
+        return _buildItem(context, _items[index]);
       },
     );
   }
@@ -459,7 +500,7 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
             );
 
             setState(() {
-              _future = _loadData();
+              _loadData(reset: true);
             });
           } catch (e) {
             ScaffoldMessenger.of(
