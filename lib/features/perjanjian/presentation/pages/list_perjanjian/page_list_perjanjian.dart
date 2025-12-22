@@ -95,7 +95,7 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
               elevation: 1,
               title: Text(
                 widget.status == null
-                    ? 'Semua Perjanjian'
+                    ? 'Semua Laporan Perjanjian'
                     : 'Laporan: ${widget.status}',
                 style: AppTextStyle.bold16.copyWith(color: AppColors.textDark),
               ),
@@ -141,9 +141,11 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
     final user = supabase.auth.currentUser;
     final bool editable = user != null && item['user_id'] == user.id;
 
-    final createdAt = item['created_at'] is DateTime
+    final createdAtUtc = item['created_at'] is DateTime
         ? item['created_at'] as DateTime
-        : DateTime.tryParse(item['created_at'] ?? '');
+        : DateTime.parse(item['created_at']);
+
+    final createdAtWib = createdAtUtc.toLocal();
 
     return Card(
       elevation: 3,
@@ -179,11 +181,11 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
               ),
             ),
             const SizedBox(height: 6),
-            if (createdAt != null)
-              Text(
-                'Dibuat: ${_formatDate(createdAt)}',
-                style: const TextStyle(fontSize: 12, color: Colors.black54),
-              ),
+
+            Text(
+              'Dibuat: ${_formatDate(createdAtWib)}',
+              style: const TextStyle(fontSize: 12, color: Colors.black54),
+            ),
           ],
         ),
         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
@@ -241,7 +243,7 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
         '${d.month.toString().padLeft(2, '0')}-'
         '${d.year} '
         '${d.hour.toString().padLeft(2, '0')}:'
-        '${d.minute.toString().padLeft(2, '0')}';
+        '${d.minute.toString().padLeft(2, '0')} WIB';
   }
 
   Color _statusBg(String status) {
