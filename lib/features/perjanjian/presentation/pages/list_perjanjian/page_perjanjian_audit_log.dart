@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '/../../../config/app_colors.dart';
+import '/../../../config/app_text_style.dart';
 
 class PagePerjanjianAuditLog extends StatelessWidget {
   final String perjanjianId;
@@ -11,7 +13,15 @@ class PagePerjanjianAuditLog extends StatelessWidget {
     final supabase = Supabase.instance.client;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Riwayat Perubahan')),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 1,
+        //centerTitle: true,
+        title: Text(
+          'Riwayat Perubahan',
+          style: AppTextStyle.bold16.copyWith(color: AppColors.textDark),
+        ),
+      ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: supabase
             .from('perjanjian_audit_log')
