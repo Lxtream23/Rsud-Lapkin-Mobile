@@ -7,6 +7,8 @@ import 'page_perjanjian_audit_log.dart';
 import '/../../../config/app_colors.dart';
 import '/../../../config/app_text_style.dart';
 
+import 'dart:async';
+
 class PageListPerjanjian extends StatefulWidget {
   final String? status; // null = semua
   final bool showAppBar;
@@ -22,12 +24,27 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
   final supabase = Supabase.instance.client;
   late Future<List<Map<String, dynamic>>> _future;
 
+  // ===================== FILTER STATE (BARU) =====================
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  String _selectedStatus = 'Semua';
+  DateTime? _startDate;
+  DateTime? _endDate;
+  bool _sortDesc = true;
+  Timer? _debounce;
+
   @override
   bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
+
+    // sinkron dengan status dari page sebelumnya
+    if (widget.status != null) {
+      _selectedStatus = widget.status!;
+    }
+
     _future = _loadData();
   }
 
@@ -41,11 +58,29 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
         .select()
         .eq('user_id', user.id);
 
-    if (widget.status != null) {
-      query = query.eq('status', widget.status!);
+    // SEARCH (Supabase)
+    if (_searchQuery.isNotEmpty) {
+      query = query.ilike('nama_pihak_kedua', '%$_searchQuery%');
     }
 
-    final result = await query.order('created_at', ascending: false);
+    // STATUS
+    if (_selectedStatus != 'Semua') {
+      query = query.eq('status', _selectedStatus);
+    }
+
+    // FILTER TANGGAL
+    if (_startDate != null) {
+      query = query.gte('created_at', _startDate!.toIso8601String());
+    }
+    if (_endDate != null) {
+      query = query.lte(
+        'created_at',
+        _endDate!.add(const Duration(days: 1)).toIso8601String(),
+      );
+    }
+
+    final result = await query.order('created_at', ascending: !_sortDesc);
+
     return List<Map<String, dynamic>>.from(result);
   }
 
@@ -57,10 +92,7 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
     }
 
     final bytes = await supabase.storage.from('perjanjian-pdf').download(path);
-
-    if (bytes.isEmpty) {
-      throw Exception('File PDF kosong');
-    }
+    if (bytes.isEmpty) throw Exception('File PDF kosong');
 
     return bytes;
   }
@@ -82,6 +114,25 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
     });
   }
 
+  void _onSearchChanged(String value) {
+    // Batalkan timer sebelumnya
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      setState(() {
+        _searchQuery = value;
+        _future = _loadData();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
+
   // ===================== UI =====================
   @override
   Widget build(BuildContext context) {
@@ -101,42 +152,130 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
               ),
             )
           : null,
-      body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: _future,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (snapshot.hasError) {
-            return Center(
-              child: Text(
-                'Gagal memuat data\n${snapshot.error}',
-                textAlign: TextAlign.center,
-              ),
-            );
-          }
-
-          final data = snapshot.data ?? [];
-
-          if (data.isEmpty) {
-            return const Center(child: Text('Data belum ada'));
-          }
-
-          return ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: data.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              return _buildItem(context, data[index]);
-            },
-          );
-        },
+      body: Column(
+        children: [
+          _buildFilterSection(),
+          Expanded(child: _buildList()),
+        ],
       ),
     );
   }
 
-  // ===================== ITEM =====================
+  // ===================== FILTER UI (BARU) =====================
+  Widget _buildFilterSection() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      child: Column(
+        children: [
+          // SEARCH
+          TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              hintText: 'Cari nama pihak kedua...',
+              prefixIcon: const Icon(Icons.search),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onChanged: _onSearchChanged,
+          ),
+          const SizedBox(height: 10),
+
+          // CHIP STATUS
+          Wrap(
+            spacing: 8,
+            children: ['Semua', 'Proses', 'Disetujui', 'Ditolak']
+                .map(
+                  (s) => ChoiceChip(
+                    label: Text(s),
+                    selected: _selectedStatus == s,
+                    onSelected: (_) {
+                      setState(() {
+                        _selectedStatus = s;
+                        _future = _loadData();
+                      });
+                    },
+                  ),
+                )
+                .toList(),
+          ),
+
+          const SizedBox(height: 8),
+
+          Row(
+            children: [
+              ChoiceChip(
+                label: Text(_sortDesc ? 'Terbaru' : 'Terlama'),
+                selected: true,
+                onSelected: (_) {
+                  setState(() {
+                    _sortDesc = !_sortDesc;
+                    _future = _loadData();
+                  });
+                },
+              ),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.date_range),
+                onPressed: _pickDateRange,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickDateRange() async {
+    final result = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2022),
+      lastDate: DateTime.now(),
+    );
+
+    if (result != null) {
+      setState(() {
+        _startDate = result.start;
+        _endDate = result.end;
+        _future = _loadData();
+      });
+    }
+  }
+
+  // ===================== LIST =====================
+  Widget _buildList() {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Text(
+              'Gagal memuat data\n${snapshot.error}',
+              textAlign: TextAlign.center,
+            ),
+          );
+        }
+
+        final data = snapshot.data ?? [];
+        if (data.isEmpty) {
+          return const Center(child: Text('Data belum ada'));
+        }
+
+        return ListView.separated(
+          padding: const EdgeInsets.all(16),
+          itemCount: data.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 12),
+          itemBuilder: (context, index) => _buildItem(context, data[index]),
+        );
+      },
+    );
+  }
+
+  // ===================== ITEM (TIDAK DIUBAH) =====================
   Widget _buildItem(BuildContext context, Map<String, dynamic> item) {
     final user = supabase.auth.currentUser;
     final bool editable = user != null && item['user_id'] == user.id;
@@ -181,7 +320,6 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
               ),
             ),
             const SizedBox(height: 6),
-
             Text(
               'Dibuat: ${_formatDate(createdAtWib)}',
               style: const TextStyle(fontSize: 12, color: Colors.black54),
@@ -189,8 +327,6 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
           ],
         ),
         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-
-        // ===== TAP → PREVIEW PDF =====
         onTap: () async {
           try {
             final pdfBytes = await _loadPdf(item);
@@ -223,8 +359,6 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
             ).showSnackBar(SnackBar(content: Text(e.toString())));
           }
         },
-
-        // ===== LONG PRESS → RIWAYAT =====
         onLongPress: () {
           Navigator.push(
             context,
