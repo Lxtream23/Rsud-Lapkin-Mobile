@@ -1,6 +1,9 @@
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import '../../../../config/app_colors.dart';
+import '../../../../config/app_text_style.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:printing/printing.dart';
@@ -10,7 +13,7 @@ class PdfPreviewPage extends StatefulWidget {
   final Uint8List pdfBytes;
   final Future<void> Function() onSave;
   final bool isSaved; // true = view only
-  final String status; // Proses / Disetujui / Ditolak
+  final String status;
 
   const PdfPreviewPage({
     super.key,
@@ -27,6 +30,8 @@ class PdfPreviewPage extends StatefulWidget {
 class _PdfPreviewPageState extends State<PdfPreviewPage> {
   bool _saving = false;
   bool _darkMode = false;
+  bool _focusMode = false;
+  bool _pdfReady = false;
 
   bool _zoomed = false;
   double _zoomLevel = 1.0;
@@ -36,12 +41,23 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
 
   ui.Image? _watermarkLogo;
 
+  bool get _canEdit => widget.status == 'Proses' || widget.status == 'Ditolak';
+
+  bool get _canDownload => widget.status == 'Disetujui';
+
   // ===================== INIT =====================
   @override
   void initState() {
     super.initState();
     _loadDarkMode();
     _loadWatermarkLogo();
+
+    // Skeleton delay (aman & smooth)
+    Future.delayed(const Duration(milliseconds: 400), () {
+      if (mounted) {
+        setState(() => _pdfReady = true);
+      }
+    });
   }
 
   // ===================== DARK MODE =====================
@@ -58,7 +74,16 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
     await prefs.setBool('pdf_dark_mode', _darkMode);
   }
 
-  // ===================== WATERMARK LOGO =====================
+  // ===================== FOCUS MODE =====================
+  void _toggleFocusMode() {
+    setState(() => _focusMode = !_focusMode);
+
+    SystemChrome.setEnabledSystemUIMode(
+      _focusMode ? SystemUiMode.immersive : SystemUiMode.edgeToEdge,
+    );
+  }
+
+  // ===================== WATERMARK =====================
   Future<void> _loadWatermarkLogo() async {
     final data = await rootBundle.load('assets/images/logo_pemda.png');
     final codec = await ui.instantiateImageCodec(
@@ -66,13 +91,68 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
       targetWidth: 120,
     );
     final frame = await codec.getNextFrame();
-
-    setState(() {
-      _watermarkLogo = frame.image;
-    });
+    setState(() => _watermarkLogo = frame.image);
   }
 
-  // ===================== DOUBLE TAP ZOOM =====================
+  // ===================== EDIT =====================
+  Future<void> _confirmEdit() async {
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: const Text('Edit Dokumen'),
+        content: const Text(
+          'Dokumen akan dibuka dalam mode edit.\n'
+          'Pastikan data yang diubah sudah benar.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Lanjutkan'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      // TODO: navigasi ke halaman edit
+      // contoh:
+      // Navigator.push(context, MaterialPageRoute(builder: (_) => PageEditPerjanjian(...)));
+    }
+  }
+
+  // ===================== DOWNLOAD =====================
+  Future<void> _downloadPdf() async {
+    // contoh download/share PDF
+    await Printing.sharePdf(
+      bytes: widget.pdfBytes,
+      filename: 'Perjanjian_Kinerja.pdf',
+    );
+
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: const Text('Berhasil'),
+        content: const Text('PDF berhasil diunduh.'),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ===================== ZOOM =====================
   void _onDoubleTap(TapDownDetails details) {
     final position = details.localPosition;
 
@@ -90,7 +170,6 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
     });
   }
 
-  // ===================== STATUS COLOR =====================
   Color _statusColor() {
     switch (widget.status) {
       case 'Disetujui':
@@ -109,178 +188,145 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
     return Scaffold(
       backgroundColor: _darkMode ? Colors.black : Colors.grey.shade100,
 
-      // ===================== APP BAR =====================
-      appBar: AppBar(
-        backgroundColor: _darkMode ? Colors.black : Colors.white,
-        foregroundColor: _darkMode ? Colors.white : Colors.black,
-        elevation: 0.6,
-        centerTitle: true,
-        title: const Text(
-          'Preview Perjanjian',
-          style: TextStyle(fontWeight: FontWeight.w600),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(_darkMode ? Icons.light_mode : Icons.dark_mode),
-            onPressed: _toggleDarkMode,
-          ),
-        ],
-      ),
-
-      // ===================== BODY =====================
-      body: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-        child: Column(
-          children: [
-            // ===== STATUS + INFO =====
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _badge(widget.status, _statusColor()),
-                Text(
-                  'Zoom ${(_zoomLevel * 100).toInt()}%',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: _darkMode ? Colors.white70 : Colors.black54,
+      appBar: _focusMode
+          ? null
+          : AppBar(
+              backgroundColor: _darkMode ? Colors.black : Colors.white,
+              foregroundColor: _darkMode ? Colors.white : Colors.black,
+              elevation: 0.6,
+              title: Text(
+                'Preview Perjanjian',
+                style: AppTextStyle.bold16.copyWith(
+                  color: _darkMode ? Colors.white : AppColors.textDark,
+                ),
+              ),
+              actions: [
+                // ===== EDIT (Proses / Ditolak) =====
+                if (_canEdit)
+                  IconButton(
+                    tooltip: 'Edit Perjanjian',
+                    icon: const Icon(Icons.edit),
+                    onPressed: widget.isSaved ? null : _confirmEdit,
+                  )
+                // ===== DOWNLOAD (Disetujui) =====
+                else if (_canDownload)
+                  IconButton(
+                    tooltip: 'Download PDF',
+                    icon: const Icon(Icons.download),
+                    onPressed: _downloadPdf,
                   ),
+
+                // ===== FOCUS MODE =====
+                IconButton(
+                  tooltip: 'Mode Fokus',
+                  icon: const Icon(Icons.fullscreen),
+                  onPressed: _toggleFocusMode,
+                ),
+
+                // ===== DARK MODE =====
+                IconButton(
+                  tooltip: _darkMode ? 'Mode Terang' : 'Mode Gelap',
+                  icon: Icon(_darkMode ? Icons.light_mode : Icons.dark_mode),
+                  onPressed: _toggleDarkMode,
                 ),
               ],
             ),
 
-            const SizedBox(height: 8),
-
-            // ===== INFO READ ONLY =====
-            if (widget.isSaved)
-              Container(
-                width: double.infinity,
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
-                    Icon(Icons.lock, size: 18, color: Colors.orange),
-                    SizedBox(width: 6),
+      body: GestureDetector(
+        onTap: _focusMode ? _toggleFocusMode : null,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+          child: Column(
+            children: [
+              if (!_focusMode)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _badge(widget.status, _statusColor()),
                     Text(
-                      'Dokumen bersifat read-only',
+                      'Zoom ${(_zoomLevel * 100).toInt()}%',
                       style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: Colors.orange,
+                        fontSize: 12,
+                        color: _darkMode ? Colors.white70 : Colors.black54,
                       ),
                     ),
                   ],
                 ),
-              ),
 
-            // ===== PDF VIEW =====
-            Expanded(
-              child: Stack(
-                children: [
-                  Card(
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: GestureDetector(
-                      onDoubleTapDown: _onDoubleTap,
-                      child: InteractiveViewer(
-                        transformationController: _transformController,
-                        minScale: 1,
-                        maxScale: 4,
-                        child: PdfPreview(
-                          build: (format) => widget.pdfBytes,
+              const SizedBox(height: 8),
 
-                          // 🔥 HILANGKAN TOOLBAR BAWAAN
-                          useActions: false,
+              Expanded(
+                child: Stack(
+                  children: [
+                    // ===== SKELETON =====
+                    if (!_pdfReady) const _PdfSkeleton(),
 
-                          // 🔒 VIEW ONLY
-                          allowPrinting: false,
-                          allowSharing: false,
-                          canChangeOrientation: false,
-                          canChangePageFormat: false,
+                    // ===== PDF =====
+                    if (_pdfReady)
+                      Card(
+                        elevation: 2,
+                        clipBehavior: Clip.antiAlias,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: GestureDetector(
+                          onDoubleTapDown: _onDoubleTap,
+                          child: InteractiveViewer(
+                            transformationController: _transformController,
+                            minScale: 1,
+                            maxScale: 4,
+                            child: PdfPreview(
+                              build: (_) => widget.pdfBytes,
+                              useActions: false,
+                              allowPrinting: false,
+                              allowSharing: false,
+                              canChangeOrientation: false,
+                              canChangePageFormat: false,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
 
-                  // ===== WATERMARK FULL REPEAT =====
-                  if (widget.isSaved && _watermarkLogo != null)
-                    IgnorePointer(
-                      child: CustomPaint(
-                        size: Size.infinite,
-                        painter: WatermarkPainter(
-                          logo: _watermarkLogo!,
-                          text: 'RSUD BANGIL',
-                          darkMode: _darkMode,
+                    // ===== WATERMARK =====
+                    if (widget.isSaved && _watermarkLogo != null)
+                      IgnorePointer(
+                        child: CustomPaint(
+                          size: Size.infinite,
+                          painter: WatermarkPainter(
+                            logo: _watermarkLogo!,
+                            text: 'RSUD BANGIL',
+                            darkMode: _darkMode,
+                          ),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
 
-      // ===================== ACTION (HANYA SAAT EDIT) =====================
       bottomNavigationBar: widget.isSaved
           ? null
           : SafeArea(
-              child: Container(
+              child: Padding(
                 padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surface,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 8,
-                      offset: const Offset(0, -2),
-                    ),
-                  ],
-                ),
-                child: ElevatedButton.icon(
-                  icon: _saving
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Icon(Icons.save),
-                  label: Text(_saving ? 'Menyimpan...' : 'Simpan'),
+                child: ElevatedButton(
                   onPressed: _saving
                       ? null
                       : () async {
                           setState(() => _saving = true);
-                          try {
-                            await widget.onSave();
-                            if (context.mounted) Navigator.pop(context);
-                          } finally {
-                            if (mounted) {
-                              setState(() => _saving = false);
-                            }
-                          }
+                          await widget.onSave();
+                          if (mounted) Navigator.pop(context);
                         },
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    textStyle: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
-                    ),
-                  ),
+                  child: Text(_saving ? 'Menyimpan...' : 'Simpan'),
                 ),
               ),
             ),
     );
   }
 
-  // ===================== BADGE =====================
   Widget _badge(String text, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -300,7 +346,23 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
   }
 }
 
-// ===================== WATERMARK PAINTER =====================
+// ===================== SKELETON =====================
+class _PdfSkeleton extends StatelessWidget {
+  const _PdfSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade300,
+        borderRadius: BorderRadius.circular(12),
+      ),
+    );
+  }
+}
+
+// ===================== WATERMARK =====================
 class WatermarkPainter extends CustomPainter {
   final ui.Image logo;
   final String text;
@@ -325,10 +387,9 @@ class WatermarkPainter extends CustomPainter {
       text: TextSpan(
         text: text,
         style: TextStyle(
-          color: (darkMode ? Colors.white : Colors.black).withOpacity(0.10),
+          color: (darkMode ? Colors.white : Colors.black).withOpacity(0.1),
           fontSize: 14,
           fontWeight: FontWeight.w600,
-          letterSpacing: 1.2,
         ),
       ),
       textDirection: TextDirection.ltr,
@@ -339,14 +400,12 @@ class WatermarkPainter extends CustomPainter {
         canvas.save();
         canvas.translate(x, y);
         canvas.rotate(angle);
-
         canvas.drawImageRect(
           logo,
           Rect.fromLTWH(0, 0, logo.width.toDouble(), logo.height.toDouble()),
           Rect.fromLTWH(0, 0, logoSize, logoSize),
           paint,
         );
-
         textPainter.paint(canvas, Offset(0, logoSize + 6));
         canvas.restore();
       }
