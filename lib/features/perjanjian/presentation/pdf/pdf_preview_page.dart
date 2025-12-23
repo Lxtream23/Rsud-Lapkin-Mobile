@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:printing/printing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/services.dart' show rootBundle;
+import 'dart:ui' as ui;
+import 'package:flutter/services.dart';
 
 class PdfPreviewPage extends StatefulWidget {
   final Uint8List pdfBytes;
@@ -56,20 +59,6 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
     final prefs = await SharedPreferences.getInstance();
     setState(() => _darkMode = !_darkMode);
     await prefs.setBool('pdf_dark_mode', _darkMode);
-  }
-
-  // ===================== WATERMARK LOGO =====================
-  Future<void> _loadWatermarkLogo() async {
-    final data = await rootBundle.load('assets/images/logo_pemda.png');
-    final codec = await ui.instantiateImageCodec(
-      data.buffer.asUint8List(),
-      targetWidth: 120,
-    );
-    final frame = await codec.getNextFrame();
-
-    setState(() {
-      _watermarkLogo = frame.image;
-    });
   }
 
   // ===================== DOUBLE TAP ZOOM =====================
@@ -207,15 +196,20 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
                     ),
                   ),
 
-                  // ===== WATERMARK FULL REPEAT =====
-                  if (widget.isSaved && _watermarkLogo != null)
+                  // ===== WATERMARK READ ONLY =====
+                  if (widget.isSaved)
                     IgnorePointer(
-                      child: CustomPaint(
-                        size: Size.infinite,
-                        painter: WatermarkPainter(
-                          logo: _watermarkLogo!,
-                          text: 'RSUD BANGIL',
-                          darkMode: _darkMode,
+                      child: Center(
+                        child: Transform.rotate(
+                          angle: -0.4,
+                          child: Text(
+                            'READ ONLY',
+                            style: TextStyle(
+                              fontSize: 48,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.red.withOpacity(0.15),
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -298,61 +292,4 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
       ),
     );
   }
-}
-
-// ===================== WATERMARK PAINTER =====================
-class WatermarkPainter extends CustomPainter {
-  final ui.Image logo;
-  final String text;
-  final bool darkMode;
-
-  WatermarkPainter({
-    required this.logo,
-    required this.text,
-    required this.darkMode,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    const double gap = 220;
-    const double logoSize = 80;
-    const double angle = -0.4;
-
-    final paint = Paint()
-      ..color = (darkMode ? Colors.white : Colors.black).withOpacity(0.08);
-
-    final textPainter = TextPainter(
-      text: TextSpan(
-        text: text,
-        style: TextStyle(
-          color: (darkMode ? Colors.white : Colors.black).withOpacity(0.10),
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 1.2,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-
-    for (double x = -gap; x < size.width + gap; x += gap) {
-      for (double y = -gap; y < size.height + gap; y += gap) {
-        canvas.save();
-        canvas.translate(x, y);
-        canvas.rotate(angle);
-
-        canvas.drawImageRect(
-          logo,
-          Rect.fromLTWH(0, 0, logo.width.toDouble(), logo.height.toDouble()),
-          Rect.fromLTWH(0, 0, logoSize, logoSize),
-          paint,
-        );
-
-        textPainter.paint(canvas, Offset(0, logoSize + 6));
-        canvas.restore();
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
