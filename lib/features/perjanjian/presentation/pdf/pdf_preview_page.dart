@@ -9,11 +9,14 @@ import 'package:flutter/services.dart';
 import 'package:printing/printing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 class PdfPreviewPage extends StatefulWidget {
   final Uint8List pdfBytes;
   final Future<void> Function() onSave;
   final bool isSaved; // true = view only
   final String status;
+  final String? perjanjianId;
 
   const PdfPreviewPage({
     super.key,
@@ -21,6 +24,7 @@ class PdfPreviewPage extends StatefulWidget {
     required this.onSave,
     required this.status,
     this.isSaved = false,
+    this.perjanjianId,
   });
 
   @override
@@ -95,7 +99,24 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
   }
 
   // ===================== EDIT =====================
+  Future<void> _logEditAction() async {
+    final supabase = Supabase.instance.client;
+    final user = supabase.auth.currentUser;
+
+    if (user == null) return;
+
+    await supabase.from('perjanjian_audit_log').insert({
+      'perjanjian_id': widget.perjanjianId, // ⚠️ pastikan dikirim ke preview
+      'user_id': user.id,
+      'aksi': 'EDIT_REQUEST',
+      'keterangan': 'User membuka dokumen untuk diedit',
+    });
+  }
+
   Future<void> _confirmEdit() async {
+    // 🔥 SIMPAN AUDIT LOG SAAT EDIT DIKLIK
+    await _logEditAction();
+
     final result = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
