@@ -411,12 +411,15 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
   // ===================== ITEM (TIDAK DIUBAH) =====================
   Widget _buildItem(BuildContext context, Map<String, dynamic> item) {
     final user = supabase.auth.currentUser;
-    final bool editable = user != null && item['user_id'] == user.id;
-
-    // ===================== STATUS LOGIC (BARU) =====================
     final String status = item['status'] as String;
+
+    // 🔥 dari LIST → SELALU view only
+    const bool viewOnly = true;
+
+    // 🔥 hanya untuk watermark / info
+    const bool isSaved = true;
+
     final bool canSave = status == 'Proses' || status == 'Ditolak';
-    final bool isSaved = !canSave;
 
     final createdAtUtc = item['created_at'] is DateTime
         ? item['created_at'] as DateTime
@@ -479,29 +482,17 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
                 builder: (_) => PdfPreviewPage(
                   pdfBytes: pdfBytes,
 
-                  // 🔥 WAJIB dikirim
+                  // 🔥 WAJIB
                   status: status,
 
-                  // 🔥 read-only logic
-                  isSaved: isSaved,
+                  // 🔥 read-only visual
+                  isSaved: true,
 
-                  // 🔥 hanya boleh save jika editable & canSave
-                  onSave: (editable && canSave)
-                      ? () async {
-                          await _saveAuditLog(
-                            perjanjianId: item['id'],
-                            aksi: 'UPDATE',
-                            keterangan: 'Dokumen disimpan',
-                          );
-                        }
-                      : () async {},
+                  // 🔥 tidak pernah dipakai
+                  onSave: () async {},
                 ),
               ),
             );
-
-            setState(() {
-              _loadData(reset: true);
-            });
           } catch (e) {
             ScaffoldMessenger.of(
               context,
@@ -509,6 +500,7 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
           }
         },
 
+        // ===================== LONG PRESS =====================
         onLongPress: () {
           Navigator.push(
             context,
