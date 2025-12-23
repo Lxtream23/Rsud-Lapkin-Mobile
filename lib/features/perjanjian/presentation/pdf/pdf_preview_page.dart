@@ -100,13 +100,14 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
 
   // ===================== EDIT =====================
   Future<void> _logEditAction() async {
+    if (widget.perjanjianId == null) return;
+
     final supabase = Supabase.instance.client;
     final user = supabase.auth.currentUser;
-
     if (user == null) return;
 
     await supabase.from('perjanjian_audit_log').insert({
-      'perjanjian_id': widget.perjanjianId, // ⚠️ pastikan dikirim ke preview
+      'perjanjian_id': widget.perjanjianId,
       'user_id': user.id,
       'aksi': 'EDIT_REQUEST',
       'keterangan': 'User membuka dokumen untuk diedit',
@@ -114,9 +115,6 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
   }
 
   Future<void> _confirmEdit() async {
-    // 🔥 SIMPAN AUDIT LOG SAAT EDIT DIKLIK
-    await _logEditAction();
-
     final result = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -141,36 +139,65 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
     );
 
     if (result == true) {
-      // TODO: navigasi ke halaman edit
-      // contoh:
-      // Navigator.push(context, MaterialPageRoute(builder: (_) => PageEditPerjanjian(...)));
+      await _logEditAction(); // ✅ dicatat setelah confirm
+
+      if (!mounted) return;
+
+      Navigator.pop(context); // balik ke form edit
     }
   }
 
   // ===================== DOWNLOAD =====================
-  Future<void> _downloadPdf() async {
-    // contoh download/share PDF
-    await Printing.sharePdf(
-      bytes: widget.pdfBytes,
-      filename: 'Perjanjian_Kinerja.pdf',
+  Future<void> _showProgressDialog(String message) async {
+    return showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        content: Row(
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(width: 16),
+            Expanded(child: Text(message)),
+          ],
+        ),
+      ),
     );
+  }
 
-    if (!mounted) return;
-
-    showDialog(
+  Future<void> _showSuccessDialog(String message) async {
+    return showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: const Text('Berhasil'),
-        content: const Text('PDF berhasil diunduh.'),
+        title: const Icon(Icons.check_circle, color: Colors.green, size: 48),
+        content: Text(message, textAlign: TextAlign.center),
         actions: [
-          ElevatedButton(
+          TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('OK'),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _downloadPdf() async {
+    await _showProgressDialog('Mengunduh PDF...');
+
+    try {
+      await Printing.sharePdf(
+        bytes: widget.pdfBytes,
+        filename: 'Perjanjian_Kinerja.pdf',
+      );
+    } catch (e) {
+      if (mounted) Navigator.pop(context);
+      return;
+    }
+
+    if (!mounted) return;
+
+    Navigator.pop(context); // tutup progress dialog
+
+    await _showSuccessDialog('PDF berhasil diunduh');
   }
 
   // ===================== ZOOM =====================
@@ -208,7 +235,7 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
 
     return Scaffold(
       backgroundColor: _darkMode ? Colors.black : Colors.grey.shade100,
-
+      // ===== APP BAR =====
       appBar: _focusMode
           ? null
           : AppBar(
@@ -222,20 +249,27 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
                 ),
               ),
               actions: [
-                // ===== EDIT (Proses / Ditolak) =====
-                if (_canEdit)
-                  IconButton(
-                    tooltip: 'Edit Perjanjian',
-                    icon: const Icon(Icons.edit),
-                    onPressed: widget.isSaved ? null : _confirmEdit,
-                  )
-                // ===== DOWNLOAD (Disetujui) =====
-                else if (_canDownload)
-                  IconButton(
-                    tooltip: 'Download PDF',
-                    icon: const Icon(Icons.download),
-                    onPressed: _downloadPdf,
-                  ),
+                // ===== EDIT ↔ DOWNLOAD (ANIMATED) =====
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 250),
+                  transitionBuilder: (child, animation) =>
+                      ScaleTransition(scale: animation, child: child),
+                  child: _canEdit
+                      ? IconButton(
+                          key: const ValueKey('edit'),
+                          tooltip: 'Edit Perjanjian',
+                          icon: const Icon(Icons.edit),
+                          onPressed: widget.isSaved ? null : _confirmEdit,
+                        )
+                      : _canDownload
+                      ? IconButton(
+                          key: const ValueKey('download'),
+                          tooltip: 'Download PDF',
+                          icon: const Icon(Icons.download),
+                          onPressed: _downloadPdf,
+                        )
+                      : const SizedBox.shrink(),
+                ),
 
                 // ===== FOCUS MODE =====
                 IconButton(
@@ -252,7 +286,7 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
                 ),
               ],
             ),
-
+      // ===== BODY =====
       body: GestureDetector(
         onTap: _focusMode ? _toggleFocusMode : null,
         child: Padding(
