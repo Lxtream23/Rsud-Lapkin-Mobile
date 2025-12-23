@@ -475,6 +475,9 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
         onTap: () async {
           try {
             final pdfBytes = await _loadPdf(item);
+            debugPrint(String.fromCharCodes(pdfBytes.take(10)));
+            print('PDF bytes length: ${pdfBytes.length}');
+            print('PDF header: ${String.fromCharCodes(pdfBytes.take(8))}');
 
             await Navigator.push(
               context,
