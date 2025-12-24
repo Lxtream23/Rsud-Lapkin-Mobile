@@ -18,8 +18,17 @@ import 'package:http/http.dart' as http;
 import '../pdf/pdf_preview_page.dart';
 import '..//controllers/services/perjanjian_service.dart';
 
+enum FormMode { create, edit }
+
 class FormPerjanjianPage extends StatefulWidget {
-  const FormPerjanjianPage({Key? key}) : super(key: key);
+  final FormMode mode;
+  final String? perjanjianId;
+
+  const FormPerjanjianPage({
+    Key? key,
+    this.mode = FormMode.create,
+    this.perjanjianId,
+  }) : super(key: key);
 
   @override
   State<FormPerjanjianPage> createState() => _FormPerjanjianPageState();
@@ -119,6 +128,55 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     } else {
       _attachListener(0);
     }
+
+    if (widget.mode == FormMode.edit && widget.perjanjianId != null) {
+      _loadPerjanjianFromDb(widget.perjanjianId!);
+    }
+  }
+
+  Future<void> _loadPerjanjianFromDb(String id) async {
+    final data = await supabase
+        .from('perjanjian_kinerja')
+        .select()
+        .eq('id', id)
+        .single();
+
+    // === FORM UTAMA ===
+    namaPihakPertamaController.text = data['nama_pihak_pertama'] ?? '';
+    jabatanPihakPertamaController.text = data['jabatan_pihak_pertama'] ?? '';
+
+    namaPihakKeduaController.text = data['nama_pihak_kedua'] ?? '';
+    selectedJabatanPihakKedua = data['jabatan_pihak_kedua'];
+
+    tugasController.text = data['tugas_detail'] ?? '';
+
+    // === FUNGSI ===
+    fungsiControllers.clear();
+    final fungsiList = List<String>.from(data['fungsi_list'] ?? []);
+    for (final f in fungsiList) {
+      final c = TextEditingController(text: f);
+      fungsiControllers.add(c);
+    }
+    _addFungsiField(); // biar tetap ada field kosong
+
+    // === TABLE 1 ===
+    sharedRows.dispose();
+    sharedRows.rows.clear();
+    for (final row in List.from(data['tabel1'] ?? [])) {
+      sharedRows.rows.add(
+        List.generate(4, (i) => TextEditingController(text: row[i] ?? '')),
+      );
+    }
+
+    // === TABLE 2 (TRIWULAN) ===
+    triwulanRows.clear();
+    for (final row in List.from(data['tabel2'] ?? [])) {
+      triwulanRows.add(
+        List.generate(4, (i) => TextEditingController(text: row[i] ?? '')),
+      );
+    }
+
+    setState(() {});
   }
 
   // =========================================================

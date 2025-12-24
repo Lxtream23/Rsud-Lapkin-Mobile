@@ -491,6 +491,8 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
                   // 🔥 read-only visual
                   isSaved: true,
 
+                  perjanjianId: item['id'],
+
                   // 🔥 tidak pernah dipakai
                   onSave: () async {},
                 ),
