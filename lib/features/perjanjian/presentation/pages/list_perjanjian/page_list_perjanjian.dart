@@ -156,7 +156,7 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
     if (user == null) return;
 
     _realtimeChannel = supabase
-        .channel('perjanjian-realtime')
+        .channel('perjanjian-realtime-${user.id}')
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
           schema: 'public',
@@ -167,34 +167,10 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
             value: user.id,
           ),
           callback: (payload) {
-            debugPrint('Realtime payload: $payload');
+            debugPrint('🔥 Realtime change: ${payload.eventType}');
 
-            final newData = payload.newRecord;
-            final oldData = payload.oldRecord;
-
-            setState(() {
-              switch (payload.eventType) {
-                case PostgresChangeEvent.insert:
-                  _items.insert(0, newData); // 🔥 langsung muncul di atas
-                  break;
-
-                case PostgresChangeEvent.update:
-                  final index = _items.indexWhere(
-                    (e) => e['id'] == newData['id'],
-                  );
-                  if (index != -1) {
-                    _items[index] = newData;
-                  }
-                  break;
-
-                case PostgresChangeEvent.delete:
-                  _items.removeWhere((e) => e['id'] == oldData['id']);
-                  break;
-
-                default:
-                  break;
-              }
-            });
+            // 🔥 SOLUSI AMAN
+            _loadData(reset: true);
           },
         )
         .subscribe();
@@ -235,7 +211,10 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
     _searchController.dispose();
     _scrollController.dispose();
 
-    supabase.removeChannel(_realtimeChannel); // 🔥
+    try {
+      supabase.removeChannel(_realtimeChannel);
+    } catch (_) {}
+
     super.dispose();
   }
 
