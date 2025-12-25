@@ -42,6 +42,8 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
 
   final ScrollController _scrollController = ScrollController();
 
+  late RealtimeChannel _realtimeChannel;
+
   @override
   bool get wantKeepAlive => true;
 
@@ -55,6 +57,8 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
     }
 
     _loadData(reset: true); // 🔥 LOAD AWAL
+
+    _listenRealtime(); // 🔥 INI
 
     _scrollController.addListener(() {
       if (_scrollController.position.pixels >=
@@ -146,6 +150,56 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
     return bytes;
   }
 
+  // ===================== REALTIME =====================
+  void _listenRealtime() {
+    final user = supabase.auth.currentUser;
+    if (user == null) return;
+
+    _realtimeChannel = supabase
+        .channel('perjanjian-realtime')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'perjanjian_kinerja',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'user_id',
+            value: user.id,
+          ),
+          callback: (payload) {
+            debugPrint('Realtime payload: $payload');
+
+            final newData = payload.newRecord;
+            final oldData = payload.oldRecord;
+
+            setState(() {
+              switch (payload.eventType) {
+                case PostgresChangeEvent.insert:
+                  _items.insert(0, newData); // 🔥 langsung muncul di atas
+                  break;
+
+                case PostgresChangeEvent.update:
+                  final index = _items.indexWhere(
+                    (e) => e['id'] == newData['id'],
+                  );
+                  if (index != -1) {
+                    _items[index] = newData;
+                  }
+                  break;
+
+                case PostgresChangeEvent.delete:
+                  _items.removeWhere((e) => e['id'] == oldData['id']);
+                  break;
+
+                default:
+                  break;
+              }
+            });
+          },
+        )
+        .subscribe();
+  }
+
   // ===================== AUDIT LOG =====================
   Future<void> _saveAuditLog({
     required String perjanjianId,
@@ -180,6 +234,8 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
     _debounce?.cancel();
     _searchController.dispose();
     _scrollController.dispose();
+
+    supabase.removeChannel(_realtimeChannel); // 🔥
     super.dispose();
   }
 

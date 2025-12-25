@@ -102,24 +102,35 @@ Future<Uint8List> generatePerjanjianPdf({
     required PdfFont font,
     double left = 16,
     double top = 0,
-    double width = 0, // 0 berarti full page width - 2*left
+    double width = 0, // 0 = full width (page - left - rightMargin)
+    double rightMargin = 16, // 🔥 baru
     PdfStringFormat? format,
   }) async {
     final pageWidth = page.getClientSize().width;
-    final drawWidth = (width == 0) ? (pageWidth - left * 2) : width;
+
+    final drawWidth = (width == 0) ? (pageWidth - left - rightMargin) : width;
+
     final element = PdfTextElement(
       text: text,
       font: font,
-      format: format ?? PdfStringFormat(),
+      format:
+          format ??
+          PdfStringFormat(
+            alignment: PdfTextAlignment.left,
+            lineAlignment: PdfVerticalAlignment.top,
+            wordWrap: PdfWordWrapType.word,
+          ),
     );
+
     final PdfLayoutResult? res = element.draw(
       page: page,
       bounds: Rect.fromLTWH(left, top, drawWidth, 0),
     );
+
     if (res == null) {
-      // fallback: tidak terjadi draw (seharusnya jarang)
       return {'page': page, 'y': top};
     }
+
     return {'page': res.page, 'y': res.bounds.bottom};
   }
 
@@ -580,7 +591,7 @@ Future<Uint8List> generatePerjanjianPdf({
   final PdfPage page2 = sectionPortrait.pages.add();
 
   double yy = 16;
-
+  double Right2 = 16; // samakan dengan tabel
   const double tableSpacing = 32; // mengatur jarak antar tabel
   // header page 2
   final h2res = await _drawTextElement(
@@ -656,7 +667,11 @@ Future<Uint8List> generatePerjanjianPdf({
     font: poppins12,
     top: yy,
     left: valueX,
-    format: PdfStringFormat(alignment: PdfTextAlignment.justify),
+    rightMargin: Right2,
+    format: PdfStringFormat(
+      alignment: PdfTextAlignment.left,
+      wordWrap: PdfWordWrapType.word,
+    ),
   );
 
   yy = tgVal['y'] + 2;
