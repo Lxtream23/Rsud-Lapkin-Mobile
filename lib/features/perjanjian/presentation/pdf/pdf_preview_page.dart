@@ -10,6 +10,7 @@ import 'package:printing/printing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../pages/form_perjanjian_page.dart';
 
 class PdfPreviewPage extends StatefulWidget {
   final Uint8List pdfBytes;
@@ -115,6 +116,8 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
   }
 
   Future<void> _confirmEdit() async {
+    debugPrint('perjanjianId: ${widget.perjanjianId}');
+    if (widget.perjanjianId == null) return;
     final result = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -139,11 +142,19 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
     );
 
     if (result == true) {
-      await _logEditAction(); // ✅ dicatat setelah confirm
+      await _logEditAction();
 
       if (!mounted) return;
 
-      Navigator.pop(context); // balik ke form edit
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => FormPerjanjianPage(
+            mode: FormMode.edit,
+            perjanjianId: widget.perjanjianId!, // 🔥 ID kunci
+          ),
+        ),
+      );
     }
   }
 
@@ -232,6 +243,7 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    debugPrint('PREVIEW OPENED: ${widget.pdfBytes.length}');
 
     return Scaffold(
       backgroundColor: _darkMode ? Colors.black : Colors.grey.shade100,
@@ -259,7 +271,7 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
                           key: const ValueKey('edit'),
                           tooltip: 'Edit Perjanjian',
                           icon: const Icon(Icons.edit),
-                          onPressed: widget.isSaved ? null : _confirmEdit,
+                          onPressed: _confirmEdit,
                         )
                       : _canDownload
                       ? IconButton(

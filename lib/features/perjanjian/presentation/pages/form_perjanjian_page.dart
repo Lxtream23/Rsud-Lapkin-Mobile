@@ -17,9 +17,23 @@ import 'package:http/http.dart' as http;
 
 import '../pdf/pdf_preview_page.dart';
 import '..//controllers/services/perjanjian_service.dart';
+import 'dart:async';
+import 'package:flutter/foundation.dart';
+
+enum FormMode { create, edit, view }
 
 class FormPerjanjianPage extends StatefulWidget {
-  const FormPerjanjianPage({Key? key}) : super(key: key);
+  final FormMode mode;
+  final String? perjanjianId;
+
+  const FormPerjanjianPage({
+    Key? key,
+    this.mode = FormMode.create,
+    this.perjanjianId,
+  }) : assert(
+         mode != FormMode.edit || perjanjianId != null,
+         'EDIT mode wajib punya perjanjianId',
+       );
 
   @override
   State<FormPerjanjianPage> createState() => _FormPerjanjianPageState();
@@ -49,6 +63,12 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
       []; // untuk fungsi a-seterusnya
 
   String? selectedJabatanPihakKedua;
+
+  String _progressMessage = '';
+  double _progressValue = 0.0;
+
+  Timer? _fakeProgressTimer;
+  late final String? _perjanjianId;
 
   final List<String> jabatanList = [
     'Direktur',
@@ -119,6 +139,57 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     } else {
       _attachListener(0);
     }
+    _perjanjianId = widget.mode == FormMode.edit ? widget.perjanjianId : null;
+    debugPrint('FORM INIT | perjanjianId=$_perjanjianId');
+
+    if (widget.mode == FormMode.edit && widget.perjanjianId != null) {
+      _loadPerjanjianFromDb(widget.perjanjianId!);
+    }
+  }
+
+  Future<void> _loadPerjanjianFromDb(String id) async {
+    final data = await supabase
+        .from('perjanjian_kinerja')
+        .select()
+        .eq('id', id)
+        .single();
+
+    // === FORM UTAMA ===
+    namaPihakPertamaController.text = data['nama_pihak_pertama'] ?? '';
+    jabatanPihakPertamaController.text = data['jabatan_pihak_pertama'] ?? '';
+
+    namaPihakKeduaController.text = data['nama_pihak_kedua'] ?? '';
+    selectedJabatanPihakKedua = data['jabatan_pihak_kedua'];
+
+    tugasController.text = data['tugas_detail'] ?? '';
+
+    // === FUNGSI ===
+    fungsiControllers.clear();
+    final fungsiList = List<String>.from(data['fungsi_list'] ?? []);
+    for (final f in fungsiList) {
+      final c = TextEditingController(text: f);
+      fungsiControllers.add(c);
+    }
+    _addFungsiField(); // biar tetap ada field kosong
+
+    // === TABLE 1 ===
+    sharedRows.dispose();
+    sharedRows.rows.clear();
+    for (final row in List.from(data['tabel1'] ?? [])) {
+      sharedRows.rows.add(
+        List.generate(4, (i) => TextEditingController(text: row[i] ?? '')),
+      );
+    }
+
+    // === TABLE 2 (TRIWULAN) ===
+    triwulanRows.clear();
+    for (final row in List.from(data['tabel2'] ?? [])) {
+      triwulanRows.add(
+        List.generate(4, (i) => TextEditingController(text: row[i] ?? '')),
+      );
+    }
+
+    setState(() {});
   }
 
   // =========================================================
@@ -304,34 +375,51 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
 
   Future<Uint8List?> loadUserSignature() async {
     try {
-      final user = supabase.auth.currentUser;
-      if (user == null) return null;
+      debugPrint('🔍 loadUserSignature: start');
 
-      // ambil URL dari tabel profiles
+      final user = supabase.auth.currentUser;
+      if (user == null) {
+        debugPrint('⚠️ User null');
+        return null;
+      }
+
+      debugPrint('✅ User ditemukan: ${user.id}');
+
       final profile = await supabase
           .from('profiles')
           .select('ttd')
           .eq('id', user.id)
-          .single();
+          .maybeSingle(); // ✅ PENTING
+
+      if (profile == null) {
+        debugPrint('⚠️ Profile tidak ditemukan');
+        return null;
+      }
 
       final url = profile['ttd']?.toString();
-
       if (url == null || url.isEmpty) {
-        print("⚠ Tidak ada URL TTD di profile user");
+        debugPrint('⚠️ TTD kosong');
         return null;
       }
 
-      // download langsung dari URL
-      final response = await http.get(Uri.parse(url));
+      debugPrint('🌐 Download tanda tangan...');
+      final response = await http
+          .get(Uri.parse(url))
+          .timeout(const Duration(seconds: 8));
 
       if (response.statusCode == 200) {
-        return response.bodyBytes; // TTD valid
-      } else {
-        print("❌ Gagal download TTD dari URL");
-        return null;
+        debugPrint('✅ TTD berhasil diunduh');
+        return response.bodyBytes;
       }
-    } catch (e) {
-      print("❌ Error loadUserSignature: $e");
+
+      debugPrint('❌ HTTP ${response.statusCode}');
+      return null;
+    } on TimeoutException {
+      debugPrint('⏱ Timeout loadUserSignature');
+      return null;
+    } catch (e, s) {
+      debugPrint('❌ Error loadUserSignature: $e');
+      debugPrintStack(stackTrace: s);
       return null;
     }
   }
@@ -444,30 +532,45 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     return result;
   }
 
-  void _onPreviewPdfPressed() async {
+  Future<void> _onPreviewPdfPressed({
+    required bool isEditMode,
+    String? perjanjianId,
+  }) async {
+    // ===================== GUARD =====================
+    if (isEditMode && perjanjianId == null) {
+      throw Exception('EDIT MODE tapi perjanjianId = null');
+    }
+
     if (!_validateInputs()) return;
 
     final data = _collectAllData();
 
     data['table1'] = (data['table1'] ?? []).cast<List<String>>();
     data['table2'] = (data['table2'] ?? []).cast<List<String>>();
-    data['table3'] = (data['table3'] as List).cast<Map<String, dynamic>>();
-    data['table4'] = (data['table4'] ?? []).cast<Map<String, dynamic>>();
+    data['table3'] =
+        (data['table3'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    data['table4'] =
+        (data['table4'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    data['fungsiList'] = fungsiControllers.map((c) => c.text).toList();
 
-    data['fungsi'] = fungsiControllers.map((c) => c.text).toList();
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
-    );
+    // ===================== PROGRESS =====================
+    _progressValue = 0;
+    _progressMessage = 'Menyiapkan data...';
+    _showProfessionalProgress();
+    _startFakeProgress();
 
     try {
+      // ===================== LOAD USER DATA =====================
+      _updateProgress('Mengambil tanda tangan...');
       final signatureRightBytes = await loadUserSignature();
+
+      _updateProgress('Mengambil data pengguna...');
       final pangkatUser = await getPangkatUser();
       final nipUser = await getNipUser();
 
-      // 1️⃣ GENERATE PDF (BELUM SIMPAN)
+      // ===================== GENERATE PDF =====================
+      _updateProgress('Menyusun dokumen PDF...');
+
       final Uint8List pdfBytes = await generatePerjanjianPdf(
         namaPihak1: data['namaPihakPertama'],
         jabatanPihak1: data['jabatanPihakPertama'],
@@ -485,42 +588,96 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
         nipPihak1: nipUser,
       );
 
-      Navigator.pop(context); // tutup loading
+      // ===================== CLOSE PROGRESS =====================
+      _stopFakeProgress();
+      if (Navigator.canPop(context)) Navigator.pop(context);
 
-      // 2️⃣ BUKA PREVIEW SCREEN
+      // ===================== PREVIEW =====================
       await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (_) => PdfPreviewPage(
             pdfBytes: pdfBytes,
-
-            // 🔥 TAMBAHKAN INI
-            status: 'Proses',
-
+            status: isEditMode ? 'Edit' : 'Proses',
             isSaved: false,
-
+            perjanjianId: perjanjianId,
             onSave: () async {
-              final perjanjianService = PerjanjianService();
-
-              await perjanjianService.savePerjanjian(
-                data: {
-                  ...data,
-                  'pangkatPihak1': pangkatUser,
-                  'nipPihak1': nipUser,
-                },
-                pdfBytes: pdfBytes,
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (_) => AlertDialog(
+                  title: const Text('Simpan Perjanjian'),
+                  content: Text(
+                    isEditMode
+                        ? 'Perubahan akan disimpan sebagai versi baru.'
+                        : 'Perjanjian akan disimpan.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Batal'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Simpan'),
+                    ),
+                  ],
+                ),
               );
 
+              if (confirm != true) return;
+
+              _showProfessionalProgress();
+              _startFakeProgress();
+
+              final service = PerjanjianService();
+
+              final payload = {
+                ...data,
+                'pangkatPihak1': pangkatUser,
+                'nipPihak1': nipUser,
+              };
+
+              // ===================== SAVE =====================
+              if (isEditMode) {
+                debugPrint('EDIT MODE | ID = $perjanjianId');
+
+                await service.updatePerjanjian(
+                  perjanjianId: perjanjianId!,
+                  data: payload,
+                  pdfBytes: pdfBytes,
+                );
+              } else {
+                debugPrint('CREATE MODE');
+
+                await service.createPerjanjian(
+                  data: payload,
+                  pdfBytes: pdfBytes,
+                );
+              }
+
+              _stopFakeProgress();
+              if (Navigator.canPop(context)) Navigator.pop(context);
+              if (Navigator.canPop(context)) Navigator.pop(context);
+
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('✅ Perjanjian berhasil disimpan')),
+                SnackBar(
+                  content: Text(
+                    isEditMode
+                        ? '✅ Perjanjian berhasil diperbarui'
+                        : '✅ Perjanjian berhasil disimpan',
+                  ),
+                ),
               );
             },
           ),
         ),
       );
-    } catch (e) {
-      Navigator.pop(context);
-      _showDeleteError("Gagal membuat PDF: $e");
+    } catch (e, s) {
+      _stopFakeProgress();
+      if (Navigator.canPop(context)) Navigator.pop(context);
+      debugPrint('ERROR PDF: $e');
+      debugPrintStack(stackTrace: s);
+      _showDeleteError('Gagal membuat PDF');
     }
   }
 
@@ -546,6 +703,94 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     }
 
     return true;
+  }
+
+  void _updateProgress(String message, {double? value}) {
+    setState(() {
+      _progressMessage = message;
+      if (value != null) _progressValue = value;
+    });
+  }
+
+  void _showProgressDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => StatefulBuilder(
+        builder: (context, setStateDialog) {
+          return AlertDialog(
+            content: Row(
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    _progressMessage,
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _showProfessionalProgress() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => WillPopScope(
+        onWillPop: () async => false, // ❌ disable back
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Memproses Dokumen', style: AppTextStyle.bold16),
+              const SizedBox(height: 12),
+              LinearProgressIndicator(
+                value: _progressValue,
+                minHeight: 6,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              const SizedBox(height: 12),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: Text(
+                  _progressMessage,
+                  key: ValueKey(_progressMessage),
+                  style: const TextStyle(fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _startFakeProgress() {
+    _fakeProgressTimer?.cancel();
+    _fakeProgressTimer = Timer.periodic(const Duration(milliseconds: 120), (
+      timer,
+    ) {
+      if (_progressValue >= 0.9) {
+        timer.cancel();
+      } else {
+        setState(() {
+          _progressValue += 0.01;
+        });
+      }
+    });
+  }
+
+  void _stopFakeProgress() {
+    _fakeProgressTimer?.cancel();
   }
 
   // void _onSavePressed() {
@@ -1078,7 +1323,12 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                       width: 150,
                       child: ElevatedButton(
                         onPressed: () {
-                          _onPreviewPdfPressed();
+                          _onPreviewPdfPressed(
+                            isEditMode: widget.mode == FormMode.edit,
+                            perjanjianId: widget.mode == FormMode.edit
+                                ? widget.perjanjianId
+                                : null,
+                          );
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.teal.shade600,
@@ -1087,11 +1337,12 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                           ),
                         ),
                         child: const Text(
-                          "SIMPAN",
+                          "PREVIEW",
                           style: TextStyle(color: Colors.white),
                         ),
                       ),
                     ),
+
                     const SizedBox(height: 12),
                   ],
                 ),
