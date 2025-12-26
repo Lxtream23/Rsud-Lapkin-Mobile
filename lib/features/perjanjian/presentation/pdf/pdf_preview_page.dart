@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'dart:ui' as ui;
+import 'dart:async';
 
 import '../../../../config/app_colors.dart';
 import '../../../../config/app_text_style.dart';
@@ -49,6 +50,10 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
   bool get _canEdit => widget.status == 'Proses' || widget.status == 'Ditolak';
 
   bool get _canDownload => widget.status == 'Disetujui';
+
+  bool get _canDelete =>
+      widget.perjanjianId != null &&
+      (widget.status == 'Proses' || widget.status == 'Ditolak');
 
   // ===================== INIT =====================
   @override
@@ -211,6 +216,83 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
     await _showSuccessDialog('PDF berhasil diunduh');
   }
 
+  // ===================== DELETE =====================
+  Future<void> _confirmDelete() async {
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: const Text('Hapus Dokumen'),
+        content: const Text(
+          'Dokumen ini akan dihapus permanen.\n'
+          'Tindakan ini tidak dapat dibatalkan.\n\n'
+          'Apakah Anda yakin?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      await _deletePerjanjian();
+    }
+  }
+
+  Future<void> _deletePerjanjian() async {
+    if (widget.perjanjianId == null) return;
+
+    // ❗ JANGAN AWAIT
+    _showProgressDialog('Menghapus dokumen...');
+
+    final supabase = Supabase.instance.client;
+
+    try {
+      // 🔥 DELETE DB
+      await supabase
+          .from('perjanjian_kinerja')
+          .delete()
+          .eq('id', widget.perjanjianId!);
+
+      if (!mounted) return;
+
+      // 🔥 TUTUP LOADING
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+
+      // 🔥 KELUAR DARI PREVIEW
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context, {
+          'action': 'deleted',
+          'perjanjianId': widget.perjanjianId!,
+        });
+      }
+    } catch (e) {
+      if (mounted && Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+
+      debugPrint('DELETE ERROR: $e');
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Gagal menghapus dokumen')));
+    }
+  }
+
   // ===================== ZOOM =====================
   void _onDoubleTap(TapDownDetails details) {
     final position = details.localPosition;
@@ -261,6 +343,14 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
                 ),
               ),
               actions: [
+                // ===== DELETE =====
+                if (_canDelete)
+                  IconButton(
+                    tooltip: 'Hapus Dokumen',
+                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                    onPressed: _confirmDelete,
+                  ),
+
                 // ===== EDIT ↔ DOWNLOAD (ANIMATED) =====
                 AnimatedSwitcher(
                   duration: const Duration(milliseconds: 250),
