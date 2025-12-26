@@ -19,6 +19,7 @@ import '../pdf/pdf_preview_page.dart';
 import '..//controllers/services/perjanjian_service.dart';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'dart:convert';
 
 enum FormMode { create, edit, view }
 
@@ -182,14 +183,65 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     }
 
     // === TABLE 2 (TRIWULAN) ===
+    for (final row in triwulanRows) {
+      for (final c in row) {
+        c.dispose();
+      }
+    }
     triwulanRows.clear();
+
     for (final row in List.from(data['tabel2'] ?? [])) {
       triwulanRows.add(
         List.generate(4, (i) => TextEditingController(text: row[i] ?? '')),
       );
     }
 
+    // =====================
+    // === TABLE 3 & 4 ===
+    // =====================
+    for (final r in programRows) {
+      r.dispose();
+    }
+    programRows.clear();
+
+    // tabel3 & tabel4 punya struktur TREE yang sama
+    final raw = data['tabel4'] ?? data['tabel3'];
+
+    if (raw != null) {
+      final List decoded = raw is String ? jsonDecode(raw) : raw;
+
+      for (final item in decoded) {
+        programRows.add(
+          parseProgramRowFromJson(Map<String, dynamic>.from(item)),
+        );
+      }
+    }
+
+    // fallback biar UI tidak kosong
+    if (programRows.isEmpty) {
+      programRows.add(ProgramAnggaranRow());
+    }
+
     setState(() {});
+  }
+
+  ProgramAnggaranRow parseProgramRowFromJson(Map<String, dynamic> json) {
+    final row = ProgramAnggaranRow(
+      program: TextEditingController(text: json['program'] ?? ''),
+      anggaran: TextEditingController(text: json['anggaran'] ?? ''),
+      keterangan: TextEditingController(text: json['keterangan'] ?? ''),
+      tw1: TextEditingController(text: json['tw1'] ?? ''),
+      tw2: TextEditingController(text: json['tw2'] ?? ''),
+      tw3: TextEditingController(text: json['tw3'] ?? ''),
+      tw4: TextEditingController(text: json['tw4'] ?? ''),
+    );
+
+    final subs = (json['sub'] as List? ?? []);
+    for (final s in subs) {
+      row.children.add(parseProgramRowFromJson(Map<String, dynamic>.from(s)));
+    }
+
+    return row;
   }
 
   // =========================================================
@@ -532,6 +584,8 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     return result;
   }
 
+  // =========================================================
+
   Future<void> _onPreviewPdfPressed({
     required bool isEditMode,
     String? perjanjianId,
@@ -543,6 +597,7 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
 
     if (!_validateInputs()) return;
 
+    // ===================== COLLECT DATA =====================
     final data = _collectAllData();
 
     data['table1'] = (data['table1'] ?? []).cast<List<String>>();
@@ -593,7 +648,7 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
       if (Navigator.canPop(context)) Navigator.pop(context);
 
       // ===================== PREVIEW =====================
-      await Navigator.push(
+      final result = await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (_) => PdfPreviewPage(
@@ -602,6 +657,7 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
             isSaved: false,
             perjanjianId: perjanjianId,
             onSave: () async {
+              // ===================== CONFIRM =====================
               final confirm = await showDialog<bool>(
                 context: context,
                 builder: (_) => AlertDialog(
@@ -639,16 +695,12 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
 
               // ===================== SAVE =====================
               if (isEditMode) {
-                debugPrint('EDIT MODE | ID = $perjanjianId');
-
                 await service.updatePerjanjian(
                   perjanjianId: perjanjianId!,
                   data: payload,
                   pdfBytes: pdfBytes,
                 );
               } else {
-                debugPrint('CREATE MODE');
-
                 await service.createPerjanjian(
                   data: payload,
                   pdfBytes: pdfBytes,
@@ -656,8 +708,11 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
               }
 
               _stopFakeProgress();
-              if (Navigator.canPop(context)) Navigator.pop(context);
-              if (Navigator.canPop(context)) Navigator.pop(context);
+
+              // 🔥 PENTING: pop SEKALI dengan RESULT
+              Navigator.pop(context, {
+                'action': isEditMode ? 'updated' : 'created',
+              });
 
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -672,6 +727,11 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
           ),
         ),
       );
+
+      // ===================== RETURN RESULT KE PARENT =====================
+      if (result != null && mounted) {
+        Navigator.pop(context, result);
+      }
     } catch (e, s) {
       _stopFakeProgress();
       if (Navigator.canPop(context)) Navigator.pop(context);

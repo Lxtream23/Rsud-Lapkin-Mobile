@@ -385,7 +385,13 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
                       : () async {
                           setState(() => _saving = true);
                           await widget.onSave();
-                          if (mounted) Navigator.pop(context);
+
+                          if (!mounted) return;
+
+                          Navigator.pop(context, {
+                            'action': 'saved',
+                            'perjanjianId': widget.perjanjianId,
+                          });
                         },
                   child: Text(_saving ? 'Menyimpan...' : 'Simpan'),
                 ),

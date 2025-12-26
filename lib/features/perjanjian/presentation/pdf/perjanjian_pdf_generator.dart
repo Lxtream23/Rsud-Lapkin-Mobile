@@ -403,6 +403,21 @@ Future<Uint8List> generatePerjanjianPdf({
   y = (p3['y'] as double) + 20;
 
   // =============================
+  // CEK RUANG UNTUK BLOK TTD (HALAMAN 1)
+  // =============================
+  const double ttdBlockHeight = 190; // estimasi aman (judul + nama + ttd)
+  final double pageHeight = currentPage.getClientSize().height;
+
+  // beri jarak aman dari paragraf terakhir
+  y += 12;
+
+  // jika tidak cukup ruang → pindah halaman
+  if (y + ttdBlockHeight > pageHeight - 20) {
+    currentPage = sectionPortrait.pages.add();
+    y = 20;
+  }
+
+  // =============================
   //       TANGGAL + BLOK TTD
   // =============================
 
@@ -695,33 +710,31 @@ Future<Uint8List> generatePerjanjianPdf({
     left: colonX,
   );
 
-  // jarak sedikit setelah judul
-  yy += 0;
-
   // ===============================
   // FUNGSI — Bullet List a,b,c…
   // ===============================
 
-  // posisi kolom
-  final double markerX = valueX; // posisi huruf "a."
-  final double textX = valueX + 20; // isi paragraf mulai dari sini
-  final double maxWidth = page2.getClientSize().width - textX - 40;
+  //final pageWidth = page2.getClientSize().width;
+  final double rightPadding = 16;
+  final double contentRight = pageWidth - rightPadding;
+
+  final double markerX = valueX;
+  final double markerWidth = 20;
+  final double textX = markerX + markerWidth;
+  final double textWidth = contentRight - textX;
 
   for (int i = 0; i < fungsiList.length; i++) {
     final huruf = String.fromCharCode(97 + i); // a,b,c...
-    final String marker = "$huruf.";
-    final String isi = fungsiList[i];
+    final marker = "$huruf.";
+    final isi = fungsiList[i];
 
-    // --- 1) draw marker dan ambil layout result ---
+    // Marker (a.)
     final markerResult = PdfTextElement(text: marker, font: poppins12).draw(
       page: page2,
-      bounds: Rect.fromLTWH(markerX, yy, 30, double.infinity),
+      bounds: Rect.fromLTWH(markerX, yy, markerWidth, double.infinity),
     )!;
 
-    // Pastikan isi fungsi sejajar dengan marker
-    final double baselineY = markerResult.bounds.top;
-
-    // --- 2) draw isi teks ---
+    // Isi teks — FULL SAMPAI KANAN
     final isiResult =
         PdfTextElement(
           text: isi,
@@ -732,10 +745,14 @@ Future<Uint8List> generatePerjanjianPdf({
           ),
         ).draw(
           page: page2,
-          bounds: Rect.fromLTWH(textX, baselineY, maxWidth, double.infinity),
+          bounds: Rect.fromLTWH(
+            textX,
+            markerResult.bounds.top,
+            textWidth,
+            double.infinity,
+          ),
         )!;
 
-    // pindahkan y ke bawah baris berikutnya
     yy = max(markerResult.bounds.bottom, isiResult.bounds.bottom) + 6;
   }
 
@@ -765,6 +782,21 @@ Future<Uint8List> generatePerjanjianPdf({
     yy = layout3.bounds.bottom + tableSpacing;
   }
 
+  // ==============================
+  PdfPage pageForSignature2 = page2;
+
+  // =============================
+  // CEK SPACE UNTUK TTD
+  // =============================
+  const double ttdBlockHeight2 = 180; // estimasi aman TTD + nama + nip
+  final double pageHeight2 = page2.getClientSize().height;
+
+  if (yy + ttdBlockHeight2 > pageHeight2 - 20) {
+    // pindah halaman
+    pageForSignature2 = sectionPortrait.pages.add();
+    yy = 20;
+  }
+
   // =============================
   //       TANGGAL + BLOK TTD HALAMAN 2
   // =============================
@@ -784,7 +816,7 @@ Future<Uint8List> generatePerjanjianPdf({
   //               TANGGAL
   // ======================================
   final dateRes2 = await _drawTextElement(
-    page: page2,
+    page: pageForSignature2,
     text: "Pasuruan, $tanggal",
     font: poppins12,
     top: yy,
@@ -800,8 +832,6 @@ Future<Uint8List> generatePerjanjianPdf({
   // ======================================
   double yKiri2 = yy;
   double yKanan2 = yy;
-
-  PdfPage pageForSignature2 = page2;
 
   // ======================================
   //    KOLOM KIRI – PIHAK KEDUA
@@ -995,6 +1025,23 @@ Future<Uint8List> generatePerjanjianPdf({
   }
 
   // =============================
+  // PREP SIGNATURE PAGE (HALAMAN 3)
+  // =============================
+  PdfPage pageForSignature3 = page3;
+
+  const double ttdBlockHeight3 = 170; // estimasi tinggi tanda tangan
+  final double pageHeight3 = page3.getClientSize().height;
+
+  // beri jarak dari tabel terakhir
+  yy3 += 12;
+
+  // jika tidak cukup ruang → pindah halaman
+  if (yy3 + ttdBlockHeight3 > pageHeight3 - 20) {
+    pageForSignature3 = sectionLandscape.pages.add();
+    yy3 = 20;
+  }
+
+  // =============================
   //       TANGGAL + BLOK TTD HALAMAN 2
   // =============================
 
@@ -1013,7 +1060,7 @@ Future<Uint8List> generatePerjanjianPdf({
   //               TANGGAL
   // ======================================
   final dateRes3 = await _drawTextElement(
-    page: page3,
+    page: pageForSignature3,
     text: "Pasuruan, $tanggal",
     font: poppins12,
     top: yy3,
@@ -1030,24 +1077,16 @@ Future<Uint8List> generatePerjanjianPdf({
   double yKiri3 = yy3;
   double yKanan3 = yy3;
 
-  PdfPage pageForSignature3 = page3;
+  // tanda tangan
+  final bmp3 = _safeBitmap(signatureRightBytes);
+  if (bmp3 != null) {
+    pageForSignature3.graphics.drawImage(
+      bmp3,
+      Rect.fromLTWH(marginLeft3 + (colWidth2 - 120) / 2, yKiri3, 120, 55),
+    );
+  }
 
-  // ======================================
-  //    KOLOM KIRI – PIHAK PERTAMA
-  // ======================================
-
-  // final kiriJabatan3 = await _drawTextElement(
-  //   page: pageForSignature3,
-  //   text: "PIHAK PERTAMA",
-  //   font: poppins12,
-  //   top: yKiri3,
-  //   left: marginLeft3,
-  //   width: colWidth3,
-  //   format: PdfStringFormat(alignment: PdfTextAlignment.center),
-  // );
-
-  // pageForSignature3 = kiriJabatan3['page'] as PdfPage;
-  // yKiri3 = (kiriJabatan3['y'] as double) + 60;
+  yKiri3 += 60;
 
   final kiriNama3 = await _drawTextElement(
     page: pageForSignature3,
