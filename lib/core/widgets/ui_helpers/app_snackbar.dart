@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// GLOBAL overlay key
+/// GLOBAL overlay key (pasang di MaterialApp)
 final GlobalKey<OverlayState> overlaySnackbarKey = GlobalKey<OverlayState>();
 
 class AppSnackbar {
@@ -10,21 +10,30 @@ class AppSnackbar {
   static void _show({
     required BuildContext context,
     required String message,
-    required Color color,
+    required Color lightColor,
+    required Color darkColor,
     IconData icon = Icons.info,
     Duration duration = const Duration(seconds: 2),
   }) {
-    if (_isShowing) return; // cegah duplikasi
+    if (_isShowing) return;
     _isShowing = true;
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? darkColor : lightColor;
+
     _entry = OverlayEntry(
-      builder: (context) => Positioned(
-        top: 40,
+      builder: (_) => Positioned(
+        top: MediaQuery.of(context).padding.top + 16,
         left: 16,
         right: 16,
         child: Material(
           color: Colors.transparent,
-          child: _SnackbarCard(color: color, icon: icon, message: message),
+          child: _SnackbarCard(
+            color: bgColor,
+            icon: icon,
+            message: message,
+            isDark: isDark,
+          ),
         ),
       ),
     );
@@ -33,31 +42,50 @@ class AppSnackbar {
 
     Future.delayed(duration, () {
       _entry?.remove();
+      _entry = null;
       _isShowing = false;
     });
   }
 
-  // ==== PUBLIC METHODS (dipanggil dari mana saja) ====
+  // ================= PUBLIC API =================
 
   static void success(BuildContext context, String msg) {
     _show(
       context: context,
       message: msg,
-      color: Colors.green,
-      icon: Icons.check_circle,
+      icon: Icons.check_circle_rounded,
+      lightColor: const Color(0xFF22C55E),
+      darkColor: const Color(0xFF16A34A),
     );
   }
 
   static void error(BuildContext context, String msg) {
-    _show(context: context, message: msg, color: Colors.red, icon: Icons.error);
+    _show(
+      context: context,
+      message: msg,
+      icon: Icons.error_rounded,
+      lightColor: const Color(0xFFEF4444),
+      darkColor: const Color(0xFFDC2626),
+    );
   }
 
   static void warning(BuildContext context, String msg) {
     _show(
       context: context,
       message: msg,
-      color: Colors.orange,
-      icon: Icons.warning,
+      icon: Icons.warning_rounded,
+      lightColor: const Color(0xFFF59E0B),
+      darkColor: const Color(0xFFD97706),
+    );
+  }
+
+  static void info(BuildContext context, String msg) {
+    _show(
+      context: context,
+      message: msg,
+      icon: Icons.info_rounded,
+      lightColor: const Color(0xFF3B82F6),
+      darkColor: const Color(0xFF2563EB),
     );
   }
 }
@@ -66,43 +94,52 @@ class _SnackbarCard extends StatelessWidget {
   final Color color;
   final String message;
   final IconData icon;
+  final bool isDark;
 
   const _SnackbarCard({
     required this.color,
     required this.message,
     required this.icon,
+    required this.isDark,
   });
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedSlide(
-      offset: const Offset(0, -0.2),
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeOut,
+    return TweenAnimationBuilder<double>(
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOutCubic,
+      tween: Tween(begin: -20, end: 0),
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(0, value),
+          child: Opacity(opacity: 1, child: child),
+        );
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           color: color,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-              color: color.withOpacity(0.35),
+              blurRadius: 18,
+              offset: const Offset(0, 6),
+              color: Colors.black.withOpacity(isDark ? 0.35 : 0.18),
             ),
           ],
         ),
         child: Row(
           children: [
-            Icon(icon, color: Colors.white),
+            Icon(icon, color: Colors.white, size: 22),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 message,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 14,
+                  fontSize: 14.5,
                   fontWeight: FontWeight.w500,
+                  height: 1.3,
                 ),
               ),
             ),
@@ -112,3 +149,8 @@ class _SnackbarCard extends StatelessWidget {
     );
   }
 }
+
+// AppSnackbar.success(context, 'PDF siap diunduh');
+// AppSnackbar.error(context, 'Gagal menghapus dokumen');
+// AppSnackbar.warning(context, 'Data belum lengkap');
+// AppSnackbar.info(context, 'Sedang memproses...');
