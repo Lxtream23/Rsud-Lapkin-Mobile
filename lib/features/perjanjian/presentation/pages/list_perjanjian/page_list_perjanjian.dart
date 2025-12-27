@@ -508,35 +508,44 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
 
         // ===================== TAP =====================
         onTap: () async {
+          final messenger = ScaffoldMessenger.maybeOf(context);
           try {
             final pdfBytes = await _loadPdf(item);
             debugPrint(String.fromCharCodes(pdfBytes.take(10)));
             print('PDF bytes length: ${pdfBytes.length}');
             print('PDF header: ${String.fromCharCodes(pdfBytes.take(8))}');
 
-            await Navigator.push(
+            final result = await Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (_) => PdfPreviewPage(
                   pdfBytes: pdfBytes,
-
                   // 🔥 WAJIB
                   status: status,
-
                   // 🔥 read-only visual
                   isSaved: true,
-
                   perjanjianId: item['id'],
-
                   // 🔥 tidak pernah dipakai
                   onSave: () async {},
                 ),
               ),
             );
+            // ===================== REFRESH =====================
+            if (result != null && result['action'] == 'deleted') {
+              debugPrint('🔄 Refresh via Navigator result');
+
+              await _loadData(reset: true);
+
+              if (!mounted) return; // 🔥 PENTING
+
+              if (messenger != null) {
+                messenger.showSnackBar(
+                  const SnackBar(content: Text('Dokumen berhasil dihapus')),
+                );
+              }
+            }
           } catch (e) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text(e.toString())));
+            messenger?.showSnackBar(SnackBar(content: Text(e.toString())));
           }
         },
 
