@@ -4,6 +4,7 @@ import 'dart:async';
 
 import '../../../../config/app_colors.dart';
 import '../../../../config/app_text_style.dart';
+import '../../../../core/widgets/ui_helpers/app_snackbar.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -183,21 +184,102 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
   Future<void> _showSuccessDialog(String message) async {
     return showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Icon(Icons.check_circle, color: Colors.green, size: 48),
-        content: Text(message, textAlign: TextAlign.center),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
+      barrierDismissible: true,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 24,
+                offset: const Offset(0, 12),
+              ),
+            ],
           ),
-        ],
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // ===== ICON =====
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.check_circle,
+                  color: Colors.green,
+                  size: 48,
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // ===== TITLE =====
+              const Text(
+                'Berhasil',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+
+              const SizedBox(height: 8),
+
+              // ===== MESSAGE =====
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.black54,
+                  height: 1.4,
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // ===== BUTTON =====
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    elevation: 0,
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text(
+                    'OK',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
   Future<void> _downloadPdf() async {
-    await _showProgressDialog('Mengunduh PDF...');
+    // 1️⃣ tampilkan loading
+    _showProgressDialog('Mengunduh PDF...');
+
+    // 2️⃣ beri 1 frame supaya dialog benar-benar tampil
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    if (!mounted) return;
+
+    // 3️⃣ TUTUP LOADING SEBELUM share
+    Navigator.pop(context);
 
     try {
       await Printing.sharePdf(
@@ -205,15 +287,13 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
         filename: 'Perjanjian_Kinerja.pdf',
       );
     } catch (e) {
-      if (mounted) Navigator.pop(context);
+      debugPrint('DOWNLOAD ERROR: $e');
       return;
     }
 
     if (!mounted) return;
 
-    Navigator.pop(context); // tutup progress dialog
-
-    await _showSuccessDialog('PDF berhasil diunduh');
+    AppSnackbar.success(context, 'PDF Berhasil Diunduh.');
   }
 
   // ===================== DELETE =====================
@@ -248,6 +328,9 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
 
     if (result == true) {
       await _deletePerjanjian();
+      if (!context.mounted) return;
+
+      AppSnackbar.success(context, 'Dokumen berhasil dihapus.');
     }
   }
 
@@ -287,9 +370,12 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
 
       debugPrint('DELETE ERROR: $e');
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Gagal menghapus dokumen')));
+      // ScaffoldMessenger.of(
+      //   context,
+      // ).showSnackBar(const SnackBar(content: Text('Gagal menghapus dokumen')));
+      if (!context.mounted) return;
+
+      AppSnackbar.error(context, 'Gagal menghapus dokumen.');
     }
   }
 
