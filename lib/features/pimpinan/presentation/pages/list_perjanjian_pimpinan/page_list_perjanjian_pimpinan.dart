@@ -256,11 +256,12 @@ class _PageListPerjanjianPimpinanState extends State<PageListPerjanjianPimpinan>
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Column(
         children: [
-          // SEARCH
+          // ============= SEARCH BAR =============
           TextField(
             controller: _searchController,
             decoration: InputDecoration(
               hintText: 'Cari nama pihak kedua / status...',
+              hintStyle: const TextStyle(fontSize: 14, color: Colors.grey),
               prefixIcon: const Icon(Icons.search),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -269,19 +270,36 @@ class _PageListPerjanjianPimpinanState extends State<PageListPerjanjianPimpinan>
             onChanged: _onSearchChanged,
           ),
           const SizedBox(height: 10),
-
-          // CHIP STATUS
+          // =========== STATUS CHOICES ===========
           Wrap(
             spacing: 8,
+            runSpacing: 8,
             children: ['Semua', 'Proses', 'Disetujui', 'Ditolak']
                 .map(
                   (s) => ChoiceChip(
-                    label: Text(s),
+                    label: Text(
+                      s,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: _selectedStatus == s
+                            ? Colors.white
+                            : Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                    labelPadding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     selected: _selectedStatus == s,
+                    selectedColor: AppColors.primary,
+                    backgroundColor: Theme.of(context).colorScheme.surface,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    visualDensity: VisualDensity.compact,
                     onSelected: (_) {
-                      setState(() {
-                        _selectedStatus = s;
-                      });
+                      setState(() => _selectedStatus = s);
                       _loadData(reset: true);
                     },
                   ),
@@ -290,22 +308,44 @@ class _PageListPerjanjianPimpinanState extends State<PageListPerjanjianPimpinan>
           ),
 
           const SizedBox(height: 8),
-
+          // ============ SORT & DATE ============
           Row(
             children: [
               ChoiceChip(
-                label: Text(_sortDesc ? 'Terbaru' : 'Terlama'),
+                label: Text(
+                  _sortDesc ? 'Terbaru' : 'Terlama',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
                 selected: true,
+                selectedColor: AppColors.primary,
+                labelPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                visualDensity: VisualDensity.compact,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 onSelected: (_) {
-                  setState(() {
-                    _sortDesc = !_sortDesc;
-                  });
+                  setState(() => _sortDesc = !_sortDesc);
                   _loadData(reset: true);
                 },
               ),
+
               const Spacer(),
+
               IconButton(
-                icon: const Icon(Icons.date_range),
+                icon: const Icon(
+                  Icons.date_range,
+                  size: 22,
+                ), // 🔥 konsisten ukuran
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
                 onPressed: _pickDateRange,
               ),
             ],
@@ -474,7 +514,10 @@ class _PageListPerjanjianPimpinanState extends State<PageListPerjanjianPimpinan>
         title: _highlightTextFade(
           text: 'Perjanjian Kinerja',
           query: _searchQuery,
-          normalStyle: const TextStyle(fontWeight: FontWeight.bold),
+          normalStyle: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
