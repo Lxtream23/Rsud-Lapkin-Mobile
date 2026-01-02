@@ -4,9 +4,9 @@ import 'package:provider/provider.dart';
 import 'package:rsud_lapkin_mobile/config/app_colors.dart';
 import 'package:rsud_lapkin_mobile/core/widgets/custom_text_field.dart';
 import 'package:rsud_lapkin_mobile/features/auth/presentation/pages/forgot_password_page.dart';
-import 'package:rsud_lapkin_mobile/features/home/presentation/pages/home_page.dart';
 import 'package:rsud_lapkin_mobile/features/register/presentation/pages/register_page.dart';
 import '../controllers/login_controller.dart';
+import 'package:rsud_lapkin_mobile/core/services/auth_wrapper.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -153,7 +153,6 @@ class _LoginPageState extends State<LoginPage> {
                               if (!_formKey.currentState!.validate()) return;
 
                               final success = await loginController.login(
-                                context,
                                 _emailController.text.trim(),
                                 _passwordController.text.trim(),
                               );
@@ -161,74 +160,39 @@ class _LoginPageState extends State<LoginPage> {
                               if (!mounted) return;
 
                               if (success) {
-                                // ✅ Tampilkan dialog sukses
-                                showDialog(
-                                  context: context,
-                                  barrierDismissible: false,
-                                  builder: (context) => _buildDialog(
-                                    icon: Icons.check_circle_outline,
-                                    color: Colors.greenAccent,
-                                    title: "Login Berhasil",
-                                    message:
-                                        "Selamat datang kembali!\nMengalihkan ke halaman utama...",
+                                // ✅ KEMBALI KE ROOT → AuthWrapper yang menentukan halaman
+                                Navigator.of(context).pushAndRemoveUntil(
+                                  MaterialPageRoute(
+                                    builder: (_) => const AuthWrapper(),
                                   ),
+                                  (route) => false,
                                 );
-
-                                // 🔄 Auto redirect setelah 2 detik
-                                Future.delayed(const Duration(seconds: 2), () {
-                                  if (!mounted) return;
-                                  Navigator.pop(context); // Tutup dialog
-                                  Navigator.pushReplacement(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => const HomePage(),
-                                    ),
-                                  );
-                                });
                               } else {
                                 final error =
                                     loginController.errorMessage ??
                                     "Login gagal, periksa kembali email dan password.";
 
-                                // ⚠️ Email belum diverifikasi
-                                if (error.contains("Email not confirmed")) {
-                                  showDialog(
-                                    context: context,
-                                    barrierDismissible: false,
-                                    builder: (context) => _buildDialog(
-                                      icon: Icons.email_outlined,
-                                      color: Colors.orangeAccent,
-                                      title: "Verifikasi Diperlukan",
-                                      message:
-                                          "Akun Anda belum dikonfirmasi.\nSilakan cek email Anda untuk memverifikasi.",
-                                    ),
-                                  );
-                                  Future.delayed(
-                                    const Duration(seconds: 2),
-                                    () {
-                                      if (mounted) Navigator.pop(context);
-                                    },
-                                  );
-                                } else {
-                                  // ❌ Dialog error umum
-                                  showDialog(
-                                    context: context,
-                                    builder: (context) => _buildDialog(
-                                      icon: Icons.error_outline,
-                                      color: Colors.redAccent,
-                                      title: "Login Gagal",
-                                      message: error,
-                                    ),
-                                  );
-                                  Future.delayed(
-                                    const Duration(seconds: 2),
-                                    () {
-                                      if (mounted) Navigator.pop(context);
-                                    },
-                                  );
-                                }
+                                showDialog(
+                                  context: context,
+                                  builder: (context) => _buildDialog(
+                                    icon: Icons.error_outline,
+                                    color: Colors.redAccent,
+                                    title: "Login Gagal",
+                                    message: error,
+                                  ),
+                                );
+
+                                Future.delayed(const Duration(seconds: 2), () {
+                                  if (mounted) {
+                                    Navigator.of(
+                                      context,
+                                      rootNavigator: true,
+                                    ).pop();
+                                  }
+                                });
                               }
                             },
+
                       child: loginController.isLoading
                           ? const CircularProgressIndicator(color: Colors.white)
                           : const Text(

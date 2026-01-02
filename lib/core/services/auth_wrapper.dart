@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../enums/user_role.dart';
+import '../services/auth_service.dart';
 import '../../features/login/presentation/pages/login_page.dart';
-import '../../features/profile/presentation/pages/profil_page.dart';
+import '../../features/home/presentation/pages/home_page.dart';
+import '../../features/pimpinan/presentation/pages/pimpinan_dashboard_page.dart';
+import 'splash_page.dart';
 
 class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
@@ -11,28 +15,46 @@ class AuthWrapper extends StatefulWidget {
 }
 
 class _AuthWrapperState extends State<AuthWrapper> {
-  bool _isLoading = true;
-  bool _isLoggedIn = false;
+  late Future<UserRole> _roleFuture;
 
   @override
   void initState() {
     super.initState();
-    _checkSession();
-  }
 
-  Future<void> _checkSession() async {
     final session = Supabase.instance.client.auth.currentSession;
-    setState(() {
-      _isLoggedIn = session != null;
-      _isLoading = false;
-    });
+
+    if (session != null) {
+      _roleFuture = AuthService().fetchCurrentRole();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    final session = Supabase.instance.client.auth.currentSession;
+
+    if (session == null) {
+      return const LoginPage();
     }
-    return _isLoggedIn ? const ProfilPage() : const LoginPage();
+
+    return FutureBuilder<UserRole>(
+      future: _roleFuture, // ✅ TIDAK RE-CREATE
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SplashPage();
+        }
+
+        if (snapshot.hasError) {
+          return const LoginPage();
+        }
+
+        switch (snapshot.data) {
+          case UserRole.pimpinan:
+            return const PimpinanDashboardPage();
+          case UserRole.user:
+          default:
+            return const HomePage();
+        }
+      },
+    );
   }
 }

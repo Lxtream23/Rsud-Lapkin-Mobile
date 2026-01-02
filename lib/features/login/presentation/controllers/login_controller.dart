@@ -10,12 +10,7 @@ class LoginController extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
-  /// 🔹 LOGIN USER ke Supabase
-  Future<bool> login(
-    BuildContext context,
-    String email,
-    String password,
-  ) async {
+  Future<bool> login(String email, String password) async {
     _setLoading(true);
     _errorMessage = null;
 
@@ -23,36 +18,27 @@ class LoginController extends ChangeNotifier {
       final result = await _authService.login(email, password);
 
       if (result == null) {
-        // ✅ Login berhasil
         _setLoading(false);
         return true;
       } else {
-        // ⚠️ Login gagal, tampilkan pesan error
         _errorMessage = result;
         _setLoading(false);
         return false;
       }
     } catch (e) {
-      _errorMessage = 'Terjadi kesalahan: ${e.toString()}';
+      _errorMessage = 'Terjadi kesalahan: $e';
       _setLoading(false);
       return false;
     }
   }
 
-  /// 🔹 LOGOUT USER dari Supabase
-  Future<void> logout(dynamic argument) async {
-    try {
-      await _authService.logout(argument);
-      // 🔸 Hapus state setelah logout
-      _errorMessage = null;
-      _isLoading = false;
-      notifyListeners();
-    } catch (e) {
-      debugPrint('❌ Gagal logout: $e');
-    }
+  Future<void> logout(BuildContext context) async {
+    await _authService.logout(context);
+    _errorMessage = null;
+    _isLoading = false;
+    notifyListeners();
   }
 
-  /// 🔹 Reset error (berguna saat pindah halaman)
   void resetError() {
     _errorMessage = null;
     notifyListeners();

@@ -5,6 +5,7 @@ import 'core/services/supabase_service.dart';
 import 'features/profile/presentation/controllers/profile_controller.dart';
 import 'features/register/presentation/controllers/register_controller.dart';
 import 'features/login/presentation/controllers/login_controller.dart';
+import 'core/services/auth_wrapper.dart';
 
 import 'core/widgets/ui_helpers/app_snackbar.dart';
 
@@ -53,22 +54,23 @@ class MyApp extends StatelessWidget {
             initialEntries: [OverlayEntry(builder: (context) => child!)],
           );
         },
-
-        /// 🔹 Splash dulu → lalu login / home otomatis
-        initialRoute: AppRoutes.splash,
-        routes: AppRoutes.routes,
+        home: const AuthWrapper(), // ✅ ROOT TUNGGAL
+        routes: AppRoutes.routes, // ✅ SECONDARY ROUTES
+        // /// 🔹 Splash dulu → lalu login / home otomatis
+        // initialRoute: AppRoutes.splash,
+        // routes: AppRoutes.routes,
 
         /// 🔸 Tambahan keamanan untuk route yang tidak ditemukan
-        onUnknownRoute: (settings) => MaterialPageRoute(
-          builder: (_) => const Scaffold(
-            body: Center(
-              child: Text(
-                'Halaman tidak ditemukan 😅',
-                style: TextStyle(fontSize: 16),
-              ),
-            ),
-          ),
-        ),
+        // onUnknownRoute: (settings) => MaterialPageRoute(
+        //   builder: (_) => const Scaffold(
+        //     body: Center(
+        //       child: Text(
+        //         'Halaman tidak ditemukan 😅',
+        //         style: TextStyle(fontSize: 16),
+        //       ),
+        //     ),
+        //   ),
+        // ),
       ),
     );
   }

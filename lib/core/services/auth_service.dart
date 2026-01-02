@@ -1,6 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:rsud_lapkin_mobile/core/enums/user_role.dart';
+import 'package:rsud_lapkin_mobile/core/enums/user_role_ext.dart';
+import 'auth_wrapper.dart';
 
 class AuthService {
   final supabase = Supabase.instance.client;
@@ -26,6 +29,7 @@ class AuthService {
           'nip': nip,
           'jabatan': jabatan,
           'pangkat': pangkat,
+          'role': 'user', // 👈 DEFAULT ROLE
         },
       );
 
@@ -94,27 +98,19 @@ class AuthService {
   /// 🔹 LOGOUT
   Future<void> logout(BuildContext context) async {
     try {
-      // 🚪 Sign out user dari Supabase
       await supabase.auth.signOut();
-
-      // 🧹 Bersihkan semua channel/realtime subscription
       await supabase.removeAllChannels();
-
-      // 🧠 Opsional: hapus data local cache (misal session/token)
       await supabase.auth.signOut(scope: SignOutScope.local);
-
-      if (context.mounted) {
-        // 🔒 Pastikan user tidak bisa kembali ke halaman sebelumnya
-        Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
-      }
     } catch (e) {
       if (kDebugMode) {
         print('⚠️ [AuthService.logout] Gagal logout: $e');
       }
-
-      // 🧩 Fallback ke login meskipun ada error
+    } finally {
       if (context.mounted) {
-        Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const AuthWrapper()),
+          (route) => false,
+        );
       }
     }
   }
@@ -124,4 +120,35 @@ class AuthService {
 
   /// 🔹 Dapatkan user saat ini
   User? get currentUser => supabase.auth.currentUser;
+
+  /// 🔹 AMBIL ROLE USER DARI TABLE PROFILES (RECOMMENDED)
+  Future<UserRole> fetchCurrentRole() async {
+    final user = supabase.auth.currentUser;
+    if (user == null) return UserRole.unknown;
+
+    try {
+      final data = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .maybeSingle();
+
+      return data?['role']?.toString().toUserRole() ?? UserRole.unknown;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ [AuthService.fetchCurrentRole] $e');
+      }
+      return UserRole.unknown;
+    }
+  }
+
+  /// 🔹 AMBIL ROLE USER
+  UserRole get currentRole {
+    final user = supabase.auth.currentUser;
+    if (user == null) return UserRole.unknown;
+
+    final roleRaw = user.userMetadata?['role'];
+
+    return roleRaw?.toString().toUserRole() ?? UserRole.unknown;
+  }
 }

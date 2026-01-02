@@ -3,6 +3,8 @@ import 'package:rsud_lapkin_mobile/config/app_colors.dart';
 import 'package:rsud_lapkin_mobile/features/pimpinan/presentation/pages/list_perjanjian_pimpinan/page_list_perjanjian_pimpinan.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:rsud_lapkin_mobile/core/services/auth_service.dart';
+import 'package:rsud_lapkin_mobile/core/services/auth_wrapper.dart';
+import 'package:rsud_lapkin_mobile/core/enums/user_role.dart';
 
 class PimpinanDashboardPage extends StatefulWidget {
   const PimpinanDashboardPage({super.key});
@@ -37,7 +39,18 @@ class _PimpinanDashboardPageState extends State<PimpinanDashboardPage> {
   @override
   void initState() {
     super.initState();
-    userProfileStream();
+
+    // WidgetsBinding.instance.addPostFrameCallback((_) {
+    //   final auth = AuthService();
+
+    //   if (auth.currentRole != UserRole.pimpinan) {
+    //     Navigator.pushAndRemoveUntil(
+    //       context,
+    //       MaterialPageRoute(builder: (_) => const AuthWrapper()),
+    //       (_) => false,
+    //     );
+    //   }
+    // });
   }
 
   @override
