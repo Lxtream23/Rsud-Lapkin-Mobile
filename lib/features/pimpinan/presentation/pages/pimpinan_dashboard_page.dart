@@ -16,6 +16,13 @@ class PimpinanDashboardPage extends StatefulWidget {
 class _PimpinanDashboardPageState extends State<PimpinanDashboardPage> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
+  int total = 0;
+  int disetujui = 0;
+  int ditolak = 0;
+  int proses = 0;
+
+  late RealtimeChannel _channel;
+
   Stream<Map<String, dynamic>> userProfileStream() {
     final supabase = Supabase.instance.client;
     final user = supabase.auth.currentUser;
@@ -36,21 +43,45 @@ class _PimpinanDashboardPageState extends State<PimpinanDashboardPage> {
     return name.trim()[0].toUpperCase();
   }
 
+  Future<void> _loadSummary() async {
+    final supabase = Supabase.instance.client;
+
+    final data = await supabase.from('perjanjian_kinerja').select('status');
+
+    if (!mounted) return;
+
+    setState(() {
+      total = data.length;
+      disetujui = data.where((e) => e['status'] == 'Disetujui').length;
+      ditolak = data.where((e) => e['status'] == 'Ditolak').length;
+      proses = data.where((e) => e['status'] == 'Proses').length;
+    });
+  }
+
   @override
   void initState() {
     super.initState();
 
-    // WidgetsBinding.instance.addPostFrameCallback((_) {
-    //   final auth = AuthService();
+    _loadSummary();
 
-    //   if (auth.currentRole != UserRole.pimpinan) {
-    //     Navigator.pushAndRemoveUntil(
-    //       context,
-    //       MaterialPageRoute(builder: (_) => const AuthWrapper()),
-    //       (_) => false,
-    //     );
-    //   }
-    // });
+    _channel = Supabase.instance.client
+        .channel('perjanjian-summary')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'perjanjian_kinerja',
+          callback: (_) {
+            debugPrint('🔥 Summary changed → reload');
+            _loadSummary();
+          },
+        )
+        .subscribe();
+  }
+
+  @override
+  void dispose() {
+    Supabase.instance.client.removeChannel(_channel);
+    super.dispose();
   }
 
   @override
@@ -137,7 +168,7 @@ class _PimpinanDashboardPageState extends State<PimpinanDashboardPage> {
                                 _StatCard(
                                   icon: Icons.assignment,
                                   title: 'Total Laporan\nDiterima',
-                                  value: '12',
+                                  value: total.toString(),
                                   color: Colors.green,
                                   onTap: () {
                                     Navigator.push(
@@ -156,7 +187,7 @@ class _PimpinanDashboardPageState extends State<PimpinanDashboardPage> {
                                 _StatCard(
                                   icon: Icons.check_circle,
                                   title: 'Laporan\nDisetujui',
-                                  value: '5',
+                                  value: disetujui.toString(),
                                   color: Colors.amber,
                                   textColor: Colors.black,
                                   onTap: () {
@@ -184,7 +215,7 @@ class _PimpinanDashboardPageState extends State<PimpinanDashboardPage> {
                                 _StatCard(
                                   icon: Icons.cancel,
                                   title: 'Laporan\nDitolak',
-                                  value: '5',
+                                  value: ditolak.toString(),
                                   color: Colors.red,
                                   onTap: () {
                                     Navigator.push(
@@ -203,7 +234,7 @@ class _PimpinanDashboardPageState extends State<PimpinanDashboardPage> {
                                 _StatCard(
                                   icon: Icons.hourglass_top,
                                   title: 'Menunggu',
-                                  value: '12',
+                                  value: proses.toString(),
                                   color: Colors.blue,
                                   onTap: () {
                                     Navigator.push(

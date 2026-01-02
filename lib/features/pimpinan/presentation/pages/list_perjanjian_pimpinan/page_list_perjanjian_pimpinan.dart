@@ -8,6 +8,8 @@ import '/../../../config/app_colors.dart';
 import '/../../../config/app_text_style.dart';
 
 import 'dart:async';
+import '/core/services/auth_service.dart';
+import '/core/enums/user_role.dart';
 
 class PageListPerjanjianPimpinan extends StatefulWidget {
   final String? status; // null = semua
@@ -76,7 +78,7 @@ class _PageListPerjanjianPimpinanState extends State<PageListPerjanjianPimpinan>
 
   // ===================== LOAD DATA =====================
   Future<void> _loadData({bool reset = false}) async {
-    if (_isLoadingMore) return; // 🔥 safet
+    if (_isLoadingMore) return;
 
     if (reset) {
       _items.clear();
@@ -87,6 +89,7 @@ class _PageListPerjanjianPimpinanState extends State<PageListPerjanjianPimpinan>
     if (!_hasMore) return;
 
     final user = supabase.auth.currentUser;
+    debugPrint('UID: ${user?.id}');
     if (user == null) return;
 
     setState(() => _isLoadingMore = true);
@@ -94,12 +97,11 @@ class _PageListPerjanjianPimpinanState extends State<PageListPerjanjianPimpinan>
     final from = _page * _pageSize;
     final to = from + _pageSize - 1;
 
-    var query = supabase
-        .from('perjanjian_kinerja')
-        .select()
-        .eq('user_id', user.id);
+    // ===================== BASE QUERY =====================
+    // 🔥 JANGAN FILTER ROLE DI FLUTTER
+    var query = supabase.from('perjanjian_kinerja').select();
 
-    // SEARCH MULTI KOLOM
+    // ===================== SEARCH =====================
     if (_searchQuery.isNotEmpty) {
       query = query.or(
         'nama_pihak_kedua.ilike.%$_searchQuery%,'
@@ -107,15 +109,16 @@ class _PageListPerjanjianPimpinanState extends State<PageListPerjanjianPimpinan>
       );
     }
 
-    // STATUS
+    // ===================== STATUS FILTER =====================
     if (_selectedStatus != 'Semua') {
       query = query.eq('status', _selectedStatus);
     }
 
-    // DATE FILTER
+    // ===================== DATE FILTER =====================
     if (_startDate != null) {
       query = query.gte('created_at', _startDate!.toIso8601String());
     }
+
     if (_endDate != null) {
       query = query.lte(
         'created_at',
@@ -123,11 +126,14 @@ class _PageListPerjanjianPimpinanState extends State<PageListPerjanjianPimpinan>
       );
     }
 
+    // ===================== EXECUTE =====================
     final result = await query
         .order('created_at', ascending: !_sortDesc)
         .range(from, to);
 
     final newItems = List<Map<String, dynamic>>.from(result);
+
+    if (!mounted) return;
 
     setState(() {
       _items.addAll(newItems);
@@ -156,24 +162,23 @@ class _PageListPerjanjianPimpinanState extends State<PageListPerjanjianPimpinan>
 
   // ===================== REALTIME =====================
   void _listenRealtime() {
-    final user = supabase.auth.currentUser;
-    if (user == null) return;
+    final auth = AuthService();
+    final isPimpinan = auth.currentRole == UserRole.pimpinan;
 
     _realtimeChannel = supabase
-        .channel('perjanjian-realtime-${user.id}')
+        .channel('perjanjian-realtime')
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
           schema: 'public',
           table: 'perjanjian_kinerja',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'user_id',
-            value: user.id,
-          ),
-          callback: (payload) {
-            debugPrint('🔥 Realtime change: ${payload.eventType}');
-
-            // 🔥 SOLUSI AMAN
+          filter: isPimpinan
+              ? null
+              : PostgresChangeFilter(
+                  type: PostgresChangeFilterType.eq,
+                  column: 'user_id',
+                  value: supabase.auth.currentUser!.id,
+                ),
+          callback: (_) {
             _loadData(reset: true);
           },
         )
