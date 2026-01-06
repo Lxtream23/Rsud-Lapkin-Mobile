@@ -15,19 +15,24 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../pages/form_perjanjian_page.dart';
 
 class PdfPreviewPage extends StatefulWidget {
-  final Uint8List pdfBytes;
+  //final Uint8List pdfBytes;
+  final Uint8List? pdfBytes;
+
   final Future<void> Function() onSave;
   final bool isSaved; // true = view only
   final String status;
   final String? perjanjianId;
+  final String? pdfPath;
 
   const PdfPreviewPage({
     super.key,
-    required this.pdfBytes,
+    //required this.pdfBytes,
+    this.pdfBytes,
     required this.onSave,
     required this.status,
     this.isSaved = false,
     this.perjanjianId,
+    this.pdfPath,
   });
 
   @override
@@ -278,22 +283,31 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
 
     if (!mounted) return;
 
-    // 3️⃣ TUTUP LOADING SEBELUM share
-    Navigator.pop(context);
-
     try {
+      // 🔥 AMBIL PDF (AMAN UNTUK NULL)
+      final bytes = await _loadPdfBytes();
+
+      // 3️⃣ tutup loading SEBELUM share
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+
       await Printing.sharePdf(
-        bytes: widget.pdfBytes,
+        bytes: bytes, // 🔥 PASTI Uint8List
         filename: 'Perjanjian_Kinerja.pdf',
       );
+
+      if (!mounted) return;
+      AppSnackbar.success(context, 'PDF Berhasil Diunduh.');
     } catch (e) {
+      // 🔥 tutup loading jika error
+      if (mounted && Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+
       debugPrint('DOWNLOAD ERROR: $e');
-      return;
+      AppSnackbar.error(context, 'Gagal mengunduh PDF.');
     }
-
-    if (!mounted) return;
-
-    AppSnackbar.success(context, 'PDF Berhasil Diunduh.');
   }
 
   // ===================== DELETE =====================
@@ -379,6 +393,38 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
     }
   }
 
+  Future<Uint8List> _loadPdfBytes() async {
+    // 1️⃣ Jika PDF sudah dikirim (misalnya status Proses)
+    if (widget.pdfBytes != null) {
+      debugPrint('PDF SOURCE: MEMORY');
+      return widget.pdfBytes!;
+    }
+
+    // 2️⃣ Ambil dari database
+    final supabase = Supabase.instance.client;
+
+    debugPrint('PDF SOURCE: SUPABASE STORAGE');
+    debugPrint('PERJANJIAN ID: ${widget.perjanjianId}');
+
+    final data = await supabase
+        .from('perjanjian_kinerja')
+        .select('pdf_path')
+        .eq('id', widget.perjanjianId!)
+        .single();
+
+    final String pdfPath = data['pdf_path'];
+
+    debugPrint('PDF PATH FROM DB: $pdfPath');
+
+    final bytes = await supabase.storage
+        .from('perjanjian-pdf')
+        .download(pdfPath);
+
+    debugPrint('PDF DOWNLOADED: ${bytes.length} bytes');
+
+    return bytes;
+  }
+
   // ===================== ZOOM =====================
   void _onDoubleTap(TapDownDetails details) {
     final position = details.localPosition;
@@ -411,7 +457,7 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    debugPrint('PREVIEW OPENED: ${widget.pdfBytes.length}');
+    debugPrint('PREVIEW OPENED: ${widget.pdfBytes?.length ?? 0}');
 
     return Scaffold(
       backgroundColor: _darkMode ? Colors.black : Colors.grey.shade100,
@@ -518,13 +564,37 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
                             transformationController: _transformController,
                             minScale: 1,
                             maxScale: 4,
-                            child: PdfPreview(
-                              build: (_) => widget.pdfBytes,
-                              useActions: false,
-                              allowPrinting: false,
-                              allowSharing: false,
-                              canChangeOrientation: false,
-                              canChangePageFormat: false,
+                            child: FutureBuilder<Uint8List>(
+                              future: _loadPdfBytes(),
+                              builder: (context, snapshot) {
+                                if (snapshot.connectionState ==
+                                    ConnectionState.waiting) {
+                                  return const Center(
+                                    child: CircularProgressIndicator(),
+                                  );
+                                }
+
+                                if (snapshot.hasError) {
+                                  debugPrint(
+                                    '❌ PDF PREVIEW ERROR: ${snapshot.error}',
+                                  );
+                                  return Center(
+                                    child: Text(
+                                      'Gagal memuat PDF\n${snapshot.error}',
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  );
+                                }
+
+                                return PdfPreview(
+                                  build: (_) => snapshot.data!,
+                                  useActions: false,
+                                  allowPrinting: false,
+                                  allowSharing: false,
+                                  canChangeOrientation: false,
+                                  canChangePageFormat: false,
+                                );
+                              },
                             ),
                           ),
                         ),

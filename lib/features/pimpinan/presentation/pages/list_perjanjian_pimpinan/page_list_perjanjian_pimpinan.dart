@@ -148,16 +148,27 @@ class _PageListPerjanjianPimpinanState extends State<PageListPerjanjianPimpinan>
   }
 
   // ===================== LOAD PDF =====================
-  Future<Uint8List> _loadPdf(Map<String, dynamic> item) async {
+  Future<Uint8List?> _loadPdf(Map<String, dynamic> item) async {
     final path = item['pdf_path'];
+
+    debugPrint('LOAD PDF PATH: $path');
+
     if (path == null || path.toString().isEmpty) {
-      throw Exception('Path PDF kosong');
+      debugPrint('PDF PATH EMPTY');
+      return null;
     }
 
-    final bytes = await supabase.storage.from('perjanjian-pdf').download(path);
-    if (bytes.isEmpty) throw Exception('File PDF kosong');
+    try {
+      final bytes = await Supabase.instance.client.storage
+          .from('perjanjian-pdf')
+          .download(path);
 
-    return bytes;
+      debugPrint('PDF LOADED: ${bytes.length} bytes');
+      return bytes;
+    } catch (e) {
+      debugPrint('PDF DOWNLOAD ERROR: $e');
+      return null; // 🔥 jangan throw
+    }
   }
 
   // ===================== REALTIME =====================
@@ -560,43 +571,35 @@ class _PageListPerjanjianPimpinanState extends State<PageListPerjanjianPimpinan>
 
         // ===================== TAP =====================
         onTap: () async {
-          final messenger = ScaffoldMessenger.maybeOf(context);
-          try {
-            final pdfBytes = await _loadPdf(item);
-            debugPrint(String.fromCharCodes(pdfBytes.take(10)));
-            print('PDF bytes length: ${pdfBytes.length}');
-            print('PDF header: ${String.fromCharCodes(pdfBytes.take(8))}');
+          debugPrint('========= OPEN PDF =========');
+          debugPrint('ID           : ${item['id']}');
+          debugPrint('STATUS       : ${item['status']}');
+          debugPrint('PDF PATH RAW : ${item['pdf_path']}');
 
+          final messenger = ScaffoldMessenger.maybeOf(context);
+
+          try {
             final result = await Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (_) => PdfPreviewPage(
-                  pdfBytes: pdfBytes,
-                  // 🔥 WAJIB
-                  status: status,
-                  // 🔥 read-only visual
+                  pdfBytes: null,
+                  pdfPath: item['pdf_path'],
+                  status: item['status'],
                   isSaved: true,
                   perjanjianId: item['id'],
-                  // 🔥 tidak pernah dipakai
-                  onSave: () async {},
+                  onSave: item['status'] == 'Proses'
+                      ? () async {}
+                      : () async {},
                 ),
               ),
             );
-            // ===================== REFRESH =====================
+
             if (result != null && result['action'] == 'deleted') {
-              debugPrint('🔄 Refresh via Navigator result');
-
               await _loadData(reset: true);
-
-              if (!mounted) return; // 🔥 PENTING
-
-              if (messenger != null) {
-                messenger.showSnackBar(
-                  const SnackBar(content: Text('Dokumen berhasil dihapus')),
-                );
-              }
             }
           } catch (e) {
+            debugPrint('NAVIGATION ERROR: $e');
             messenger?.showSnackBar(SnackBar(content: Text(e.toString())));
           }
         },

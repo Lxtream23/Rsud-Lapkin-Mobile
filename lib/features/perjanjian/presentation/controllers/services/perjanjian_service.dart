@@ -91,14 +91,14 @@ class PerjanjianService {
 
     // 2️⃣ Overwrite PDF lama
     try {
-      _supabase.storage
+      await _supabase.storage
           .from('perjanjian-pdf')
           .uploadBinary(
             pdfPath,
             pdfBytes,
             fileOptions: const FileOptions(
               contentType: 'application/pdf',
-              upsert: true, // 🔥 EDIT = overwrite
+              upsert: true, // overwrite
             ),
           );
 
