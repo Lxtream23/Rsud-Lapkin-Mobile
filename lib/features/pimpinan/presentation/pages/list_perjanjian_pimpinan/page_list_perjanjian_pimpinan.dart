@@ -540,6 +540,23 @@ class _PageListPerjanjianPimpinanState extends State<PageListPerjanjianPimpinan>
           children: [
             const SizedBox(height: 4),
             _highlightTextFade(
+              text: item['nama_pihak_pertama'] ?? '-',
+              query: _searchQuery,
+              normalStyle: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+              highlightStyle: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.blue, // ⬅ beda warna
+                backgroundColor: Color(0x332196F3),
+              ),
+            ),
+            const SizedBox(height: 2),
+            // Nama Pihak Kedua + versi
+            _highlightTextFade(
               text: '${item['nama_pihak_kedua']} • Versi ${item['version']}',
               query: _searchQuery,
               normalStyle: const TextStyle(fontSize: 13, color: Colors.black54),

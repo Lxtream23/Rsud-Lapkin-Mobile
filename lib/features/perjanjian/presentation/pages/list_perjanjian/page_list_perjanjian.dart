@@ -257,6 +257,7 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
             controller: _searchController,
             decoration: InputDecoration(
               hintText: 'Cari nama pihak kedua / status...',
+              hintStyle: const TextStyle(fontSize: 14, color: Colors.grey),
               prefixIcon: const Icon(Icons.search),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -272,8 +273,27 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
             children: ['Semua', 'Proses', 'Disetujui', 'Ditolak']
                 .map(
                   (s) => ChoiceChip(
-                    label: Text(s),
+                    label: Text(
+                      s,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: _selectedStatus == s
+                            ? Colors.white
+                            : Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                    labelPadding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     selected: _selectedStatus == s,
+                    selectedColor: AppColors.primary,
+                    backgroundColor: Theme.of(context).colorScheme.surface,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    visualDensity: VisualDensity.compact,
                     onSelected: (_) {
                       setState(() {
                         _selectedStatus = s;
@@ -290,8 +310,25 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
           Row(
             children: [
               ChoiceChip(
-                label: Text(_sortDesc ? 'Terbaru' : 'Terlama'),
+                label: Text(
+                  _sortDesc ? 'Terbaru' : 'Terlama',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
                 selected: true,
+                selectedColor: AppColors.primary,
+                labelPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                visualDensity: VisualDensity.compact,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 onSelected: (_) {
                   setState(() {
                     _sortDesc = !_sortDesc;
@@ -301,7 +338,9 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
               ),
               const Spacer(),
               IconButton(
-                icon: const Icon(Icons.date_range),
+                icon: const Icon(Icons.date_range, size: 22),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
                 onPressed: _pickDateRange,
               ),
             ],
@@ -476,11 +515,39 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 4),
-            _highlightTextFade(
-              text: '${item['nama_pihak_kedua']} • Versi ${item['version']}',
-              query: _searchQuery,
-              normalStyle: const TextStyle(fontSize: 13, color: Colors.black54),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Nama Pihak Pertama
+                _highlightTextFade(
+                  text: item['nama_pihak_pertama'] ?? '-',
+                  query: _searchQuery,
+                  normalStyle: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                  highlightStyle: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.blue, // ⬅ beda warna
+                    backgroundColor: Color(0x332196F3),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                // Nama Pihak Kedua + versi
+                _highlightTextFade(
+                  text:
+                      '${item['nama_pihak_kedua']} • Versi ${item['version']}',
+                  query: _searchQuery,
+                  normalStyle: const TextStyle(
+                    fontSize: 13,
+                    color: Colors.black54,
+                  ),
+                ),
+              ],
             ),
+
             const SizedBox(height: 6),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
