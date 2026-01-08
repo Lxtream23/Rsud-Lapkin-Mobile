@@ -81,6 +81,8 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
 
   bool _forceReloadFromStorage = false;
 
+  String? _rejectionReason;
+
   // ===================== INIT =====================
   @override
   void initState() {
@@ -89,6 +91,10 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
     _loadWatermarkLogo();
     _initPdf();
     _currentStatus = widget.status;
+
+    if (_currentStatus == 'Ditolak') {
+      _loadRejectionReason();
+    }
 
     // Skeleton delay (aman & smooth)
     Future.delayed(const Duration(milliseconds: 400), () {
@@ -447,6 +453,67 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
     return bytes;
   }
 
+  Future<void> _loadRejectionReason() async {
+    if (widget.perjanjianId == null) return;
+
+    final supabase = Supabase.instance.client;
+
+    final data = await supabase
+        .from('perjanjian_kinerja')
+        .select('rejection_reason')
+        .eq('id', widget.perjanjianId!)
+        .single();
+
+    if (mounted) {
+      setState(() {
+        _rejectionReason = data['rejection_reason'];
+      });
+    }
+  }
+
+  void _showRejectReasonSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: const [
+                  Icon(Icons.error_outline, color: Colors.red),
+                  SizedBox(width: 8),
+                  Text(
+                    'Dokumen Ditolak',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                _rejectionReason ?? 'Tidak ada alasan penolakan.',
+                style: const TextStyle(fontSize: 14, height: 1.5),
+              ),
+              const SizedBox(height: 20),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Tutup'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   // Future<Uint8List> _loadPdfBytes() async {
   //   // 1️⃣ Jika PDF sudah dikirim (misalnya status Proses)
   //   if (widget.pdfBytes != null) {
@@ -637,6 +704,7 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
     if (mounted) {
       setState(() {
         _currentStatus = 'Ditolak';
+        _rejectionReason = reason; // 🔥 langsung update
       });
     }
   }
@@ -691,6 +759,30 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
                 ),
               ),
               actions: [
+                // ===== REJECTION REASON (HANYA JIKA DITOLAK) =====
+                if (_currentStatus == 'Ditolak')
+                  IconButton(
+                    tooltip: 'Alasan Penolakan',
+                    icon: Stack(
+                      children: [
+                        const Icon(Icons.notifications_outlined),
+                        Positioned(
+                          right: 0,
+                          top: 0,
+                          child: Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    onPressed: () => _showRejectReasonSheet(),
+                  ),
+
                 // ================= PIMPINAN MODE =================
                 if (_canApprove) ...[
                   IconButton(
