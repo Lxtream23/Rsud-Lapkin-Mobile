@@ -41,7 +41,8 @@ class FormPerjanjianPage extends StatefulWidget {
 }
 
 Map<String, dynamic>? userProfile;
-Uint8List? signatureRightBytes;
+//Uint8List? signatureRightBytes;
+
 String? pangkatUser;
 String? nipUser;
 
@@ -107,7 +108,7 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
   void initState() {
     super.initState();
     _loadUserData();
-    loadUserSignature();
+    //loadUserSignature();
     getPangkatUser();
     getNipUser();
 
@@ -425,55 +426,89 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     }
   }
 
-  Future<Uint8List?> loadUserSignature() async {
-    try {
-      debugPrint('🔍 loadUserSignature: start');
+  Future<UserSignature?> loadUserSignature() async {
+    final user = supabase.auth.currentUser;
+    if (user == null) return null;
 
-      final user = supabase.auth.currentUser;
-      if (user == null) {
-        debugPrint('⚠️ User null');
-        return null;
-      }
+    final profile = await supabase
+        .from('profiles')
+        .select('ttd')
+        .eq('id', user.id)
+        .maybeSingle();
 
-      debugPrint('✅ User ditemukan: ${user.id}');
+    final String? url = profile?['ttd'];
+    if (url == null || url.isEmpty) return null;
 
-      final profile = await supabase
-          .from('profiles')
-          .select('ttd')
-          .eq('id', user.id)
-          .maybeSingle(); // ✅ PENTING
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode != 200) return null;
 
-      if (profile == null) {
-        debugPrint('⚠️ Profile tidak ditemukan');
-        return null;
-      }
+    return UserSignature(bytes: response.bodyBytes, url: url);
+  }
 
-      final url = profile['ttd']?.toString();
-      if (url == null || url.isEmpty) {
-        debugPrint('⚠️ TTD kosong');
-        return null;
-      }
+  // Future<Uint8List?> loadUserSignature() async {
+  //   try {
+  //     debugPrint('🔍 loadUserSignature: start');
 
-      debugPrint('🌐 Download tanda tangan...');
-      final response = await http
-          .get(Uri.parse(url))
-          .timeout(const Duration(seconds: 8));
+  //     final user = supabase.auth.currentUser;
+  //     if (user == null) {
+  //       debugPrint('⚠️ User null');
+  //       return null;
+  //     }
 
-      if (response.statusCode == 200) {
-        debugPrint('✅ TTD berhasil diunduh');
-        return response.bodyBytes;
-      }
+  //     debugPrint('✅ User ditemukan: ${user.id}');
 
-      debugPrint('❌ HTTP ${response.statusCode}');
-      return null;
-    } on TimeoutException {
-      debugPrint('⏱ Timeout loadUserSignature');
-      return null;
-    } catch (e, s) {
-      debugPrint('❌ Error loadUserSignature: $e');
-      debugPrintStack(stackTrace: s);
-      return null;
-    }
+  //     final profile = await supabase
+  //         .from('profiles')
+  //         .select('ttd')
+  //         .eq('id', supabase.auth.currentUser!.id)
+  //         .maybeSingle();
+
+  //     final String? ttdPihakPertamaUrl = profile?['ttd'];
+
+  //     if (profile == null) {
+  //       debugPrint('⚠️ Profile tidak ditemukan');
+  //       return null;
+  //     }
+
+  //     final url = profile['ttd']?.toString();
+  //     if (url == null || url.isEmpty) {
+  //       debugPrint('⚠️ TTD kosong');
+  //       return null;
+  //     }
+
+  //     debugPrint('🌐 Download tanda tangan...');
+  //     final response = await http
+  //         .get(Uri.parse(url))
+  //         .timeout(const Duration(seconds: 8));
+
+  //     if (response.statusCode == 200) {
+  //       debugPrint('✅ TTD berhasil diunduh');
+  //       return response.bodyBytes;
+  //     }
+
+  //     debugPrint('❌ HTTP ${response.statusCode}');
+  //     return null;
+  //   } on TimeoutException {
+  //     debugPrint('⏱ Timeout loadUserSignature');
+  //     return null;
+  //   } catch (e, s) {
+  //     debugPrint('❌ Error loadUserSignature: $e');
+  //     debugPrintStack(stackTrace: s);
+  //     return null;
+  //   }
+  // }
+
+  Future<String?> getUserSignatureUrl() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return null;
+
+    final data = await Supabase.instance.client
+        .from('profiles')
+        .select('ttd_url')
+        .eq('id', user.id)
+        .single();
+
+    return data['ttd_url'];
   }
 
   Future<String?> getPangkatUser() async {
@@ -505,6 +540,19 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
       debugPrint('❌ getNipUser error: $e');
       return null;
     }
+  }
+
+  Future<bool> _validateTtdPihakPertama() async {
+    final signature = await loadUserSignature();
+
+    if (signature == null || signature.bytes.isEmpty) {
+      _showDeleteError(
+        "Tanda tangan pihak pertama belum tersedia.\nSilakan upload tanda tangan terlebih dahulu di halaman profil saya.",
+      );
+      return false;
+    }
+
+    return true;
   }
 
   /// Ambil data dari setiap tabel dengan memanggil method yang tersedia di state widget.
@@ -597,6 +645,10 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
 
     if (!_validateInputs()) return;
 
+    // ===================== VALIDATE TTD =====================
+    final isTtdValid = await _validateTtdPihakPertama();
+    if (!isTtdValid) return;
+
     // ===================== COLLECT DATA =====================
     final data = _collectAllData();
 
@@ -617,7 +669,16 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     try {
       // ===================== LOAD USER DATA =====================
       _updateProgress('Mengambil tanda tangan...');
-      final signatureRightBytes = await loadUserSignature();
+      // final signatureRightBytes = await loadUserSignature();
+      final signature = await loadUserSignature();
+
+      if (signature == null) {
+        _showDeleteError('TTD pihak pertama belum diupload');
+        return;
+      }
+
+      final signatureRightBytes = signature.bytes;
+      final ttdPihakPertamaUrl = signature.url;
 
       _updateProgress('Mengambil data pengguna...');
       final pangkatUser = await getPangkatUser();
@@ -627,20 +688,28 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
       _updateProgress('Menyusun dokumen PDF...');
 
       final Uint8List pdfBytes = await generatePerjanjianPdf(
-        namaPihak1: data['namaPihakPertama'],
-        jabatanPihak1: data['jabatanPihakPertama'],
-        pangkatPihak1: pangkatUser,
-        namaPihak2: data['namaPihakKedua'],
-        jabatanPihak2: data['jabatanPihakKedua'],
+        isApproved: false,
+
+        namaPihak1: data['namaPihakPertama']!,
+        jabatanPihak1: data['jabatanPihakPertama']!,
+        pangkatPihak1: pangkatUser!,
+        nipPihak1: nipUser!,
+
+        namaPihak2: data['namaPihakKedua']!,
+        jabatanPihak2: data['jabatanPihakKedua']!,
+
         pangkatPihak2: null,
+        nipPihak2: null,
+
+        signatureRightBytes: signatureRightBytes,
+        signatureLeftBytes: null,
+
         tabel1: data['table1'],
         tabel2: data['table2'],
         tabel3: data['table3'],
         tabel4: data['table4'],
-        signatureRightBytes: signatureRightBytes,
         tugasDetail: data['tugasDetail'],
         fungsiList: List<String>.from(data['fungsiList']),
-        nipPihak1: nipUser,
       );
 
       // ===================== CLOSE PROGRESS =====================
@@ -691,6 +760,7 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                 ...data,
                 'pangkatPihak1': pangkatUser,
                 'nipPihak1': nipUser,
+                'ttdPihak1': ttdPihakPertamaUrl,
               };
 
               // ===================== SAVE =====================
@@ -1521,4 +1591,11 @@ class ProgramAnggaranRow {
       c.dispose();
     }
   }
+}
+
+class UserSignature {
+  final Uint8List bytes;
+  final String url;
+
+  UserSignature({required this.bytes, required this.url});
 }

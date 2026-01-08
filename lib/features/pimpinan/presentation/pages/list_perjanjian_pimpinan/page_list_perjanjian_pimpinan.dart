@@ -30,6 +30,9 @@ class _PageListPerjanjianPimpinanState extends State<PageListPerjanjianPimpinan>
   final supabase = Supabase.instance.client;
   late Future<List<Map<String, dynamic>>> _future;
 
+  Map<String, dynamic>? _currentPimpinanProfile;
+  bool _isProfileLoaded = false;
+
   // ===================== FILTER STATE (BARU) =====================
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
@@ -63,6 +66,8 @@ class _PageListPerjanjianPimpinanState extends State<PageListPerjanjianPimpinan>
     }
 
     _loadData(reset: true); // 🔥 LOAD AWAL
+
+    _loadCurrentPimpinanProfile();
 
     _listenRealtime(); // 🔥 INI
 
@@ -223,6 +228,34 @@ class _PageListPerjanjianPimpinanState extends State<PageListPerjanjianPimpinan>
       });
       _loadData(reset: true);
     });
+  }
+
+  Future<void> _loadCurrentPimpinanProfile() async {
+    final user = supabase.auth.currentUser;
+    if (user == null) return;
+
+    try {
+      final profile = await supabase
+          .from('profiles')
+          .select('nama_lengkap, nip, pangkat, ttd, role')
+          .eq('id', user.id)
+          .single();
+      debugPrint('PIMPINAN PROFILE: $profile');
+
+      if (profile['role'] != 'pimpinan') {
+        debugPrint('BUKAN PIMPINAN');
+        return;
+      }
+
+      setState(() {
+        _currentPimpinanProfile = profile;
+        _isProfileLoaded = true;
+      });
+
+      debugPrint('PIMPINAN PROFILE LOADED: $profile');
+    } catch (e) {
+      debugPrint('LOAD PROFILE ERROR: $e');
+    }
   }
 
   @override
@@ -596,6 +629,13 @@ class _PageListPerjanjianPimpinanState extends State<PageListPerjanjianPimpinan>
           final messenger = ScaffoldMessenger.maybeOf(context);
 
           try {
+            if (!_isProfileLoaded || _currentPimpinanProfile == null) {
+              messenger?.showSnackBar(
+                const SnackBar(content: Text('Data pimpinan belum siap')),
+              );
+              return;
+            }
+
             final result = await Navigator.push(
               context,
               MaterialPageRoute(
@@ -605,12 +645,15 @@ class _PageListPerjanjianPimpinanState extends State<PageListPerjanjianPimpinan>
                   status: item['status'],
                   isSaved: true,
                   perjanjianId: item['id'],
-                  onSave: item['status'] == 'Proses'
-                      ? () async {}
-                      : () async {},
+
+                  isPimpinan: true,
+                  pimpinanProfile: _currentPimpinanProfile!,
+
+                  onSave: () async {},
                 ),
               ),
             );
+            debugPrint('PIMPINAN DATA: $_currentPimpinanProfile');
 
             if (result != null && result['action'] == 'deleted') {
               await _loadData(reset: true);

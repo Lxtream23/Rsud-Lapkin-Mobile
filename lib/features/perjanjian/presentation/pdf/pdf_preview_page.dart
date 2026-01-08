@@ -13,16 +13,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../pages/form_perjanjian_page.dart';
+import '..//controllers/services/perjanjian_service.dart';
 
 class PdfPreviewPage extends StatefulWidget {
   //final Uint8List pdfBytes;
   final Uint8List? pdfBytes;
-
   final Future<void> Function() onSave;
   final bool isSaved; // true = view only
   final String status;
   final String? perjanjianId;
   final String? pdfPath;
+  final bool isPimpinan;
+  final Map<String, dynamic>? pimpinanProfile;
 
   const PdfPreviewPage({
     super.key,
@@ -33,6 +35,8 @@ class PdfPreviewPage extends StatefulWidget {
     this.isSaved = false,
     this.perjanjianId,
     this.pdfPath,
+    this.isPimpinan = false,
+    this.pimpinanProfile,
   });
 
   @override
@@ -53,13 +57,29 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
 
   ui.Image? _watermarkLogo;
 
-  bool get _canEdit => widget.status == 'Proses' || widget.status == 'Ditolak';
+  bool get _canEdit =>
+      _currentStatus == 'Proses' || _currentStatus == 'Ditolak';
 
-  bool get _canDownload => widget.status == 'Disetujui';
+  bool get _canDownload => _currentStatus == 'Disetujui';
 
   bool get _canDelete =>
       widget.perjanjianId != null &&
-      (widget.status == 'Proses' || widget.status == 'Ditolak');
+      (_currentStatus == 'Proses' || _currentStatus == 'Ditolak');
+
+  bool get _viewOnlyForPimpinan =>
+      widget.isPimpinan && _currentStatus == 'Proses';
+
+  bool get _canApprove =>
+      widget.isPimpinan && _currentStatus == 'Proses' && !_approving;
+
+  final PerjanjianService _perjanjianService = PerjanjianService();
+
+  Uint8List? _currentPdfBytes;
+  late String _currentStatus;
+
+  bool _approving = false;
+
+  bool _forceReloadFromStorage = false;
 
   // ===================== INIT =====================
   @override
@@ -67,6 +87,8 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
     super.initState();
     _loadDarkMode();
     _loadWatermarkLogo();
+    _initPdf();
+    _currentStatus = widget.status;
 
     // Skeleton delay (aman & smooth)
     Future.delayed(const Duration(milliseconds: 400), () {
@@ -74,6 +96,12 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
         setState(() => _pdfReady = true);
       }
     });
+  }
+
+  Future<void> _initPdf() async {
+    final bytes = await _loadPdfBytes();
+    if (!mounted) return;
+    setState(() => _currentPdfBytes = bytes);
   }
 
   // ===================== DARK MODE =====================
@@ -394,17 +422,15 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
   }
 
   Future<Uint8List> _loadPdfBytes() async {
-    // 1️⃣ Jika PDF sudah dikirim (misalnya status Proses)
-    if (widget.pdfBytes != null) {
+    // ❗ HANYA pakai memory jika TIDAK dipaksa reload
+    if (widget.pdfBytes != null && !_forceReloadFromStorage) {
       debugPrint('PDF SOURCE: MEMORY');
       return widget.pdfBytes!;
     }
 
-    // 2️⃣ Ambil dari database
     final supabase = Supabase.instance.client;
 
     debugPrint('PDF SOURCE: SUPABASE STORAGE');
-    debugPrint('PERJANJIAN ID: ${widget.perjanjianId}');
 
     final data = await supabase
         .from('perjanjian_kinerja')
@@ -414,15 +440,205 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
 
     final String pdfPath = data['pdf_path'];
 
-    debugPrint('PDF PATH FROM DB: $pdfPath');
-
     final bytes = await supabase.storage
         .from('perjanjian-pdf')
         .download(pdfPath);
 
-    debugPrint('PDF DOWNLOADED: ${bytes.length} bytes');
-
     return bytes;
+  }
+
+  // Future<Uint8List> _loadPdfBytes() async {
+  //   // 1️⃣ Jika PDF sudah dikirim (misalnya status Proses)
+  //   if (widget.pdfBytes != null) {
+  //     debugPrint('PDF SOURCE: MEMORY');
+  //     return widget.pdfBytes!;
+  //   }
+
+  //   // 2️⃣ Ambil dari database
+  //   final supabase = Supabase.instance.client;
+
+  //   debugPrint('PDF SOURCE: SUPABASE STORAGE');
+  //   debugPrint('PERJANJIAN ID: ${widget.perjanjianId}');
+
+  //   final data = await supabase
+  //       .from('perjanjian_kinerja')
+  //       .select('pdf_path')
+  //       .eq('id', widget.perjanjianId!)
+  //       .single();
+
+  //   final String pdfPath = data['pdf_path'];
+
+  //   debugPrint('PDF PATH FROM DB: $pdfPath');
+
+  //   final bytes = await supabase.storage
+  //       .from('perjanjian-pdf')
+  //       .download(pdfPath);
+
+  //   debugPrint('PDF DOWNLOADED: ${bytes.length} bytes');
+
+  //   return bytes;
+  // }
+
+  Future<void> _onApprovePressed() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Setujui Dokumen'),
+        content: const Text('Apakah Anda yakin ingin menyetujui dokumen ini?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Setujui'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await _approveDocument();
+    }
+  }
+
+  Future<void> _approveDocument() async {
+    if (widget.perjanjianId == null ||
+        widget.pimpinanProfile == null ||
+        _approving)
+      return;
+
+    setState(() => _approving = true);
+    _showProgressDialog('Menyetujui & memperbarui PDF...');
+
+    try {
+      /// 1️⃣ approve + overwrite pdf (SUPABASE)
+      await _perjanjianService.approvePerjanjian(
+        perjanjianId: widget.perjanjianId!,
+        pimpinanProfile: widget.pimpinanProfile!,
+      );
+
+      /// 2️⃣ reload pdf terbaru
+      _forceReloadFromStorage = true;
+      await _reloadPdf();
+
+      /// 3️⃣ update status lokal (🔥 PENTING)
+      setState(() {
+        _currentStatus = 'Disetujui';
+      });
+
+      if (mounted && Navigator.canPop(context)) {
+        Navigator.pop(context); // tutup loading
+      }
+
+      AppSnackbar.success(context, 'Dokumen disetujui & PDF diperbarui');
+    } catch (e) {
+      if (mounted && Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+
+      debugPrint('APPROVE ERROR: $e');
+      AppSnackbar.error(context, 'Gagal menyetujui dokumen');
+    } finally {
+      if (mounted) {
+        setState(() => _approving = false);
+      }
+    }
+  }
+
+  Future<void> _reloadPdf() async {
+    final bytes = await _loadPdfBytes();
+
+    if (!mounted) return;
+
+    setState(() {
+      _currentPdfBytes = bytes;
+    });
+  }
+
+  Future<void> _onRejectPressed() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Tolak Dokumen'),
+        content: const Text('Apakah Anda yakin ingin menolak dokumen ini?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Tolak'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      _showRejectReasonDialog();
+    }
+  }
+
+  void _showRejectReasonDialog() {
+    final controller = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Alasan Penolakan'),
+        content: TextField(
+          controller: controller,
+          maxLines: 4,
+          decoration: const InputDecoration(
+            hintText: 'Masukkan alasan penolakan',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              if (controller.text.trim().isEmpty) return;
+
+              await _rejectDocument(controller.text.trim());
+              if (!mounted) return;
+
+              Navigator.pop(context);
+              Navigator.pop(context, {'action': 'rejected'});
+            },
+            child: const Text('Simpan'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _rejectDocument(String reason) async {
+    final supabase = Supabase.instance.client;
+    final user = supabase.auth.currentUser;
+    if (user == null) return;
+
+    await supabase
+        .from('perjanjian_kinerja')
+        .update({
+          'status': 'Ditolak',
+          'rejection_reason': reason,
+          'rejected_at': DateTime.now().toIso8601String(),
+          'rejected_by': user.id,
+        })
+        .eq('id', widget.perjanjianId!);
+
+    if (mounted) {
+      setState(() {
+        _currentStatus = 'Ditolak';
+      });
+    }
   }
 
   // ===================== ZOOM =====================
@@ -444,7 +660,7 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
   }
 
   Color _statusColor() {
-    switch (widget.status) {
+    switch (_currentStatus) {
       case 'Disetujui':
         return Colors.green;
       case 'Ditolak':
@@ -475,44 +691,60 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
                 ),
               ),
               actions: [
-                // ===== DELETE =====
-                if (_canDelete)
+                // ================= PIMPINAN MODE =================
+                if (_canApprove) ...[
                   IconButton(
-                    tooltip: 'Hapus Dokumen',
-                    icon: const Icon(Icons.delete_outline, color: Colors.red),
-                    onPressed: _confirmDelete,
+                    tooltip: 'Tolak',
+                    icon: const Icon(Icons.cancel, color: Colors.red),
+                    onPressed: _onRejectPressed,
                   ),
+                  IconButton(
+                    tooltip: 'Setujui',
+                    icon: _approving
+                        ? const CircularProgressIndicator()
+                        : const Icon(Icons.check_circle, color: Colors.green),
+                    onPressed: _approving ? null : _onApprovePressed,
+                  ),
+                ]
+                // ================= NORMAL MODE =================
+                else ...[
+                  if (_canDelete)
+                    IconButton(
+                      tooltip: 'Hapus Dokumen',
+                      icon: const Icon(Icons.delete_outline, color: Colors.red),
+                      onPressed: _confirmDelete,
+                    ),
 
-                // ===== EDIT ↔ DOWNLOAD (ANIMATED) =====
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 250),
-                  transitionBuilder: (child, animation) =>
-                      ScaleTransition(scale: animation, child: child),
-                  child: _canEdit
-                      ? IconButton(
-                          key: const ValueKey('edit'),
-                          tooltip: 'Edit Perjanjian',
-                          icon: const Icon(Icons.edit),
-                          onPressed: _confirmEdit,
-                        )
-                      : _canDownload
-                      ? IconButton(
-                          key: const ValueKey('download'),
-                          tooltip: 'Download PDF',
-                          icon: const Icon(Icons.download),
-                          onPressed: _downloadPdf,
-                        )
-                      : const SizedBox.shrink(),
-                ),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 250),
+                    transitionBuilder: (child, animation) =>
+                        ScaleTransition(scale: animation, child: child),
+                    child: _canEdit
+                        ? IconButton(
+                            key: const ValueKey('edit'),
+                            tooltip: 'Edit Perjanjian',
+                            icon: const Icon(Icons.edit),
+                            onPressed: _confirmEdit,
+                          )
+                        : _canDownload
+                        ? IconButton(
+                            key: const ValueKey('download'),
+                            tooltip: 'Download PDF',
+                            icon: const Icon(Icons.download),
+                            onPressed: _downloadPdf,
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+                ],
 
-                // ===== FOCUS MODE =====
+                // ===== FOCUS MODE (SELALU ADA) =====
                 IconButton(
                   tooltip: 'Mode Fokus',
                   icon: const Icon(Icons.fullscreen),
                   onPressed: _toggleFocusMode,
                 ),
 
-                // ===== DARK MODE =====
+                // ===== DARK MODE (SELALU ADA) =====
                 IconButton(
                   tooltip: _darkMode ? 'Mode Terang' : 'Mode Gelap',
                   icon: Icon(_darkMode ? Icons.light_mode : Icons.dark_mode),
@@ -531,7 +763,7 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _badge(widget.status, _statusColor()),
+                    _badge(_currentStatus, _statusColor()),
                     Text(
                       'Zoom ${(_zoomLevel * 100).toInt()}%',
                       style: TextStyle(
@@ -564,38 +796,18 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
                             transformationController: _transformController,
                             minScale: 1,
                             maxScale: 4,
-                            child: FutureBuilder<Uint8List>(
-                              future: _loadPdfBytes(),
-                              builder: (context, snapshot) {
-                                if (snapshot.connectionState ==
-                                    ConnectionState.waiting) {
-                                  return const Center(
+                            child: _currentPdfBytes == null
+                                ? const Center(
                                     child: CircularProgressIndicator(),
-                                  );
-                                }
-
-                                if (snapshot.hasError) {
-                                  debugPrint(
-                                    '❌ PDF PREVIEW ERROR: ${snapshot.error}',
-                                  );
-                                  return Center(
-                                    child: Text(
-                                      'Gagal memuat PDF\n${snapshot.error}',
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  );
-                                }
-
-                                return PdfPreview(
-                                  build: (_) => snapshot.data!,
-                                  useActions: false,
-                                  allowPrinting: false,
-                                  allowSharing: false,
-                                  canChangeOrientation: false,
-                                  canChangePageFormat: false,
-                                );
-                              },
-                            ),
+                                  )
+                                : PdfPreview(
+                                    build: (_) => _currentPdfBytes!,
+                                    useActions: false,
+                                    allowPrinting: false,
+                                    allowSharing: false,
+                                    canChangeOrientation: false,
+                                    canChangePageFormat: false,
+                                  ),
                           ),
                         ),
                       ),
