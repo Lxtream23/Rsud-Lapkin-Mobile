@@ -58,7 +58,8 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
   ui.Image? _watermarkLogo;
 
   bool get _canEdit =>
-      _currentStatus == 'Proses' || _currentStatus == 'Ditolak';
+      _currentStatus == 'Proses' ||
+      (_currentStatus == 'Ditolak' && _rejectReasonRead);
 
   bool get _canDownload => _currentStatus == 'Disetujui';
 
@@ -82,6 +83,12 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
   bool _forceReloadFromStorage = false;
 
   String? _rejectionReason;
+  bool _rejectReasonRead = false;
+  String? _rejectedByName;
+  String? _rejectedAt;
+
+  bool get _showRejectionBell =>
+      _currentStatus == 'Ditolak' && widget.perjanjianId != null;
 
   // ===================== INIT =====================
   @override
@@ -102,6 +109,21 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
         setState(() => _pdfReady = true);
       }
     });
+  }
+
+  // ===================== SHORT REJECT REASON =====================
+  String _shortRejectReason({int maxLength = 80}) {
+    final reason = _rejectionReason?.trim();
+
+    if (reason == null || reason.isEmpty) {
+      return 'Dokumen ditolak. Klik ikon lonceng untuk detail.';
+    }
+
+    if (reason.length <= maxLength) {
+      return 'Ditolak: $reason';
+    }
+
+    return 'Ditolak: ${reason.substring(0, maxLength)}…';
   }
 
   Future<void> _initPdf() async {
@@ -453,6 +475,7 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
     return bytes;
   }
 
+  // ===================== REJECTION REASON =====================
   Future<void> _loadRejectionReason() async {
     if (widget.perjanjianId == null) return;
 
@@ -460,57 +483,210 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
 
     final data = await supabase
         .from('perjanjian_kinerja')
-        .select('rejection_reason')
+        .select(
+          'rejection_reason, rejected_at, rejected_by_name, rejection_read_at',
+        )
         .eq('id', widget.perjanjianId!)
-        .single();
+        .maybeSingle(); // 🔥 bukan single()
 
-    if (mounted) {
-      setState(() {
-        _rejectionReason = data['rejection_reason'];
-      });
-    }
+    if (data == null || !mounted) return;
+
+    debugPrint('REJECTION DATA: $data');
+
+    setState(() {
+      _rejectionReason = data['rejection_reason'] as String?;
+      _rejectedAt = data['rejected_at'] as String?;
+      _rejectedByName = data['rejected_by_name'] as String?;
+      _rejectReasonRead = data['rejection_read_at'] != null;
+    });
   }
 
-  void _showRejectReasonSheet() {
-    showModalBottomSheet(
+  // ===================== REJECTION REASON DIALOG =====================
+  Future<void> _showRejectReasonDialog() async {
+    final supabase = Supabase.instance.client;
+
+    // ===== MARK AS READ (DB FIRST) =====
+    try {
+      await supabase
+          .from('perjanjian_kinerja')
+          .update({'rejection_read_at': DateTime.now().toIso8601String()})
+          .eq('id', widget.perjanjianId!);
+
+      if (!mounted) return;
+
+      setState(() {
+        _rejectReasonRead = true;
+      });
+    } catch (e) {
+      debugPrint('FAILED TO UPDATE rejection_read_at: $e');
+      // optional: snackbar/log audit
+    }
+
+    if (!mounted) return;
+
+    // ===== SHOW DIALOG =====
+    showDialog(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (_) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+      barrierDismissible: true,
+      builder: (_) => Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // ===== HEADER =====
               Row(
-                children: const [
-                  Icon(Icons.error_outline, color: Colors.red),
-                  SizedBox(width: 8),
-                  Text(
-                    'Dokumen Ditolak',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.error_outline,
+                      color: Colors.red,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'Dokumen Ditolak',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              Text(
-                _rejectionReason ?? 'Tidak ada alasan penolakan.',
-                style: const TextStyle(fontSize: 14, height: 1.5),
+
+              const SizedBox(height: 16),
+
+              // ===== META INFO =====
+              _infoRow(
+                Icons.person_outline,
+                'Ditolak oleh',
+                _rejectedByName ?? '-',
               ),
-              const SizedBox(height: 20),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Tutup'),
+              const SizedBox(height: 6),
+              _infoRow(
+                Icons.calendar_today_outlined,
+                'Tanggal',
+                _rejectedAt != null
+                    ? DateTime.parse(
+                        _rejectedAt!,
+                      ).toLocal().toString().substring(0, 16)
+                    : '-',
+              ),
+
+              const SizedBox(height: 14),
+
+              // ===== REJECTION REASON (SCROLL SAFE) =====
+              Flexible(
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: SingleChildScrollView(
+                    child: Text(
+                      _rejectionReason?.trim().isNotEmpty == true
+                          ? _rejectionReason!
+                          : '-',
+                      style: const TextStyle(height: 1.5, fontSize: 14),
+                    ),
+                  ),
                 ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // ===== ACTIONS =====
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Tutup'),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.refresh_rounded, size: 18),
+                    label: const Text('Ajukan Ulang'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange.shade600,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    onPressed: _handleResubmit,
+                  ),
+                ],
               ),
             ],
           ),
-        );
-      },
+        ),
+      ),
+    );
+  }
+
+  // ===== INFO ROW WIDGET =====
+  Widget _infoRow(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: Colors.grey),
+        const SizedBox(width: 6),
+        Text('$label: ', style: const TextStyle(color: Colors.black54)),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ===================== RESUBMIT =====================
+  Future<void> _handleResubmit() async {
+    Navigator.pop(context); // tutup dialog
+
+    final supabase = Supabase.instance.client;
+
+    await supabase
+        .from('perjanjian_kinerja')
+        .update({
+          'status': 'Proses',
+          'rejection_read_at': null,
+          'updated_at': DateTime.now().toIso8601String(),
+        })
+        .eq('id', widget.perjanjianId!);
+
+    if (!mounted) return;
+
+    AppSnackbar.success(context, 'Silakan perbaiki dokumen dan ajukan kembali');
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => FormPerjanjianPage(
+          mode: FormMode.edit,
+          perjanjianId: widget.perjanjianId!,
+        ),
+      ),
     );
   }
 
@@ -546,6 +722,7 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
   //   return bytes;
   // }
 
+  // ===================== APPROVE =====================
   Future<void> _onApprovePressed() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -570,6 +747,7 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
     }
   }
 
+  // ===================== APPROVE DOCUMENT =====================
   Future<void> _approveDocument() async {
     if (widget.perjanjianId == null ||
         widget.pimpinanProfile == null ||
@@ -649,65 +827,28 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
     }
   }
 
-  void _showRejectReasonDialog() {
-    final controller = TextEditingController();
+  // Future<void> _rejectDocument(String reason) async {
+  //   final supabase = Supabase.instance.client;
+  //   final user = supabase.auth.currentUser;
+  //   if (user == null) return;
 
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Alasan Penolakan'),
-        content: TextField(
-          controller: controller,
-          maxLines: 4,
-          decoration: const InputDecoration(
-            hintText: 'Masukkan alasan penolakan',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Batal'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () async {
-              if (controller.text.trim().isEmpty) return;
+  //   await supabase
+  //       .from('perjanjian_kinerja')
+  //       .update({
+  //         'status': 'Ditolak',
+  //         'rejection_reason': reason,
+  //         'rejected_at': DateTime.now().toIso8601String(),
+  //         'rejected_by': user.id,
+  //       })
+  //       .eq('id', widget.perjanjianId!);
 
-              await _rejectDocument(controller.text.trim());
-              if (!mounted) return;
-
-              Navigator.pop(context);
-              Navigator.pop(context, {'action': 'rejected'});
-            },
-            child: const Text('Simpan'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _rejectDocument(String reason) async {
-    final supabase = Supabase.instance.client;
-    final user = supabase.auth.currentUser;
-    if (user == null) return;
-
-    await supabase
-        .from('perjanjian_kinerja')
-        .update({
-          'status': 'Ditolak',
-          'rejection_reason': reason,
-          'rejected_at': DateTime.now().toIso8601String(),
-          'rejected_by': user.id,
-        })
-        .eq('id', widget.perjanjianId!);
-
-    if (mounted) {
-      setState(() {
-        _currentStatus = 'Ditolak';
-        _rejectionReason = reason; // 🔥 langsung update
-      });
-    }
-  }
+  //   if (mounted) {
+  //     setState(() {
+  //       _currentStatus = 'Ditolak';
+  //       _rejectionReason = reason; // 🔥 langsung update
+  //     });
+  //   }
+  // }
 
   // ===================== ZOOM =====================
   void _onDoubleTap(TapDownDetails details) {
@@ -760,27 +901,29 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
               ),
               actions: [
                 // ===== REJECTION REASON (HANYA JIKA DITOLAK) =====
-                if (_currentStatus == 'Ditolak')
+                if (_showRejectionBell)
                   IconButton(
                     tooltip: 'Alasan Penolakan',
                     icon: Stack(
+                      clipBehavior: Clip.none,
                       children: [
                         const Icon(Icons.notifications_outlined),
-                        Positioned(
-                          right: 0,
-                          top: 0,
-                          child: Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(
-                              color: Colors.red,
-                              shape: BoxShape.circle,
+                        if (!_rejectReasonRead)
+                          Positioned(
+                            top: -2,
+                            right: -2,
+                            child: Container(
+                              width: 9,
+                              height: 9,
+                              decoration: const BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
                             ),
                           ),
-                        ),
                       ],
                     ),
-                    onPressed: () => _showRejectReasonSheet(),
+                    onPressed: _showRejectReasonDialog,
                   ),
 
                 // ================= PIMPINAN MODE =================
@@ -865,6 +1008,22 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
                     ),
                   ],
                 ),
+              if (_currentStatus == 'Ditolak')
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    !_rejectReasonRead
+                        ? _shortRejectReason()
+                        : 'Dokumen ini telah ditolak.',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.red.shade700,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
 
               const SizedBox(height: 8),
 
@@ -911,7 +1070,11 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
                           size: Size.infinite,
                           painter: WatermarkPainter(
                             logo: _watermarkLogo!,
-                            text: 'RSUD BANGIL',
+                            //text: 'RSUD BANGIL',
+                            text: _currentStatus == 'Ditolak'
+                                ? 'DITOLAK'
+                                : 'RSUD BANGIL',
+
                             darkMode: _darkMode,
                           ),
                         ),

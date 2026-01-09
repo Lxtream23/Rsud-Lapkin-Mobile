@@ -340,13 +340,28 @@ class PerjanjianService {
     }
 
     try {
+      // ✅ Ambil nama resmi dari profile
+      final profile = await supabase
+          .from('profile')
+          .select('nama_lengkap')
+          .eq('id', user.id)
+          .single();
+
+      final namaPimpinan = profile['nama_lengkap'] ?? 'Pimpinan';
+
       await supabase
           .from('perjanjian_kinerja')
           .update({
             'status': 'Ditolak',
-            'alasan_penolakan': alasan.trim(),
+            'rejection_reason': alasan.trim(),
+
+            // 🔒 AUDIT TRAIL (WAJIB)
             'rejected_by': user.id,
+            'rejected_by_name': namaPimpinan,
             'rejected_at': DateTime.now().toIso8601String(),
+
+            // reset notifikasi
+            'rejection_read_at': null,
             'updated_at': DateTime.now().toIso8601String(),
           })
           .eq('id', perjanjianId);
