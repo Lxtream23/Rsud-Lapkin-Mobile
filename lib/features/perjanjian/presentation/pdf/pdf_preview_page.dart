@@ -111,6 +111,31 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
     });
   }
 
+  // ===================== RELOAD STATUS =====================
+  Future<void> _reloadStatusFromDb() async {
+    if (widget.perjanjianId == null) return;
+
+    final supabase = Supabase.instance.client;
+
+    final data = await supabase
+        .from('perjanjian_kinerja')
+        .select('status')
+        .eq('id', widget.perjanjianId!)
+        .maybeSingle();
+
+    if (data == null) return;
+
+    if (!mounted) return;
+
+    setState(() {
+      _currentStatus = data['status'];
+    });
+
+    if (_currentStatus == 'Ditolak') {
+      await _loadRejectionReason();
+    }
+  }
+
   // ===================== SHORT REJECT REASON =====================
   String _shortRejectReason({int maxLength = 80}) {
     final reason = _rejectionReason?.trim();
@@ -213,15 +238,35 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
 
       if (!mounted) return;
 
-      Navigator.pushReplacement(
+      final result = await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (_) => FormPerjanjianPage(
             mode: FormMode.edit,
-            perjanjianId: widget.perjanjianId!, // 🔥 ID kunci
+            perjanjianId: widget.perjanjianId!,
           ),
         ),
       );
+
+      if (result != null && result['action'] == 'updated') {
+        // 1️⃣ ambil status TERBARU dari database
+        await _reloadStatusFromDb();
+
+        // 2️⃣ kalau sudah bukan Ditolak → bersihkan state penolakan
+        if (_currentStatus != 'Ditolak') {
+          setState(() {
+            _rejectionReason = null;
+            _rejectReasonRead = false;
+            _rejectedByName = null;
+            _rejectedAt = null;
+          });
+        }
+
+        // 3️⃣ paksa ambil PDF versi TERBARU
+        _forceReloadFromStorage = true;
+        await _reloadPdf();
+      }
+      debugPrint('EDIT RESULT: $result');
     }
   }
 
@@ -505,7 +550,7 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
   Future<void> _showRejectReasonDialog() async {
     final supabase = Supabase.instance.client;
 
-    // ===== MARK AS READ (DB FIRST) =====
+    // ===== MARK AS READ =====
     try {
       await supabase
           .from('perjanjian_kinerja')
@@ -513,13 +558,9 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
           .eq('id', widget.perjanjianId!);
 
       if (!mounted) return;
-
-      setState(() {
-        _rejectReasonRead = true;
-      });
+      setState(() => _rejectReasonRead = true);
     } catch (e) {
       debugPrint('FAILED TO UPDATE rejection_read_at: $e');
-      // optional: snackbar/log audit
     }
 
     if (!mounted) return;
@@ -567,7 +608,7 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
 
               const SizedBox(height: 16),
 
-              // ===== META INFO =====
+              // ===== META =====
               _infoRow(
                 Icons.person_outline,
                 'Ditolak oleh',
@@ -586,7 +627,7 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
 
               const SizedBox(height: 14),
 
-              // ===== REJECTION REASON (SCROLL SAFE) =====
+              // ===== REASON =====
               Flexible(
                 child: Container(
                   width: double.infinity,
@@ -608,7 +649,7 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
 
               const SizedBox(height: 20),
 
-              // ===== ACTIONS =====
+              // ===== ACTION =====
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
@@ -618,8 +659,8 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton.icon(
-                    icon: const Icon(Icons.refresh_rounded, size: 18),
-                    label: const Text('Ajukan Ulang'),
+                    icon: const Icon(Icons.edit, size: 18),
+                    label: const Text('Perbaiki Dokumen'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.orange.shade600,
                       foregroundColor: Colors.white,
@@ -632,7 +673,10 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    onPressed: _handleResubmit,
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _confirmEdit(); // 🔥 SAMA PERSIS DENGAN ICON EDIT
+                    },
                   ),
                 ],
               ),
@@ -641,6 +685,63 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
         ),
       ),
     );
+  }
+
+  // ===================== REJECT DOCUMENT =====================
+  Future<void> _showRejectInputDialog() async {
+    final controller = TextEditingController();
+
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Tolak Dokumen'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Alasan Penolakan',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: controller,
+              maxLines: 4,
+              autofocus: true,
+              decoration: InputDecoration(
+                hintText: 'Contoh: Data belum lengkap, mohon diperbaiki.',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () {
+              if (controller.text.trim().isEmpty) {
+                AppSnackbar.error(context, 'Alasan wajib diisi');
+                return;
+              }
+              Navigator.pop(context, true);
+            },
+            child: const Text('Tolak'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      await _rejectDocument(controller.text.trim());
+    }
   }
 
   // ===== INFO ROW WIDGET =====
@@ -657,36 +758,6 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
           ),
         ),
       ],
-    );
-  }
-
-  // ===================== RESUBMIT =====================
-  Future<void> _handleResubmit() async {
-    Navigator.pop(context); // tutup dialog
-
-    final supabase = Supabase.instance.client;
-
-    await supabase
-        .from('perjanjian_kinerja')
-        .update({
-          'status': 'Proses',
-          'rejection_read_at': null,
-          'updated_at': DateTime.now().toIso8601String(),
-        })
-        .eq('id', widget.perjanjianId!);
-
-    if (!mounted) return;
-
-    AppSnackbar.success(context, 'Silakan perbaiki dokumen dan ajukan kembali');
-
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => FormPerjanjianPage(
-          mode: FormMode.edit,
-          perjanjianId: widget.perjanjianId!,
-        ),
-      ),
     );
   }
 
@@ -823,32 +894,31 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
     );
 
     if (confirm == true) {
-      _showRejectReasonDialog();
+      _showRejectInputDialog(); // 🔥 INPUT, BUKAN VIEW
     }
   }
 
-  // Future<void> _rejectDocument(String reason) async {
-  //   final supabase = Supabase.instance.client;
-  //   final user = supabase.auth.currentUser;
-  //   if (user == null) return;
+  Future<void> _rejectDocument(String reason) async {
+    try {
+      await _perjanjianService.rejectPerjanjian(
+        perjanjianId: widget.perjanjianId!,
+        alasan: reason,
+      );
 
-  //   await supabase
-  //       .from('perjanjian_kinerja')
-  //       .update({
-  //         'status': 'Ditolak',
-  //         'rejection_reason': reason,
-  //         'rejected_at': DateTime.now().toIso8601String(),
-  //         'rejected_by': user.id,
-  //       })
-  //       .eq('id', widget.perjanjianId!);
+      if (!mounted) return;
 
-  //   if (mounted) {
-  //     setState(() {
-  //       _currentStatus = 'Ditolak';
-  //       _rejectionReason = reason; // 🔥 langsung update
-  //     });
-  //   }
-  // }
+      setState(() {
+        _currentStatus = 'Ditolak';
+        _rejectionReason = reason;
+        _rejectReasonRead = false;
+      });
+
+      AppSnackbar.success(context, 'Dokumen berhasil ditolak');
+    } catch (e) {
+      debugPrint('REJECT ERROR: $e');
+      AppSnackbar.error(context, 'Gagal menolak dokumen');
+    }
+  }
 
   // ===================== ZOOM =====================
   void _onDoubleTap(TapDownDetails details) {

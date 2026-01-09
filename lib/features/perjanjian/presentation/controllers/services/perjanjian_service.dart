@@ -150,7 +150,9 @@ class PerjanjianService {
 
     final userId = user.id;
 
-    // 1️⃣ Ambil version lama
+    // =======================
+    // 1️⃣ Ambil versi lama
+    // =======================
     final old = await _supabase
         .from('perjanjian_kinerja')
         .select('version')
@@ -160,7 +162,9 @@ class PerjanjianService {
     final int newVersion = (old['version'] ?? 1) + 1;
     final pdfPath = '$userId/$perjanjianId.pdf';
 
+    // =======================
     // 2️⃣ Overwrite PDF
+    // =======================
     await _supabase.storage
         .from('perjanjian-pdf')
         .uploadBinary(
@@ -172,22 +176,27 @@ class PerjanjianService {
           ),
         );
 
-    // 3️⃣ Update DB (TETAP STATUS PROSES)
-    await _supabase
+    // =======================
+    // 3️⃣ Update DB (WAJIB select)
+    // =======================
+    final result = await _supabase
         .from('perjanjian_kinerja')
         .update({
+          // ===== DATA PIHAK 1 =====
           'nama_pihak_pertama': data['namaPihakPertama'],
           'jabatan_pihak_pertama': data['jabatanPihakPertama'],
           'pangkat_pihak_pertama': data['pangkatPihak1'],
           'nip_pihak_pertama': data['nipPihak1'],
           'ttd_pihak_pertama_url': data['ttdPihak1'],
 
+          // ===== DATA PIHAK 2 (RESET) =====
           'nama_pihak_kedua': data['namaPihakKedua'],
           'jabatan_pihak_kedua': data['jabatanPihakKedua'],
-          'pangkat_pihak_kedua': null, // 🔥 BELUM DISETUJUI
+          'pangkat_pihak_kedua': null,
           'nip_pihak_kedua': null,
-          'ttd_pihak_kedua_url': null, // 🔥 BELUM DISETUJUI
+          'ttd_pihak_kedua_url': null,
 
+          // ===== ISI =====
           'tugas_detail': data['tugasDetail'],
           'fungsi_list': data['fungsiList'],
           'tabel1': data['table1'],
@@ -195,13 +204,35 @@ class PerjanjianService {
           'tabel3': data['table3'],
           'tabel4': data['table4'],
 
-          'pdf_path': pdfPath,
+          // ===== RESET STATUS (PENTING 🔥) =====
           'status': 'Proses',
+          'rejection_reason': null,
+          'rejected_by': null,
+          'rejected_by_name': null,
+          'rejected_at': null,
+          'rejection_read_at': null,
+
+          // ===== META =====
+          'pdf_path': pdfPath,
           'version': newVersion,
           'updated_at': DateTime.now().toIso8601String(),
         })
-        .eq('id', perjanjianId);
+        .eq('id', perjanjianId)
+        .select('id'); // 🔥 WAJIB di Flutter Web
+
+    // =======================
+    // 4️⃣ Verifikasi hasil update
+    // =======================
+    if (result.isEmpty) {
+      debugPrint('UPDATE GAGAL | id=$perjanjianId | user=$userId');
+      throw Exception(
+        'Update perjanjian gagal: data tidak ditemukan atau ditolak policy',
+      );
+    }
+
+    debugPrint('UPDATE BERHASIL | id=$perjanjianId | version=$newVersion');
   }
+
   // ======================================================
   // 🔵 APPROVE PERJANJIAN (PIMPINAN)
   // ======================================================
@@ -342,7 +373,7 @@ class PerjanjianService {
     try {
       // ✅ Ambil nama resmi dari profile
       final profile = await supabase
-          .from('profile')
+          .from('profiles')
           .select('nama_lengkap')
           .eq('id', user.id)
           .single();

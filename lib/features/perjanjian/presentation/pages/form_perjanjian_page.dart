@@ -149,11 +149,25 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     }
   }
 
+  bool _loaded = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (!_loaded && widget.mode == FormMode.edit) {
+      _loaded = true;
+      _loadPerjanjianFromDb(widget.perjanjianId!);
+    }
+  }
+
   Future<void> _loadPerjanjianFromDb(String id) async {
     final data = await supabase
         .from('perjanjian_kinerja')
         .select()
         .eq('id', id)
+        .order('updated_at', ascending: false)
+        .limit(1)
         .single();
 
     // === FORM UTAMA ===
@@ -224,6 +238,10 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
     }
 
     setState(() {});
+
+    debugPrint('FORM INIT | mode=${widget.mode}');
+    debugPrint('FORM LOAD | perjanjianId=$id');
+    debugPrint('FORM VERSION FROM DB: ${data['version']}');
   }
 
   ProgramAnggaranRow parseProgramRowFromJson(Map<String, dynamic> json) {
@@ -782,6 +800,7 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
               // 🔥 PENTING: pop SEKALI dengan RESULT
               Navigator.pop(context, {
                 'action': isEditMode ? 'updated' : 'created',
+                'perjanjianId': perjanjianId,
               });
 
               ScaffoldMessenger.of(context).showSnackBar(
