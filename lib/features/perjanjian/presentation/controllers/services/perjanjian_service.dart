@@ -6,6 +6,7 @@ import 'package:rsud_lapkin_mobile/features/perjanjian/presentation/pdf/perjanji
 import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'dart:io';
 
 class PerjanjianService {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -64,15 +65,15 @@ class PerjanjianService {
     return (decoded as List).map<String>((e) => e?.toString() ?? '').toList();
   }
 
-  Future<Uint8List> downloadSignature(String url) async {
-    final response = await http.get(Uri.parse(url));
+  // Future<Uint8List> downloadSignature(String url) async {
+  //   final response = await http.get(Uri.parse(url));
 
-    if (response.statusCode != 200) {
-      throw Exception('Gagal download tanda tangan pimpinan');
-    }
+  //   if (response.statusCode != 200) {
+  //     throw Exception('Gagal download tanda tangan pimpinan');
+  //   }
 
-    return response.bodyBytes;
-  }
+  //   return response.bodyBytes;
+  // }
 
   // ======================================================
   // 🔹 SIMPAN BARU (USER BIASA - DRAFT)
@@ -236,7 +237,41 @@ class PerjanjianService {
   // ======================================================
   // 🔵 APPROVE PERJANJIAN (PIMPINAN)
   // ======================================================
+  String normalizeName(String value) {
+    return value
+        .toLowerCase()
+        .replaceAll('.', '')
+        .replaceAll(',', '')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
 
+  // ===================== Downloading SIGNATURE =====================
+  Future<Uint8List> downloadSignature(String url) async {
+    try {
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode != 200) {
+        throw ApprovePerjanjianException(
+          'Gagal mengunduh tanda tangan (HTTP ${response.statusCode}).',
+        );
+      }
+
+      if (response.bodyBytes.isEmpty) {
+        throw ApprovePerjanjianException(
+          'File tanda tangan kosong atau rusak.',
+        );
+      }
+
+      return response.bodyBytes;
+    } catch (e) {
+      throw ApprovePerjanjianException(
+        'Gagal memuat tanda tangan dari server.',
+      );
+    }
+  }
+
+  // ======================================================
   Future<void> approvePerjanjian({
     required String perjanjianId,
     required Map<String, dynamic> pimpinanProfile,
@@ -244,7 +279,11 @@ class PerjanjianService {
     final supabase = Supabase.instance.client;
 
     final user = supabase.auth.currentUser;
-    if (user == null) throw Exception('User belum login');
+    if (user == null) {
+      throw ApprovePerjanjianException(
+        'Sesi login berakhir. Silakan login ulang.',
+      );
+    }
 
     /// ===== VALIDASI PROFIL PIMPINAN =====
     final String nip = pimpinanProfile['nip'] ?? '';
@@ -253,8 +292,16 @@ class PerjanjianService {
     final String namaPimpinan = pimpinanProfile['nama_lengkap'] ?? '';
     final String jabatanPimpinan = pimpinanProfile['jabatan'] ?? 'Direktur';
 
+    if (namaPimpinan.isEmpty) {
+      throw ApprovePerjanjianException(
+        'Nama pimpinan tidak tersedia di profil.',
+      );
+    }
+
     if (nip.isEmpty || pangkat.isEmpty || ttdPimpinanUrl.isEmpty) {
-      throw Exception('Data pimpinan belum lengkap');
+      throw ApprovePerjanjianException(
+        'Profil pimpinan belum lengkap (NIP / Pangkat / TTD).',
+      );
     }
 
     /// ===== AMBIL DATA PERJANJIAN =====
@@ -264,28 +311,54 @@ class PerjanjianService {
         .eq('id', perjanjianId)
         .single();
 
+    /// ===== GUARD: VALIDASI NAMA PIHAK KEDUA =====
+    final String namaPihakKeduaDiPerjanjian = data['nama_pihak_kedua'] ?? '';
+
+    if (namaPihakKeduaDiPerjanjian.isEmpty) {
+      throw ApprovePerjanjianException(
+        'Nama pihak kedua pada perjanjian belum diisi.',
+      );
+    }
+
+    final normalizedPerjanjian = normalizeName(namaPihakKeduaDiPerjanjian);
+    final normalizedPimpinan = normalizeName(namaPimpinan);
+
+    debugPrint('NAMA PERJANJIAN : "$normalizedPerjanjian"');
+    debugPrint('NAMA PROFILE   : "$normalizedPimpinan"');
+
+    if (normalizedPerjanjian != normalizedPimpinan) {
+      throw ApprovePerjanjianException(
+        'Approve ditolak.\n'
+        'Nama pimpinan yang login tidak sesuai '
+        'dengan pihak kedua pada perjanjian.',
+      );
+    }
+
+    /// ===== VALIDASI TTD PIHAK PERTAMA =====
     final String? ttdUserUrl = data['ttd_pihak_pertama_url'];
+
     if (ttdUserUrl == null || ttdUserUrl.isEmpty) {
-      throw Exception('TTD pihak pertama tidak ditemukan');
+      throw ApprovePerjanjianException('TTD pihak pertama belum tersedia.');
     }
 
     /// ===== DOWNLOAD TTD =====
-    final Uint8List signatureLeftBytes = await downloadSignature(
+    final Uint8List signaturePimpinanBytes = await downloadSignature(
       ttdPimpinanUrl,
     );
+    final Uint8List signatureUserBytes = await downloadSignature(ttdUserUrl);
 
-    final Uint8List signatureRightBytes = await downloadSignature(ttdUserUrl);
-
-    /// 🔥 VALIDASI HASIL DOWNLOAD
-    if (signatureLeftBytes.isEmpty) {
-      throw Exception('TTD pimpinan gagal diunduh');
-    }
-    if (signatureRightBytes.isEmpty) {
-      throw Exception('TTD pihak pertama gagal diunduh');
+    if (signaturePimpinanBytes.isEmpty) {
+      throw ApprovePerjanjianException('Gagal memuat tanda tangan pimpinan.');
     }
 
-    debugPrint('TTD PIMPINAN SIZE : ${signatureLeftBytes.length}');
-    debugPrint('TTD USER SIZE     : ${signatureRightBytes.length}');
+    if (signatureUserBytes.isEmpty) {
+      throw ApprovePerjanjianException(
+        'Gagal memuat tanda tangan pihak pertama.',
+      );
+    }
+
+    debugPrint('TTD PIMPINAN SIZE : ${signaturePimpinanBytes.length}');
+    debugPrint('TTD USER SIZE     : ${signatureUserBytes.length}');
 
     /// ===== CAST DATA =====
     final tabel1 = castTableMatrix(data['tabel1']);
@@ -294,24 +367,25 @@ class PerjanjianService {
     final tabel4 = castTableTree(data['tabel4']);
     final fungsiList = castStringList(data['fungsi_list']);
 
-    /// ===== GENERATE PDF (APPROVED) =====
+    /// ===== GENERATE PDF =====
     final Uint8List approvedPdf = await generatePerjanjianPdf(
-      // ===== PIHAK PERTAMA (USER) =====
+      // PIHAK PERTAMA
       namaPihak1: data['nama_pihak_pertama'],
       jabatanPihak1: data['jabatan_pihak_pertama'],
       pangkatPihak1: data['pangkat_pihak_pertama'],
       nipPihak1: data['nip_pihak_pertama'],
 
-      // ===== PIHAK KEDUA (PIMPINAN) 🔥 =====
+      // PIHAK KEDUA (PIMPINAN)
       namaPihak2: namaPimpinan,
       jabatanPihak2: jabatanPimpinan,
       pangkatPihak2: pangkat,
       nipPihak2: nip,
 
-      // ===== TTD =====
-      signatureLeftBytes: signatureLeftBytes, // pimpinan
-      signatureRightBytes: signatureRightBytes, // user
-      // ===== ISI =====
+      // TTD
+      signatureLeftBytes: signaturePimpinanBytes,
+      signatureRightBytes: signatureUserBytes,
+
+      // ISI
       tabel1: tabel1,
       tabel2: tabel2,
       tabel3: tabel3,
@@ -341,8 +415,6 @@ class PerjanjianService {
           'status': 'Disetujui',
           'approved_at': DateTime.now().toIso8601String(),
           'approved_by': user.id,
-
-          // 🔥 SIMPAN DATA PIMPINAN RESMI
           'nama_pihak_kedua': namaPimpinan,
           'jabatan_pihak_kedua': jabatanPimpinan,
           'pangkat_pihak_kedua': pangkat,
@@ -350,6 +422,13 @@ class PerjanjianService {
           'ttd_pihak_kedua_url': ttdPimpinanUrl,
         })
         .eq('id', perjanjianId);
+
+    /// ===== VERIFIKASI PDF =====
+    if (approvedPdf.isEmpty) {
+      throw ApprovePerjanjianException(
+        'Gagal membuat PDF perjanjian yang telah disetujui.',
+      );
+    }
   }
 
   // ======================================================
@@ -401,6 +480,17 @@ class PerjanjianService {
       rethrow;
     }
   }
+}
+
+/// ======================================================
+// 🔵 CUSTOM EXCEPTION APPROVE PERJANJIAN
+/// ======================================================
+class ApprovePerjanjianException implements Exception {
+  final String message;
+  ApprovePerjanjianException(this.message);
+
+  @override
+  String toString() => message;
 }
 
 // import 'dart:typed_data';

@@ -53,6 +53,25 @@ class _PageListPerjanjianPimpinanState extends State<PageListPerjanjianPimpinan>
 
   late RealtimeChannel _realtimeChannel;
 
+  // ===================== FILTERING LOGIC (BARU) =====================
+  bool _matchFilter(Map<String, dynamic> item) {
+    if (_selectedStatus != 'Semua' && item['status'] != _selectedStatus) {
+      return false;
+    }
+
+    if (_searchQuery.isNotEmpty) {
+      final q = _searchQuery.toLowerCase();
+      final nama = (item['nama_pihak_kedua'] ?? '').toString().toLowerCase();
+      final status = (item['status'] ?? '').toString().toLowerCase();
+
+      if (!nama.contains(q) && !status.contains(q)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   @override
   bool get wantKeepAlive => true;
 
@@ -182,20 +201,43 @@ class _PageListPerjanjianPimpinanState extends State<PageListPerjanjianPimpinan>
     final isPimpinan = auth.currentRole == UserRole.pimpinan;
 
     _realtimeChannel = supabase
-        .channel('perjanjian-realtime')
+        .channel('perjanjian-realtime-pimpinan')
         .onPostgresChanges(
-          event: PostgresChangeEvent.all,
+          event: PostgresChangeEvent.insert,
           schema: 'public',
           table: 'perjanjian_kinerja',
-          filter: isPimpinan
-              ? null
-              : PostgresChangeFilter(
-                  type: PostgresChangeFilterType.eq,
-                  column: 'user_id',
-                  value: supabase.auth.currentUser!.id,
-                ),
-          callback: (_) {
-            _loadData(reset: true);
+          callback: (payload) {
+            final newData = payload.newRecord;
+            if (!_matchFilter(newData)) return;
+
+            setState(() {
+              _items.insert(0, newData);
+            });
+          },
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'perjanjian_kinerja',
+          callback: (payload) {
+            final updated = payload.newRecord;
+            final index = _items.indexWhere((e) => e['id'] == updated['id']);
+            if (index == -1) return;
+
+            setState(() {
+              _items[index] = updated;
+            });
+          },
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.delete,
+          schema: 'public',
+          table: 'perjanjian_kinerja',
+          callback: (payload) {
+            final old = payload.oldRecord;
+            setState(() {
+              _items.removeWhere((e) => e['id'] == old['id']);
+            });
           },
         )
         .subscribe();

@@ -44,6 +44,10 @@ class PdfPreviewPage extends StatefulWidget {
 }
 
 class _PdfPreviewPageState extends State<PdfPreviewPage> {
+  // ===================== VARIABLES =====================
+  // RealtimeChannel? _auditLogChannel;
+  RealtimeChannel? _perjanjianChannel;
+
   bool _saving = false;
   bool _darkMode = false;
   bool _focusMode = false;
@@ -103,12 +107,81 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
       _loadRejectionReason();
     }
 
+    _initRealtimeListener(); // realtime listener
+
     // Skeleton delay (aman & smooth)
     Future.delayed(const Duration(milliseconds: 400), () {
       if (mounted) {
         setState(() => _pdfReady = true);
       }
     });
+  }
+
+  // ===================== REALTIME LISTENER =====================
+  void _initRealtimeListener() {
+    if (widget.perjanjianId == null) return;
+
+    final supabase = Supabase.instance.client;
+
+    _perjanjianChannel = supabase
+        .channel('perjanjian-${widget.perjanjianId}')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'perjanjian_kinerja',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'id',
+            value: widget.perjanjianId!,
+          ),
+          callback: (payload) async {
+            debugPrint('REALTIME EVENT: ${payload.eventType}');
+
+            if (!mounted) return;
+
+            // ===== DELETE =====
+            if (payload.eventType == PostgresChangeEvent.delete) {
+              if (mounted && Navigator.canPop(context)) {
+                Navigator.pop(context, {
+                  'action': 'deleted',
+                  'perjanjianId': widget.perjanjianId,
+                });
+              }
+              return;
+            }
+
+            // ===== UPDATE / INSERT =====
+            final newRow = payload.newRecord;
+            if (newRow == null) return;
+
+            final newStatus = newRow['status'] as String?;
+
+            // 🔥 STATUS BERUBAH
+            if (newStatus != null && newStatus != _currentStatus) {
+              setState(() {
+                _currentStatus = newStatus;
+              });
+
+              if (newStatus == 'Ditolak') {
+                await _loadRejectionReason();
+              } else {
+                setState(() {
+                  _rejectionReason = null;
+                  _rejectReasonRead = false;
+                  _rejectedByName = null;
+                  _rejectedAt = null;
+                });
+              }
+            }
+
+            // 🔥 PDF BERUBAH
+            if (newRow.containsKey('pdf_path')) {
+              _forceReloadFromStorage = true;
+              await _reloadPdf();
+            }
+          },
+        )
+        .subscribe();
   }
 
   // ===================== RELOAD STATUS =====================
@@ -517,6 +590,10 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
         .from('perjanjian-pdf')
         .download(pdfPath);
 
+    if (bytes.isEmpty) {
+      throw Exception('PDF kosong atau gagal dimuat.');
+    }
+
     return bytes;
   }
 
@@ -829,33 +906,51 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
     _showProgressDialog('Menyetujui & memperbarui PDF...');
 
     try {
-      /// 1️⃣ approve + overwrite pdf (SUPABASE)
       await _perjanjianService.approvePerjanjian(
         perjanjianId: widget.perjanjianId!,
         pimpinanProfile: widget.pimpinanProfile!,
       );
 
-      /// 2️⃣ reload pdf terbaru
       _forceReloadFromStorage = true;
       await _reloadPdf();
 
-      /// 3️⃣ update status lokal (🔥 PENTING)
-      setState(() {
-        _currentStatus = 'Disetujui';
-      });
-
-      if (mounted && Navigator.canPop(context)) {
-        Navigator.pop(context); // tutup loading
+      if (mounted) {
+        setState(() => _currentStatus = 'Disetujui');
       }
 
-      AppSnackbar.success(context, 'Dokumen disetujui & PDF diperbarui');
-    } catch (e) {
       if (mounted && Navigator.canPop(context)) {
         Navigator.pop(context);
       }
 
-      debugPrint('APPROVE ERROR: $e');
-      AppSnackbar.error(context, 'Gagal menyetujui dokumen');
+      AppSnackbar.success(
+        context,
+        'Dokumen berhasil disetujui & PDF diperbarui',
+      );
+    }
+    /// 🔴 ERROR VALIDASI / LOGIC (DARI SERVICE)
+    on ApprovePerjanjianException catch (e) {
+      if (mounted && Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+
+      AppSnackbar.error(context, e.message);
+
+      debugPrint('APPROVE VALIDATION ERROR → ${e.message}');
+    }
+    /// 🔴 ERROR TEKNIS (NETWORK / STORAGE / BUG)
+    catch (e, s) {
+      if (mounted && Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+
+      debugPrint('APPROVE FATAL ERROR → $e');
+      debugPrintStack(stackTrace: s);
+
+      AppSnackbar.error(
+        context,
+        'Terjadi kesalahan teknis saat menyetujui dokumen.\n'
+        'Silakan coba lagi.',
+      );
     } finally {
       if (mounted) {
         setState(() => _approving = false);
@@ -870,6 +965,7 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
 
     setState(() {
       _currentPdfBytes = bytes;
+      _forceReloadFromStorage = false; // reset flag
     });
   }
 
@@ -949,6 +1045,15 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
     }
   }
 
+  @override
+  void dispose() {
+    if (_perjanjianChannel != null) {
+      Supabase.instance.client.removeChannel(_perjanjianChannel!);
+    }
+    super.dispose();
+  }
+
+  // ===================== BUILD =====================
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -1122,6 +1227,9 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
                                     child: CircularProgressIndicator(),
                                   )
                                 : PdfPreview(
+                                    key: ValueKey(
+                                      _currentPdfBytes.hashCode,
+                                    ), // force rebuild
                                     build: (_) => _currentPdfBytes!,
                                     useActions: false,
                                     allowPrinting: false,

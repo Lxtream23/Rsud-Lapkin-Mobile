@@ -58,21 +58,81 @@ class _PimpinanDashboardPageState extends State<PimpinanDashboardPage> {
     });
   }
 
+  void _applyStatusDelta({String? oldStatus, String? newStatus}) {
+    if (oldStatus == newStatus) return;
+
+    // Kurangi status lama
+    switch (oldStatus) {
+      case 'Disetujui':
+        disetujui--;
+        break;
+      case 'Ditolak':
+        ditolak--;
+        break;
+      case 'Proses':
+        proses--;
+        break;
+    }
+
+    // Tambah status baru
+    switch (newStatus) {
+      case 'Disetujui':
+        disetujui++;
+        break;
+      case 'Ditolak':
+        ditolak++;
+        break;
+      case 'Proses':
+        proses++;
+        break;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
 
-    _loadSummary();
+    _loadSummary(); // load awal
 
     _channel = Supabase.instance.client
-        .channel('perjanjian-summary')
+        .channel('perjanjian-summary-realtime')
         .onPostgresChanges(
-          event: PostgresChangeEvent.all,
+          event: PostgresChangeEvent.insert,
           schema: 'public',
           table: 'perjanjian_kinerja',
-          callback: (_) {
-            debugPrint('🔥 Summary changed → reload');
-            _loadSummary();
+          callback: (payload) {
+            final status = payload.newRecord['status'] as String?;
+
+            setState(() {
+              total++;
+              _applyStatusDelta(oldStatus: null, newStatus: status);
+            });
+          },
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'perjanjian_kinerja',
+          callback: (payload) {
+            final oldStatus = payload.oldRecord['status'] as String?;
+            final newStatus = payload.newRecord['status'] as String?;
+
+            setState(() {
+              _applyStatusDelta(oldStatus: oldStatus, newStatus: newStatus);
+            });
+          },
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.delete,
+          schema: 'public',
+          table: 'perjanjian_kinerja',
+          callback: (payload) {
+            final oldStatus = payload.oldRecord['status'] as String?;
+
+            setState(() {
+              total--;
+              _applyStatusDelta(oldStatus: oldStatus, newStatus: null);
+            });
           },
         )
         .subscribe();
