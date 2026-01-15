@@ -41,14 +41,14 @@ class ForgotPasswordPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    "Masukkan ID atau email untuk menerima kode verifikasi.",
+                    "Masukkan email untuk menerima kode verifikasi.",
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.black54, fontSize: 13),
                   ),
                   const SizedBox(height: 32),
                   TextField(
                     decoration: InputDecoration(
-                      hintText: "ID/Email",
+                      hintText: "Email",
                       filled: true,
                       fillColor: Colors.grey[100],
                       border: OutlineInputBorder(

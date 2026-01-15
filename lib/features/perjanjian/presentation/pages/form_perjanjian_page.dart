@@ -1279,8 +1279,9 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     const SizedBox(height: 10),
-                    const Text(
-                      "PERJANJIAN KINERJA TAHUN 2025 WAKIL\nDIREKTUR PELAYANAN UOBK RSUD BANGIL\nKABUPATEN PASURUAN",
+                    Text(
+                      "PEMERINTAH KABUPATEN PASURUAN\nPERJANJIAN KINERJA TAHUN ${DateTime.now().year}\nUOBK RSUD BANGIL",
+                      // "PEMERINTAH KABUPATEN PASURUAN\n PERJANJIAN KINERJA TAHUN ${DateTime.now().year}\nUOBK RSUD BANGIL",
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 16,
@@ -1348,16 +1349,16 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                     ),
 
                     // === "INDIKATOR KINERJA INDIVIDU\nUOBK RSUD BANGIL TAHUN 2025" ===
-                    const SizedBox(height: 40),
-                    const Text(
-                      "PERJANJIAN KINERJA TAHUN 2025 WAKIL\nDIREKTUR PELAYANAN UOBK RSUD BANGIL\nKABUPATEN PASURUAN",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
+                    // const SizedBox(height: 40),
+                    // const Text(
+                    //   "PERJANJIAN KINERJA TAHUN 2025 WAKIL\nDIREKTUR PELAYANAN UOBK RSUD BANGIL\nKABUPATEN PASURUAN",
+                    //   textAlign: TextAlign.center,
+                    //   style: TextStyle(
+                    //     fontSize: 16,
+                    //     fontWeight: FontWeight.bold,
+                    //   ),
+                    // ),
+                    // const SizedBox(height: 20),
 
                     // === INPUT MODERN (Jabatan, Tugas, Fungsi) ===
                     const SizedBox(height: 30),
@@ -1422,7 +1423,7 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                       onRowsChanged: () => setState(() {}), // 🔥 INI KUNCI
                     ),
 
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 20),
 
                     // === Card-based Table TARGET TRIWULAN ===
                     CardTable2Widget(
@@ -1435,7 +1436,7 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                       onRowsChanged: () => setState(() {}), // 🔥 INI KUNCI
                     ),
 
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 20),
 
                     // === Card-based Table PROGRAM & ANGGARAN ===
                     CardTable3Widget(
@@ -1450,7 +1451,7 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                       onRowsChanged: () => setState(() {}), // 🔥 INI KUNCI
                     ),
 
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 20),
 
                     // === Card-based Table ANGGARAN DETAILED ===
                     CardTable4Widget(
@@ -1465,7 +1466,7 @@ class _FormPerjanjianPageState extends State<FormPerjanjianPage> {
                       onRowsChanged: () => setState(() {}), // 🔥 INI KUNCI
                     ),
 
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 20),
 
                     // === BUTTON SIMPAN / PREVIEW PDF ===
                     SizedBox(

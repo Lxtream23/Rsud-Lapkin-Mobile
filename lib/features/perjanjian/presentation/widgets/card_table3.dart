@@ -610,6 +610,7 @@ class _CardTable3WidgetState extends State<CardTable3Widget> {
             },
           ),
         ),
+        const SizedBox(height: 8),
 
         const Divider(),
       ],

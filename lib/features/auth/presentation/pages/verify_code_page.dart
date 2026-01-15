@@ -38,6 +38,7 @@ class VerifyCodePage extends StatelessWidget {
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                     ),
+                    textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
                   const Text(
@@ -58,7 +59,7 @@ class VerifyCodePage extends StatelessWidget {
                           decoration: InputDecoration(
                             counterText: "",
                             filled: true,
-                            fillColor: Colors.grey[100],
+                            fillColor: Colors.grey[250],
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10),
                               borderSide: BorderSide.none,
@@ -91,6 +92,14 @@ class VerifyCodePage extends StatelessWidget {
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
                       ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text(
+                      "Kembali ke Menu Lupa Password",
+                      style: TextStyle(color: AppColors.primary),
                     ),
                   ),
                 ],

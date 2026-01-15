@@ -810,7 +810,7 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
               }
               Navigator.pop(context, true);
             },
-            child: const Text('Tolak'),
+            child: const Text('Tolak', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -983,7 +983,7 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Tolak'),
+            child: const Text('Tolak', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),

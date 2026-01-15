@@ -973,6 +973,20 @@ class _ProfilPageState extends State<ProfilPage> {
               ),
             ),
           ),
+          // 🔹 Footer
+          bottomNavigationBar: Container(
+            color: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: const Text(
+              '© 2025 RSUD Bangil – Sistem Laporan Kinerja',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.black87,
+                height: 1.3,
+              ),
+            ),
+          ),
         ),
 
         // ✅ Overlay Loading Full Screen

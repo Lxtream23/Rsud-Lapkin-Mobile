@@ -407,20 +407,20 @@ class _CardTable2WidgetState extends State<CardTable2Widget>
           ),
         ),
         const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                "Catatan: Isi tabel sesuai dengan sasaran, indikator, target dan target triwulan yang telah ditetapkan dalam perjanjian.",
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ),
-          ],
-        ),
+        // Row(
+        //   children: [
+        //     Expanded(
+        //       child: Text(
+        //         "Catatan: Isi tabel sesuai dengan sasaran, indikator, target dan target triwulan yang telah ditetapkan dalam perjanjian.",
+        //         style: TextStyle(
+        //           fontSize: 12,
+        //           color: Colors.grey[600],
+        //           fontStyle: FontStyle.italic,
+        //         ),
+        //       ),
+        //     ),
+        //   ],
+        // ),
       ],
     );
   }
