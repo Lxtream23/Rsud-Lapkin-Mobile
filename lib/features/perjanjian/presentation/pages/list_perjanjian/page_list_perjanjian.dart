@@ -72,7 +72,7 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
 
   // ===================== LOAD DATA =====================
   Future<void> _loadData({bool reset = false}) async {
-    if (_isLoadingMore) return; // 🔥 safet
+    if (_isLoadingMore) return; // 🔥 safety
 
     if (reset) {
       _items.clear();
@@ -95,23 +95,30 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
         .select()
         .eq('user_id', user.id);
 
-    // SEARCH MULTI KOLOM
+    // 🔍 SEARCH MULTI KOLOM (TEXT ONLY)
     if (_searchQuery.isNotEmpty) {
       query = query.or(
-        'nama_pihak_kedua.ilike.%$_searchQuery%,'
-        'status.ilike.%$_searchQuery%',
+        [
+          'nama_pihak_pertama.ilike.%$_searchQuery%',
+          'nama_pihak_kedua.ilike.%$_searchQuery%',
+          'jabatan_pihak_pertama.ilike.%$_searchQuery%',
+          'jabatan_pihak_kedua.ilike.%$_searchQuery%',
+          'nip_pihak_pertama.ilike.%$_searchQuery%',
+          'nip_pihak_kedua.ilike.%$_searchQuery%',
+        ].join(','),
       );
     }
 
-    // STATUS
+    // 🎯 FILTER STATUS (ENUM → HARUS eq)
     if (_selectedStatus != 'Semua') {
       query = query.eq('status', _selectedStatus);
     }
 
-    // DATE FILTER
+    // 📅 FILTER TANGGAL
     if (_startDate != null) {
       query = query.gte('created_at', _startDate!.toIso8601String());
     }
+
     if (_endDate != null) {
       query = query.lte(
         'created_at',
@@ -194,13 +201,17 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
   }
 
   void _onSearchChanged(String value) {
-    // Batalkan timer sebelumnya
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce?.cancel();
 
     _debounce = Timer(const Duration(milliseconds: 500), () {
+      final query = value.trim();
+
+      if (_searchQuery == query) return; // 🔥 cegah reload sia-sia
+
       setState(() {
-        _searchQuery = value;
+        _searchQuery = query;
       });
+
       _loadData(reset: true);
     });
   }
@@ -266,7 +277,7 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
           TextField(
             controller: _searchController,
             decoration: InputDecoration(
-              hintText: 'Cari nama pihak kedua / status...',
+              hintText: 'Cari berdasarkan nama / jabatan / NIP...',
               hintStyle: const TextStyle(fontSize: 14, color: Colors.grey),
               prefixIcon: const Icon(Icons.search),
               border: OutlineInputBorder(
@@ -406,7 +417,7 @@ class _PageListPerjanjianState extends State<PageListPerjanjian>
     }
 
     return AnimatedOpacity(
-      key: ValueKey(query), // 🔥 trigger animasi saat search berubah
+      //key: ValueKey(query), // 🔥 trigger animasi saat search berubah
       opacity: 1,
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,

@@ -122,14 +122,16 @@ class _PageListPerjanjianPimpinanState extends State<PageListPerjanjianPimpinan>
     final to = from + _pageSize - 1;
 
     // ===================== BASE QUERY =====================
-    // 🔥 JANGAN FILTER ROLE DI FLUTTER
     var query = supabase.from('perjanjian_kinerja').select();
 
-    // ===================== SEARCH =====================
-    if (_searchQuery.isNotEmpty) {
+    // ===================== SEARCH (TEXT ONLY) =====================
+    if (_searchQuery.trim().isNotEmpty) {
+      final q = _searchQuery.trim();
+
       query = query.or(
-        'nama_pihak_kedua.ilike.%$_searchQuery%,'
-        'status.ilike.%$_searchQuery%',
+        'nama_pihak_kedua.ilike.%$q%,'
+        'nama_pihak_pertama.ilike.%$q%,'
+        'nip_pihak_kedua.ilike.%$q%',
       );
     }
 
@@ -261,13 +263,17 @@ class _PageListPerjanjianPimpinanState extends State<PageListPerjanjianPimpinan>
   }
 
   void _onSearchChanged(String value) {
-    // Batalkan timer sebelumnya
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce?.cancel();
 
     _debounce = Timer(const Duration(milliseconds: 500), () {
+      final query = value.trim();
+
+      if (_searchQuery == query) return; // 🔥 cegah reload sia-sia
+
       setState(() {
-        _searchQuery = value;
+        _searchQuery = query;
       });
+
       _loadData(reset: true);
     });
   }
@@ -351,7 +357,7 @@ class _PageListPerjanjianPimpinanState extends State<PageListPerjanjianPimpinan>
           TextField(
             controller: _searchController,
             decoration: InputDecoration(
-              hintText: 'Cari nama pihak kedua / status...',
+              hintText: 'Cari berdasarkan nama / jabatan / NIP...',
               hintStyle: const TextStyle(fontSize: 14, color: Colors.grey),
               prefixIcon: const Icon(Icons.search),
               border: OutlineInputBorder(
@@ -492,7 +498,7 @@ class _PageListPerjanjianPimpinanState extends State<PageListPerjanjianPimpinan>
     }
 
     return AnimatedOpacity(
-      key: ValueKey(query), // 🔥 trigger animasi saat search berubah
+      //key: ValueKey(query), // 🔥 trigger animasi saat search berubah
       opacity: 1,
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
