@@ -61,13 +61,16 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
 
   ui.Image? _watermarkLogo;
 
-  bool get _canEdit =>
-      _currentStatus == 'Proses' ||
-      (_currentStatus == 'Ditolak' && _rejectReasonRead);
+  bool get _canEdit {
+    if (widget.isPimpinan) return false; // 🔥 KUNCI UTAMA
+    return _currentStatus == 'Proses' ||
+        (_currentStatus == 'Ditolak' && _rejectReasonRead);
+  }
 
   bool get _canDownload => _currentStatus == 'Disetujui';
 
   bool get _canDelete =>
+      !widget.isPimpinan &&
       widget.perjanjianId != null &&
       (_currentStatus == 'Proses' || _currentStatus == 'Ditolak');
 
@@ -281,6 +284,8 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
   }
 
   Future<void> _confirmEdit() async {
+    if (widget.isPimpinan) return; // 🔒 pimpinan dilarang edit
+
     debugPrint('perjanjianId: ${widget.perjanjianId}');
     if (widget.perjanjianId == null) return;
     final result = await showDialog<bool>(
@@ -735,26 +740,27 @@ class _PdfPreviewPageState extends State<PdfPreviewPage> {
                     child: const Text('Tutup'),
                   ),
                   const SizedBox(width: 8),
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.edit, size: 18),
-                    label: const Text('Perbaiki Dokumen'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange.shade600,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 10,
+                  if (!widget.isPimpinan)
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.edit, size: 18),
+                      label: const Text('Perbaiki Dokumen'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange.shade600,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _confirmEdit(); // 🔥 SAMA PERSIS DENGAN ICON EDIT
+                      },
                     ),
-                    onPressed: () {
-                      Navigator.pop(context);
-                      _confirmEdit(); // 🔥 SAMA PERSIS DENGAN ICON EDIT
-                    },
-                  ),
                 ],
               ),
             ],
