@@ -52,7 +52,7 @@ class _HomePageState extends State<HomePage> {
         automaticallyImplyLeading: false,
         title: Row(
           children: [
-            Image.asset('assets/images/logo1.png', height: 30),
+            Image.asset('assets/images/logo_pemda.png', height: 30),
             const SizedBox(width: 4),
             Image.asset('assets/images/logo2.png', height: 30),
             const SizedBox(width: 8),

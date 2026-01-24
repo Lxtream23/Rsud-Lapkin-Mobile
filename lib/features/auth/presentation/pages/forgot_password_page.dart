@@ -25,7 +25,7 @@ class ForgotPasswordPage extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Image.asset('assets/images/logo1.png', height: 50),
+                      Image.asset('assets/images/logo_pemda.png', height: 50),
                       const SizedBox(width: 16),
                       Image.asset('assets/images/logo2.png', height: 50),
                     ],
