@@ -62,19 +62,19 @@ Aplikasi ini dikembangkan untuk mengatasi permasalahan tersebut melalui sistem m
 ### 🏠 Dashboard Pegawai
 
 <p align="center">
-<img src="assets/images/readme/home.png.png" width="400"/>
+<img src="assets/images/readme/home.png" width="400"/>
 </p>
 
 ### 📝 Form Perjanjian Kinerja
 
 <p align="center">
-<img src="assets/images/readme/form perjanjian.png.png" width="400"/>
+<img src="assets/images/readme/form perjanjian.png" width="400"/>
 </p>
 
 ### ✅ Fitur Approve & Reject
 
 <p align="center">
-<img src="assets/images/readme/aprove.png.png" width="400"/>
+<img src="assets/images/readme/aprove.png" width="400"/>
 </p>
 
 ---
