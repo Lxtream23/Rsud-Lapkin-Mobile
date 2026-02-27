@@ -99,13 +99,15 @@ Flutter bertindak sebagai client application, sementara Supabase menangani auten
 
 ## 📂 Struktur Project (Utama)
 
+```
 lib/
 │
-├── screens/ # Halaman UI aplikasi
+├── features/ # Halaman UI aplikasi
 ├── widgets/ # Komponen reusable
 ├── services/ # Koneksi ke Supabase & logic API
 ├── models/ # Struktur data
 └── main.dart # Entry point aplikasi
+```
 
 ---
 
