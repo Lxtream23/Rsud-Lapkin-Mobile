@@ -55,19 +55,27 @@ Aplikasi ini dikembangkan untuk mengatasi permasalahan tersebut melalui sistem m
 
 ### 🔐 Halaman Login
 
-![Login](assets/images/readme/login.png)
+<p align="center">
+<img src="assets/images/readme/login.png" width="400"/>
+</p>
 
 ### 🏠 Dashboard Pegawai
 
-![Dashboard](assets/images/readme/home.png)
+<p align="center">
+<img src="assets/images/readme/home.png.png" width="400"/>
+</p>
 
 ### 📝 Form Perjanjian Kinerja
 
-![Form](assets/images/readme/form%20perjanjian.png)
+<p align="center">
+<img src="assets/images/readme/form perjanjian.png.png" width="400"/>
+</p>
 
 ### ✅ Fitur Approve & Reject
 
-![Approve](assets/images/readme/aprove.png)
+<p align="center">
+<img src="assets/images/readme/aprove.png.png" width="400"/>
+</p>
 
 ---
 
